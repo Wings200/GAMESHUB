@@ -1,97 +1,68 @@
-# VAULT DIRECTIVE — Research, Systems Map, and QA Audit
+# VAULT DIRECTIVE — Design decisions and code audit, cutaway reboot
 
-Updated: 2026-11-23. Version: Survival Alpha 0.3.
-This file is an implementation audit for the GAMESHUB version of VAULT DIRECTIVE.
+This document tracks specific commitments from the user and prevents repeating the old implementation's problems.
 
-## Reference research
+## Source-reference scope
 
-We studied the broad structure of **Fallout Shelter**, not its source code or proprietary visual materials.
+Fallout Shelter reference: room-based cutaway simulation, visible production/collection loops, limited-power prioritization, SPECIAL-linked jobs, training, room upgrades, rushing, housing/recruitment, exploring outside, and hostile incidents. Sources consulted during the rebuild:
 
-- Bethesda official game page: https://fallout.bethesda.net/en/games/fallout-shelter — vault creation, residents, rooms, equipment, training, and radio recruitment.
-- Official Steam storefront: https://store.steampowered.com/app/588430/Fallout_Shelter/ — vault construction, room management, Wasteland exploration, weapons, outfits, training, and simulation.
-- Bethesda support: https://help.bethesda.net/app/answers/detail/a_id/29951/ — standalone vault management game.
-- Bethesda quest incident support: https://help.bethesda.net/app/answers/detail/a_id/42077/ — quests and active incidents interact in the original game's management loop.
-- Bethesda official app description: https://play.google.com/store/apps/details?id=com.bethsoft.falloutshelter — radio recruitment and family population growth.
+- [Fallout Shelter game and room references](https://fallout.fandom.com/wiki/Fallout_Shelter_rooms)
+- [Fallout Shelter residents and SPECIAL](https://fallout.fandom.com/wiki/Vault_dwellers_(Fallout_Shelter))
+- [Fallout Shelter in-game UI/help excerpts](https://fallout.fandom.com/wiki/Fallout_Shelter_localization)
+- [Bethesda official gameplay help](https://help.bethesda.net/app/answers/detail/a_id/29959)
 
-We also considered recurring player concerns in online discussions: early scarcity, meaningful resident assignment, threats that actually penetrate the base, and progression beyond a single "click-to-scavenge" action. Community guides are supplemental, not authoritative.
+**Originality:** Fallout Shelter's source code, branded graphics, audio, proprietary visual assets and exact UI are not part of this project. We implemented familiar *genre systems* using new rules and original graphics.
 
-**Copyright and design boundary:** VAULT DIRECTIVE is a separate original game. The general *ideas* of constructing and managing a shelter can inform design, but Fallout art, Vault-Tec branding, characters, proprietary texts, sounds, and exact user-interface trade dress are not reused. Gameplay systems differ through physical excavation, manual work/rescue, configurable security chambers, power-dependent rooms, and persistent interactive scavenging locations.
+## User-driven rules and this build
 
-## Scope at this checkpoint
-
-| Design area | Working gameplay as of Alpha 0.3 | Incomplete / future depth |
+| Requirement | Implemented here | Remaining gap |
 |---|---|---|
-| Opening | 3 named residents, hatch, short tunnel, no constructed rooms | Expanded narrative sequence |
-| Camera and world | 2D sectional canvas, pan/zoom, terrain layers, day/night | Final 2.5D graphics/animated 3D residents, atmosphere |
-| Excavation | Rectangular selections, reachable digging, strength-dependent speed, persistent partial work | Rich geology, advance risk notices, shoring, collapse severity |
-| Rooms | Flexible 3–8 tile width, 2 tile height, builder travel, 11 facilities | Advanced furniture layouts, full electrical/pipe network |
-| Upgrades | Levels 1–3; upgraded output and demand; physical builder order | Upgrade visual variants and wear/maintenance models |
-| Resources | Continuous ration/water consumption; generator burns fuel; room loads calculated; live net rates | More detailed manufacturing and trade economy |
-| Room staffing | Player assigns residents; physical walking; stat-based production; work shifts | More lifelike daily routines/relationships |
-| Residents | Health, energy, needs, morale, loyalty, levels, equipment, jobs, shifts, training | Full social behavior and nuanced resident dialogue |
-| Population | Manual admit/reject of visitors; beds; radio attraction; rescue; family plans and dependent maturation | Multi-generation relationships and migration events |
-| Scavenging | Four fixed sites, new sites discovered by scouts, finite persistent room loot, search/salvage, encounters | Large variety of building geometry and encounter AI |
-| Combat | Raiders/feral threats, defensive assignments, injuries, gear upgrades, enemy occupation | Individually modeled combatants, tactical missions, many enemy types |
-| Incidents | Fire, vermin, infection spread, low air, starvation, damage, possible settlement loss | Incident visuals and deeper damage/rescue systems |
-| Blast doors | Physical corridor checkpoints, manual and automatic lockdown, durability and breach, actual path blocking | Full industrial room animations and mechanical network systems |
-| Cave-ins | Deep excavation risk, trapped survivors, condition-based oxygen loss, manual crew rescue, self-help orders | Multi-stage collapse simulation, structural reinforcements and multiple route planning |
-| Policy | Rationing, overtime, unrest, strikes, negotiation, departures | Collective petitions, promises, organized factions |
-| Learning | Optional skippable tutorial; one highlighted step at a time; out-of-order progress | Contextual animated demonstrations |
-| Save/game over | Auto/local save, migrations from v1, custom reset, deaths, loss, revive with medbay | Server-side cross-device save and richer endgame |
+| Actual 2D cutaway that looks like a lived-in place | Detailed three-tile-high illustrated interiors, residents, machinery, lighting, debris, earth strata, city skyline and construction animation | Final 3D/depth and high-quality hand-authored animation art |
+| Start with nothing built | Three survivors, hatch, tiny original access corridor, no constructed rooms | More cinematic introductory story |
+| Physically excavate rooms | Player marks earth, real worker routes, hardness/depth, physical progress, deep collapse risk | Soil supports, complex rock physics and detailed collapse warnings |
+| Build physically, no magic placements | Workers walk to rooms and finish actual build/upgrade/door/repair orders | Material hauling visuals |
+| All facilities take power | Every room except generators draws electrical power; generator burns finite fuel; demand/supply/priority used | Fully laid-out pipe/wire material networks |
+| Rations and water visibly go down | Single continuous simulation clock and tenths display plus per-minute rates | Complex nutrition recipes and logistics |
+| Manage residents and acquire new ones | SPECIAL-like attributes, individuals/needs, shifts, training, assignments, medical care, equipment, arrivals, admission queue, housing capacity, family plans | Deeper personality system and dynamic social storytelling |
+| Raider/feral threats and losing vault | Raiders route through actual cleared space, attack occupants, capture room, damage structures; defeat possible | Independently animated multi-unit tactics and enemy variety |
+| Seal sectors ONLY if doors were built | Dedicated physically built blast-door chambers; real path blocking; power and air consequences | Complex ventilation bypass ducts and autonomous response presets |
+| See captured areas depending on surveillance | Captured room obscures until a staffed powered security office provides visibility | Camera installation per individual room |
+| Infection turns people feral | Infection exposure/progression, contagion requiring a route, treatment, quarantine wards, feral threats | Infection diagnostics and advanced stages |
+| Cave-in rescues are physical | Victim air timer, manual rescuer project, conserve air/self-help, deaths if left trapped | Shoring alternate access and multi-stage digging |
+| Scavenging not just a progress button | Real location selection, four visible room interiors per site, moving scavengers, search/salvage, encounters/retreat, limited loot and site persistence | Large free-roaming towns and sophisticated environmental puzzles |
+| No overwhelming menus | Full-screen vault, small bottom toolbar/roster, hidden build tray, contextual inspector and optional one-next-step tutorial | Usability studies with real players |
+| Don't confuse code passing with game quality | 37+ regression checks and explicit known gaps, separate from browser playtest | Real-device playtesting and final visual art direction |
 
-**This is NOT yet full 1:1 feature parity with Fallout Shelter.** That would also imply many further systems (e.g., extended quests, full equipment inventories, detailed room/upgrade art, robot helpers, collectibles, multiple tactical encounter varieties) and original art and QA. The test results below validate the implemented slice, not the entire aspirational game.
+## Overlap and softlock audit
 
-## Architecture and ownership
+- Replaced three competing engines with one \`model.js\`. No inactive v0.3 scripts are loaded.
+- Unified hunger/water drains with stock-level rates and on-screen bars.
+- Starting slots allow early basic facilities without prebuilding rooms.
+- All construction is drawn and takes time. Material refunds return on cancellation of incomplete orders.
+- Doors are physical objects and are impossible to close without first constructing them.
+- Residents route through carved corridors and ladder shafts; closed blast doors and solid earth block paths.
+- Electrical supply and room breathable air depend on actually connected routes. Captured-room monitoring requires a staff-operated powered security room.
+- Trapped people can conserve oxygen or self-excavate (only with sufficient strength), but proper rescues need a route and manual work.
+- Empty exploration locations stay empty; discovering new locations takes a scout trip. When starving, a high-risk survey remains possible, avoiding a resource softlock.
+- Residents don't automatically consume extra whole food/water units outside the central economy tick.
+- Workers rest and return to their previous projects rather than silently deleting tasks.
+- Work teams detach from abandoned/finished jobs; deceased and striking residents are not automatically assigned to new work.
+- Fire and infection don't magically cross sealed doors.
+- A separate v4 localStorage save key protects previous alpha progress.
 
-- \`games/vault-directive/index.html\` — page structure, navigation, low-friction menus, modals and tutorial panels.
-- \`games/vault-directive/style.css\` — responsive appearance, resource feedback, inspector, expedition, security, tutorial.
-- \`games/vault-directive/systems.js\` — **canonical** power demand/priority, supply consumption/production, staffing effects, recruitment, populations, needs, infection, raiders, incidents, construction policy, family systems, self-rescue, and upgrade/rush calculations.
-- \`games/vault-directive/game.js\` — canvas drawing, physical excavation and pathfinding, player clicks/tools, project completion, resident movement, site interactions and DOM orchestration.
-- \`tests/vault-directive-foundation.test.mjs\` — isolated real-engine regression tests.
-- \`.github/workflows/vault-directive.yml\` — syntax and regression tests on relevant pushes/PRs.
+## Test scope
 
-No changes are made to REDLINE or ILLEGAL CHESS internals. No GAMESHUB account tokens are required and game saves remain local.
+\`tests/vault-directive-v4.test.mjs\` covers progression, simulation, rendering, input boot and physical containment. Tests executed against the development branch with all cases passing at final source audit; review live browser separately.
 
-## Cross-system collision audit
+**Important limitation:** Test mocks do not validate actual aesthetic quality, browser frame rate, all input-device edge cases or fun. A working logic model is not evidence of a complete 1:1 production game.
 
-1. **Power definitions:** Removed conflicting display-side numeric \`use\` / \`power\` fields. Only \`VDSystems.ROOMS\` defines actual per-room demand. The generator consumes **fuel** rather than electrical power.
-2. **Resource double-charge:** Food/water stocks decrease continuously in one simulation step. Resident eating/drinking satisfies personal meters but does not remove a second whole unit from stocks.
-3. **Pathfinding:** Closed physical doors are impassable. Raider threat AI can check hypothetical routes to identify and attack a blocking door but never teleports through the barrier or solid earth. Raw vertical holes do not provide ladder movement.
-4. **Room overlap:** Construction checks for solid terrain, existing rooms, active orders, doors and ladder segments, rejecting overlaps.
-5. **Work overlap:** Manual excavation/rescue/construction assignments supersede room jobs. Residents leaving old jobs are removed from old work crews. Crew selection clears when a project finishes.
-6. **Crash on death:** Removed drawing instructions that had accidentally entered the needs simulation. Corpses are drawn by the canvas renderer only. Added a death/render regression test.
-7. **Room air:** Normalized all old/new room instances to a finite air meter; avoid displaying 95% when air is actually zero.
-8. **Recruitment:** Existing local saves migrate without resetting terrain or residents. Admissions only happen by player decision and only within available residential capacity.
-9. **Scavenging:** Every room has persistent searched state. New surface sites are *discovered* first; clicking Survey does not magically award salvage.
-10. **Infection/rescue:** Infection and low-oxygen systems affect actual survivors. Rescue must have an assigned team unless an able-bodied trapped resident succeeds from inside.
-11. **Single source of time:** Simulation speed and pausing use one engine clock. Old passive production timers were removed to avoid parallel producers.
-12. **Power and room integrity:** Loss of fuel disables output, damaged/occupied rooms stop normal production, and priority determines which rooms stay powered under shortfall.
+## What is not yet implemented
 
-## Test results and caveats
+- All original Fallout Shelter game features, content, quests, currencies, helpers and collectible varieties.
+- Fully individualized raiders and full quest combat navigation.
+- True modeled 3D resident animations and fully authored textures.
+- Spatial water/power pipes and security camera deployment into individual areas.
+- Full diplomacy/promise-driven political factions and complex collapse reinforcement.
+- Extensive balancing, accessibility and device-level visual QA.
 
-- Regression suite has been exercised with the current source and a DOM/canvas test harness (24 tests passed at this checkpoint).
-- CI runs syntax and Node test checks on the matching GitHub branch and pull requests.
-- Tests cover startup, stock drain, dig/build, staffing, low power, beds/admissions, doors, rescue, scavenging/infection, hostile encounters, stranded survivor extraction, surveying, raids, incidents, negotiation/revival, local save migration, rendering, room upgrades, family maturation, isolation, total loss, rush, self-rescue and policies.
-- **Not a browser visual test.** The mock canvas proves the renderer does not throw in tested scenarios; it does not guarantee polished visuals or catch all pointer-device issues. A real browser pass is necessary after the Pages deployment is available.
-- Long-duration balancing and the full design specification remain ongoing work.
-
-## Known gameplay constraints
-
-- Graphics remain painterly procedural **2D** rather than finished 2.5D/3D.
-- Raiders are currently represented by a coordinated hostile group rather than independent animated invaders.
-- Rescue hazards are functional but lack the extensive graded-collapse warnings and reinforcement mechanics from design.
-- Locations are individual four-room sectional sites rather than unrestricted walkable open world.
-- Internal room architecture and utility cables/pipes are simplified models.
-- Full parity with every Fallout Shelter quest, unlock, item and collectible has not been implemented.
-
-## How to verify
-
-From the repository root:
-
-\`\`\`bash
-node --check games/vault-directive/systems.js
-node --check games/vault-directive/game.js
-node --test tests/vault-directive-foundation.test.mjs
-\`\`\`
-
-Open \`/games/vault-directive/\` on the deployed static site to check pointer controls, readability, tutorial guidance and actual save/reload behavior. A player can reload an old v1 foundation save without losing their existing excavation or rooms.
+These items must not be described as finished in release messaging.
