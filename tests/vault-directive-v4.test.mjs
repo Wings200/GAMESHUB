@@ -159,10 +159,13 @@ test('installing and closing a real blast door blocks routes and cuts isolated e
   const path=M.route(s,{x:7,y:4},{x:14,y:4});
   assert.ok(path&&path.length>0);
   const d=M.installDoor(s,10,4);assert.equal(d.ok,true);
-  assert.equal(M.toggleDoor(s,d.door.id).ok,true);
+  assert.equal(s.doors.length,0,'door must be physically constructed by a worker');
+  until(M,s,()=>d.job.done,80);
+  const door=s.doors.at(-1);
+  assert.equal(M.toggleDoor(s,door.id).ok,true);
   assert.equal(M.route(s,{x:7,y:4},{x:14,y:4}),null);
   assert.ok(M.power(s).supply===0,'Generator past the blast door is electrically isolated');
-  assert.equal(M.toggleDoor(s,d.door.id).ok,true);
+  assert.equal(M.toggleDoor(s,door.id).ok,true);
   assert.ok(M.route(s,{x:7,y:4},{x:14,y:4}));
   assert.equal(s.tasks.door,true);
   assert.equal(room.integrity,100);
@@ -405,4 +408,43 @@ test('a mocked browser can boot the controller, start the tutorial and issue an 
   elem('world').handlers.pointerup(point(15.4,4.4));
   assert.equal(s.jobs.length,1);
   assert.equal(s.jobs[0].kind,'dig');
+});
+
+
+test('damaged rooms and blast doors require a real, staffed repair work order',()=>{
+  const {M}=env(),s=M.create(),generator=digAndBuild(M,s);
+  generator.integrity=31;
+  const result=M.repair(s,generator.id);
+  assert.equal(result.ok,true);
+  assert.equal(generator.integrity,31,'repair cannot happen instantly');
+  until(M,s,()=>result.job.done,110);
+  assert.ok(generator.integrity>31);
+  const doorOrder=M.installDoor(s,10,4);
+  assert.equal(doorOrder.ok,true);
+  until(M,s,()=>doorOrder.job.done,90);
+  const door=s.doors.at(-1);
+  door.hp=24;
+  const gateRepair=M.repair(s,door.id);
+  assert.equal(gateRepair.ok,true);
+  until(M,s,()=>gateRepair.job.done,100);
+  assert.ok(door.hp>24);
+});
+test('cancelled construction returns materials instead of quietly destroying the player budget',()=>{
+  const {M}=env(),s=M.create();
+  const d=M.dig(s,12,2,15,4);until(M,s,()=>d.job.done,160);
+  const before=s.res.scrap,b=M.build(s,'generator',12,2,4);
+  assert.equal(b.ok,true);assert.equal(s.res.scrap,before-8);
+  assert.equal(M.cancelJob(s,b.job.id).ok,true);
+  assert.equal(s.res.scrap,before);
+  assert.equal(s.rooms.length,0);
+});
+test('desperate scouting is risky rather than impossible when the last ration is gone',()=>{
+  const {M}=env(),s=M.create(),first=s.people[1];
+  s.res.food=0;s.res.water=0;
+  const hp=first.hp;
+  assert.equal(M.startSurvey(s).ok,true);
+  assert.ok(s.survey);
+  assert.ok(s.people.some(p=>p.hp<hp));
+  until(M,s,()=>!s.survey,60);
+  assert.equal(s.discovered.length,1);
 });
