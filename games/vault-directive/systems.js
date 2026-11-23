@@ -579,7 +579,16 @@
     }
     for(const trap of state.traps) {
       if(!trap.rescued){
-        trap.air=max(0,trap.air-dt*.14);
+        trap.air=max(0,trap.air-dt*(trap.mode==='conserve'?.048:trap.mode==='clear'?.23:.14));
+        if(trap.mode==='clear'){
+          const resident=get(state,trap.people[0]);
+          if(resident&&!resident.dead&&(resident.skills?.S||0)>=5){
+            trap.escapeProgress=(trap.escapeProgress||0)+dt*(.14+(resident.skills.S||4)*.075);
+            if(trap.escapeProgress>=30){
+              finishRescue(state,trap.id,hooks);continue;
+            }
+          }
+        }
         for(const id of trap.people){
           const resident=get(state,id);
           if(!resident||resident.dead)continue;
@@ -687,6 +696,19 @@
     emit(hooks,'CAVE-IN! '+r.name+' is trapped behind unstable rubble. Organize a rescue!',true);
     return event;
   }
+  function trappedOrder(state,trapId,mode,hooks){
+    const event=state.traps.find(t=>t.id===trapId&&!t.rescued);
+    if(!event)return {ok:false,error:'No active collapse at this location.'};
+    if(!['conserve','clear','wait'].includes(mode))return {ok:false,error:'Unknown survival order.'};
+    const resident=get(state,event.people[0]);
+    if(mode==='clear'&&(!resident||(resident.skills?.S||0)<5))
+      return {ok:false,error:'The trapped survivor is too weak to clear the rubble alone. Assign external rescuers.'};
+    event.mode=mode;
+    emit(hooks,mode==='conserve'?'Trapped residents conserving air and energy.':
+      mode==='clear'?'Trapped resident attempting to free themselves from inside.':
+      'Trapped residents waiting for rescue.');
+    return {ok:true};
+  }
   function rescue(state,trapId,hooks){
     const event=state.traps.find(e=>e.id===trapId&&!e.rescued);
     if(!event)return {ok:false,error:'Rescue no longer available.'};
@@ -697,13 +719,19 @@
   function finishRescue(state,trapId,hooks){
     const event=state.traps.find(e=>e.id===trapId);
     if(!event||event.rescued)return;
-    event.rescued=true;for(const id of event.people){const r=get(state,id);
+    event.rescued=true;
+    if(state.terrain[event.y])state.terrain[event.y][event.x]=0;
+    for(const job of state.projects.filter(p=>p.rescueId===trapId && p.status!=='done' && p.status!=='cancelled')){
+      job.status='done';
+      for(const resident of state.survivors)if(resident.taskId===job.id){resident.taskId=null;resident.state='idle';resident.path=[];}
+    }
+    for(const id of event.people){const r=get(state,id);
       if(r&&!r.dead){r.trapped=false;r.state='resting';r.energy=min(r.energy,35);r.taskId=null;}}
     emit(hooks,'RESCUE COMPLETE! Trapped survivors have been recovered.',false);
   }
   window.VDSystems={
     ROOMS,normalize,capacity,power,active,getRoomWorkers,assignment,unassign,shift,
     createArrival,admit,reject,startFamily,heal,revive,equip,door,toggleDoor,repair,
-    createRaid,defend,standDown,triggerFire,contain,tick,tickRaid,trap,rescue,finishRescue,negotiate,setPolicy,craft,upgradeCost,rushRisk,rush,alive,get,room
+    createRaid,defend,standDown,triggerFire,contain,tick,tickRaid,trap,rescue,finishRescue,trappedOrder,negotiate,setPolicy,craft,upgradeCost,rushRisk,rush,alive,get,room
   };
 })();
