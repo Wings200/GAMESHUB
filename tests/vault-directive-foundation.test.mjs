@@ -385,3 +385,28 @@ test('rush production has explicit risk and triggers either rewards or a contain
   assert.ok(app.state.rooms[1].rushAttempts>0);
   assert.ok(attempted.success?app.state.resources.food>12:app.state.incidents.length>0);
 });
+
+test('trapped residents can conserve oxygen and self-excavate when strong enough',()=>{
+  const {app,systems}=harness();
+  const strong=app.state.survivors[0];
+  app.state.terrain[7][13]=2;
+  const trapped=systems.trap(app.state,strong.id,13,7,{});
+  assert.equal(systems.trappedOrder(app.state,trapped.id,'conserve',{}).ok,true);
+  advance(app,14);
+  assert.ok(trapped.air>98);
+  assert.equal(systems.trappedOrder(app.state,trapped.id,'clear',{}).ok,true);
+  runUntil(app,()=>trapped.rescued,1600);
+  assert.equal(strong.trapped,false);
+  assert.equal(app.state.terrain[7][13],0);
+});
+test('rationing and overtime policies are controllable and reflected in resource rates',()=>{
+  const {app,systems}=harness();
+  assert.equal(systems.setPolicy(app.state,'rationing',true,{}).ok,true);
+  advance(app,12);
+  const rationed=app.state.resourceRate.food;
+  assert.equal(systems.setPolicy(app.state,'rationing',false,{}).ok,true);
+  advance(app,12);
+  assert.ok(app.state.resourceRate.food<rationed);
+  assert.equal(systems.setPolicy(app.state,'overtime',true,{}).ok,true);
+  assert.equal(app.state.policy.overtime,true);
+});
