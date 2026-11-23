@@ -14,7 +14,7 @@ test('REDLINE and Illegal Chess remain in the public game library',()=>{
  assert.match(home,/href=["']\/games\/illegal-chess\/["']/);
 });
 test('Vault Directive is retired from the public library while it is redesigned',()=>{
- assert.doesNotMatch(home,/href=["']\\/games\\/vault-directive\\//i);
+ assert.doesNotMatch(home,/href=["']\/games\/vault-directive\//i);
  assert.doesNotMatch(home,/VAULT DIRECTIVE/);
  assert.equal(existsSync(new URL('../games/vault-directive/index.html',import.meta.url)),false);
  assert.equal(existsSync(new URL('../games/vault-foundations/index.html',import.meta.url)),false);
