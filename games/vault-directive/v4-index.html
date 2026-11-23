@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111b20">
+<meta name="description" content="VAULT DIRECTIVE — an original underground survival colony sim on GAMESHUB.">
+<title>VAULT DIRECTIVE · GAMESHUB</title>
+<link rel="stylesheet" href="./v4.css">
+<script src="./model.js" defer></script>
+<script src="./art.js" defer></script>
+<script src="./game-v4.js" defer></script>
+</head>
+<body>
+<div id="app" class="game">
+  <header class="header">
+    <a class="return" href="/" aria-label="Back to Gameshub">‹ <span>GAMESHUB</span></a>
+    <div class="mast">
+      <span class="mast-icon" aria-hidden="true">V<span>D</span></span>
+      <div><strong>VAULT DIRECTIVE</strong><small>UNDERGROUND COLONY / OVERSEER TERMINAL</small></div>
+    </div>
+    <div class="header-status">
+      <span class="online-led"></span><span id="worldState">SETTLEMENT INITIALIZING</span>
+    </div>
+    <div class="clock">
+      <span id="clock">DAY 01 · 08:00</span>
+      <div class="time-buttons">
+        <button id="pause" title="Pause / resume (Space)" aria-label="Pause or resume">Ⅱ</button>
+        <button data-speed="1" class="selected">1×</button>
+        <button data-speed="2">2×</button>
+        <button data-speed="4">4×</button>
+      </div>
+    </div>
+    <button id="optionsBtn" class="header-options" aria-label="Game options">⚙</button>
+  </header>
+
+  <div class="resource-strip" role="group" aria-label="Live settlement resources">
+    <div class="meter" data-meter="power"><div class="meter-icon amber">ϟ</div><div class="meter-main"><div class="meter-caption">POWER <span id="powerRate"></span></div><div class="meter-track"><div id="powerFill"></div><i id="powerNeed"></i></div><div class="meter-values"><strong id="power">0 / 1</strong><small id="powerState">OFFLINE</small></div></div></div>
+    <div class="meter" data-meter="food"><div class="meter-icon orange">◒</div><div class="meter-main"><div class="meter-caption">FOOD <span id="foodRate"></span></div><div class="meter-track"><div id="foodFill"></div><i></i></div><div class="meter-values"><strong id="food">24.0</strong><small>RATIONS</small></div></div></div>
+    <div class="meter" data-meter="water"><div class="meter-icon cyan">◈</div><div class="meter-main"><div class="meter-caption">WATER <span id="waterRate"></span></div><div class="meter-track"><div id="waterFill"></div><i></i></div><div class="meter-values"><strong id="water">26.0</strong><small>CLEAN LITERS</small></div></div></div>
+    <div class="meter" data-meter="fuel"><div class="meter-icon cream">♨</div><div class="meter-main"><div class="meter-caption">FUEL <span id="fuelRate"></span></div><div class="meter-track"><div id="fuelFill"></div><i></i></div><div class="meter-values"><strong id="fuel">20.0</strong><small>GENERATOR STOCK</small></div></div></div>
+    <div class="meter compact"><div class="meter-icon grey">▤</div><div class="meter-main"><div class="meter-caption">MATERIALS</div><div class="meter-values"><strong><span id="scrap">20</span> <span class="smallsep">/</span> <span id="parts">7</span></strong><small>SALVAGE / PARTS</small></div></div></div>
+    <div class="meter compact"><div class="meter-icon teal">♙</div><div class="meter-main"><div class="meter-caption">SURVIVORS</div><div class="meter-values"><strong id="pop">3 / 3</strong><small id="happiness">HAPPINESS 75%</small></div></div></div>
+  </div>
+
+  <main class="stage" id="stage">
+    <canvas id="world" role="img" aria-label="Interactive underground colony cross-section. Pan, zoom and build underground."></canvas>
+    <div class="shade" aria-hidden="true"></div>
+    <div class="scene-caption"><span class="small-label">LOCATION / SECTOR 001</span><strong>ASHFALL RIDGE</strong><span>AN UNCLAIMED PLACE TO START OVER</span></div>
+    <div class="hud-right">
+      <div id="alertBadge" class="alert-badge hidden" role="button" tabindex="0"><span class="blink-dot"></span><strong id="alertTitle"></strong><small>CLICK FOR EMERGENCY RESPONSE</small></div>
+      <div id="visitorNotice" class="visitor-notice hidden" role="button" tabindex="0"><strong>♙ NEW ARRIVAL AT THE HATCH</strong><small id="visitorText">Someone needs shelter</small></div>
+    </div>
+    <section id="objective" class="objective" aria-label="Current objective">
+      <div class="objective-head"><div><span class="small-label">FIELD GUIDE <span id="objectiveCount">01 / 07</span></span><strong id="objectiveTitle">Your first morning</strong></div><button id="hideGuide" title="Hide field guide">×</button></div>
+      <p id="objectiveText">Welcome to Ashfall Ridge. Three survivors. Zero rooms. Everything begins here.</p>
+      <div class="objective-actions"><button id="objectiveGo">SHOW ME <span>↗</span></button><button id="objectiveSkip" class="quiet">SKIP GUIDE</button></div>
+    </section>
+    <div class="world-tip" id="worldTip">DRAG TO PAN · SCROLL TO ZOOM · CLICK A PERSON OR ROOM</div>
+    <div class="scene-controls"><button id="center" title="Center on entrance">⌖</button><button id="zoomOut" title="Zoom out">−</button><button id="zoomIn" title="Zoom in">+</button></div>
+    <aside id="inspector" class="inspector hidden" aria-live="polite">
+      <div class="inspector-top"><span class="small-label">OVERSEER INSPECTION</span><button id="closeInspector" aria-label="Close panel">×</button></div>
+      <div id="inspectorContent"></div>
+    </aside>
+    <div id="floatingLabel" class="floating-label hidden"></div>
+    <div id="drawLabel" class="draw-label hidden"></div>
+  </main>
+
+  <div class="bottom">
+    <div class="roster" aria-label="Resident roster">
+      <div class="roster-head"><span class="small-label">YOUR PEOPLE</span><button id="manageResidents" title="View all residents">VIEW ALL ↗</button></div>
+      <div id="rosterCards" class="roster-cards"></div>
+    </div>
+    <div class="commands" aria-label="Construction and action toolbar">
+      <div class="commands-head"><span class="small-label">OVERSEER ACTIONS</span><span id="toolStatus">SELECT A TOOL OR BUILDING</span></div>
+      <div class="command-buttons">
+        <button id="toolInspect" data-tool="inspect" class="command active"><b>⌖</b><span>INSPECT</span></button>
+        <button id="toolDig" data-tool="dig" class="command"><b>⚒</b><span>EXCAVATE</span></button>
+        <button id="toolLadder" data-tool="ladder" class="command"><b>╫</b><span>LADDER</span></button>
+        <button id="toolDoor" data-tool="door" class="command"><b>▣</b><span>BLAST DOOR</span></button>
+        <button id="openBuild" class="command build-command"><b>＋</b><span>BUILD ROOM</span></button>
+        <button id="openMap" class="command map-command"><b>◇</b><span>WASTELAND</span></button>
+      </div>
+    </div>
+    <div class="briefing"><span class="small-label">FIELD LOG</span><p id="lastReport">The surface hatch opens. Nothing else works yet.</p><button id="logBtn">ALL REPORTS ↗</button></div>
+  </div>
+
+  <div id="buildTray" class="build-tray hidden">
+    <div class="tray-head"><span class="small-label">FACILITIES · PLACE IN AN EXCAVATED CHAMBER</span><button id="closeBuild">CLOSE ×</button></div>
+    <div id="buildChoices" class="build-choices"></div>
+  </div>
+</div>
+
+<div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal-card">
+    <div class="modal-head"><div><span id="modalKicker" class="small-label">OVERSEER INTERFACE</span><h2 id="modalTitle">ASHFALL RIDGE</h2></div><button id="modalClose" aria-label="Close dialog">×</button></div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+<div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+</body>
+</html>
