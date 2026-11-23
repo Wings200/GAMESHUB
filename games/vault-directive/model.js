@@ -472,10 +472,13 @@
     s.incidents.push({id:++s.nextId,kind,roomId:r.id,severity:30});
     message(s,(kind==='fire'?'FIRE':'INFESTATION')+' in '+ROOM[r.type].name+'! Assign emergency responders.',true);
   }
-  function respond(s,id){
+  function respond(s,id,eventId=null){
     const p=getPerson(s,id);if(!p||!inWorld(p)||p.child)return {ok:false,msg:'That resident cannot respond.'};
-    p.state='responding';p.taskId=null;p.roomId=null;p.path=[];message(s,p.name+' is responding to the emergency.');
-    return {ok:true};
+    const event=s.incidents.find(q=>q.id===eventId)||s.incidents[0];
+    if(!event)return {ok:false,msg:'There is no active incident requiring a response.'};
+    if(p.taskId){const j=s.jobs.find(j=>j.id===p.taskId);if(j)j.workers=j.workers.filter(x=>x!==p.id);}
+    p.state='responding';p.respondTo=event.id;p.taskId=null;p.roomId=null;p.path=[];
+    message(s,p.name+' is responding to the '+event.kind+' emergency.');return {ok:true};
   }
   function raid(s,feral=false,x=7,y=4){
     if(s.threat)return;
@@ -532,13 +535,14 @@
   function tickIncidents(s,dt){
     for(const i of s.incidents.slice()){
       const r=getRoom(s,i.roomId);if(!r){s.incidents=s.incidents.filter(j=>j!==i);continue;}
-      const responders=live(s).filter(p=>p.state==='responding'&&Math.hypot(p.x-(r.x+r.w/2),p.y-(r.y+2))<4);
+      const responders=live(s).filter(p=>p.state==='responding'&&p.respondTo===i.id&&
+        Math.hypot(p.x-(r.x+r.w/2),p.y-(r.y+2))<4);
       const rate=responders.reduce((n,p)=>n+p.skills.E*.2+p.weapon,0);
       i.severity+=dt*(rate?-(rate*.45):1.1);
       if(!rate)r.integrity=clamp(r.integrity-dt*.22,0,100);
       if(i.severity<=0){
         s.incidents=s.incidents.filter(j=>j!==i);
-        for(const p of responders)p.state='idle';
+        for(const p of responders){p.state='idle';p.respondTo=null;}
         message(s,(i.kind==='fire'?'Fire':'Infestation')+' contained at '+ROOM[r.type].name+'.');
       }
       if(i.severity>100){
@@ -658,7 +662,7 @@
         continue;
       }
       if(p.state==='responding'){
-        const i=s.incidents[0],r=getRoom(s,i?.roomId);
+        const i=s.incidents.find(e=>e.id===p.respondTo)||s.incidents[0],r=getRoom(s,i?.roomId);
         if(r){move(s,p,{x:r.x+Math.floor(r.w/2),y:r.y+2},dt);continue;}
         p.state='idle';
       }
@@ -764,11 +768,17 @@
   }
   function startSurvey(s){
     if(s.survey||s.expedition)return {ok:false,msg:'Finish the active field operation first.'};
-    if(s.res.food<1||s.res.water<1)return {ok:false,msg:'Send a scout with 1 ration and 1 water.'};
+    const desperate=s.res.food<1||s.res.water<1;
     const scout=live(s).filter(p=>inWorld(p)&&!p.taskId&&!p.child).sort((a,b)=>b.skills.P-a.skills.P)[0];
     if(!scout)return {ok:false,msg:'You need an available scout to survey new territory.'};
-    s.res.food--;s.res.water--;scout.away=true;scout.state='survey';
-    s.survey={personId:scout.id,timer:24};message(s,scout.name+' is surveying the unexplored wasteland.');
+    if(desperate){
+      scout.hp=clamp(scout.hp-8,1,100);
+      scout.energy=clamp(scout.energy-14,1,100);
+      message(s,'DESPERATE SCOUTING: '+scout.name+' left without adequate provisions. This is dangerous.',true);
+    }else{s.res.food--;s.res.water--;}
+    scout.away=true;scout.state='survey';
+    s.survey={personId:scout.id,timer:desperate?35:24};
+    message(s,scout.name+' is surveying the unexplored wasteland.');
     return {ok:true};
   }
   function tickSurvey(s,dt){
