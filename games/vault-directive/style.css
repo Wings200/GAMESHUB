@@ -139,3 +139,5 @@
 .people-layer .dweller[draggable="true"]{cursor:grab}
 .room.drop-target,.room.drop-target:hover{border-color:#ffe3a7;box-shadow:0 0 0 3px #ffe2a2,inset 0 0 28px #b3c98a8c,0 0 38px #c4d99a8b;filter:brightness(1.24)}
 .room.drop-target::before{content:'DROP TO ASSIGN';position:absolute;top:29px;left:22%;z-index:24;background:#244c3a;color:#f8e3b2;border:2px solid #edc985;padding:7px 9px;font:900 12px var(--head);letter-spacing:.08em;pointer-events:none}
+
+.people-layer>.dweller.homeless::after{content:'NO BED';opacity:1;color:#f5a48d;background:#513a30e6;top:-22px;font:900 9px var(--mono)}
