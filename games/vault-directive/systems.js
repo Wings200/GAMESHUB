@@ -375,6 +375,7 @@
     const access=hooks?.accessible?.();
     if(access){
       for(const rm of state.rooms){
+        rm.air=Number.isFinite(rm.air)?rm.air:95;
         const connected=Array.from({length:rm.width},(_,i)=>access.has((rm.x+i)+','+(rm.y+1))).some(Boolean);
         if(!connected){
           rm.air=clamp(rm.air-dt*(.21-(rm.type==='ventilation'&&active(state,rm,p)?.16:0)),0,100);
