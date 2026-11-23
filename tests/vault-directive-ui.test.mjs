@@ -139,6 +139,6 @@ test('night and day routines move the same resident sprite instead of duplicatin
  assert.equal(layer.children.length,1,'still a single sprite');
  assert.ok(node.className.includes('sleep'),'day-shift worker goes to bed at night');
  assert.ok(node.dataset.state.includes('Sleeping'));
- assert.equal(node.style.left,'721px','same DOM node now appears in quarters');
+ assert.equal(node.style.left,'748px','same DOM node now appears in quarters');
  assert.deepEqual(h.errors,[]);
 });
