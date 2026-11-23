@@ -76,7 +76,7 @@
       terrain, digProgress: {}, rooms: [], projects: [],
       survivors: SURVIVORS.map(r=>({...r, taskId: null, state: 'idle', path: [], wait: 0})),
       resources: { food: 12, water: 14, scrap: 19, parts: 4 },
-      tutorialEnabled: true, tutorialFlags: { inspect: false, dig: false, assign: false, build: false, needs: false },
+      tutorialEnabled: true, tutorialFlags: { inspect: false, dig: false, assign: false, build: false, scavenge: false },
       introSeen: false, productionTime: 0, expedition: null,
       sites: SITES.map(site=>({ id:site.id, rooms:site.rooms.map(()=>({searched:false})) })),
       logs: [{time:'DAY 01 · 08:00', text:'Three survivors reached the abandoned hatch. Shelter systems offline.', warning:false}]
@@ -233,7 +233,7 @@
     setToolKeepSelection('inspect');renderInspector();saveGame();
   }
   function selectResident(id) {
-    selection={kind:'resident',id};flag('inspect');flag('needs');renderInspector();
+    selection={kind:'resident',id};flag('inspect');renderInspector();
   }
   function chooseWorker(id){
     if(chosenWorkers.has(id))chosenWorkers.delete(id);else chosenWorkers.add(id);
@@ -256,7 +256,7 @@
     for(const id2 of p.workers){
       const r=state.survivors.find(s=>s.id===id2);if(!r)continue;
       const old=projectFor(r.taskId);
-      if(old)old.workers=old.workers.filter(w=>w!==r.id);
+      if(old && old.id!==p.id)old.workers=old.workers.filter(w=>w!==r.id);
       r.taskId=p.id;r.state='idle';r.path=[];r.wait=0;
     }
     const newStart=p.status==='planned';p.status='active';
@@ -395,7 +395,7 @@
           }
           const site=siteById(e.site);
           state.expedition=null;expeditionRepaintKey='';
-          report('Scavengers returned from '+site.name+' with '+lootString(e.loot)+'.');
+          flag('scavenge');report('Scavengers returned from '+site.name+' with '+lootString(e.loot)+'.');
           toast('EXPEDITION RETURNED · SUPPLIES DELIVERED');saveGame();
         }
         renderExpedition();
@@ -804,7 +804,7 @@
       ['dig','Mark an excavation'],
       ['assign','Assign a digger'],
       ['build','Finish your first room'],
-      ['needs','Review resident needs']
+      ['scavenge','Return from scavenging']
     ];
     $('tutorialTasks').innerHTML=steps.map(([k,label],i)=>
       '<div class="tutorial-task'+(state.tutorialFlags[k]?' done':'')+'"><strong>'+(state.tutorialFlags[k]?'✓':String(i+1).padStart(2,'0'))+'</strong><span>'+label+'</span></div>').join('');
