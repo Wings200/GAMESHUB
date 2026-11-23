@@ -461,7 +461,7 @@ function roomMarkupPanel(r){
  const d=D.ROOMS[r.type];
  const choices=s.people.filter(p=>!r.workers.includes(p.id));
  let html='<p class="panel-intro">'+safe(d.desc)+'</p>'+
- meter('Room type',d.name)+meter('Staff assigned',r.workers.length+' / '+(r.type==='security'?3:r.type==='quarters'?4:2))+meter('Currently on duty',D.workersOnDuty(s,r).length)+
+ meter('Room type',d.name)+(['quarters','storage'].includes(r.type)?'':meter('Staff assigned',r.workers.length+' / '+(r.type==='security'?3:2))+meter('Currently on duty',D.workersOnDuty(s,r).length))+
  meter('Depth',D.xy(r.cells[0])[1]*4+4+' m')+
  meter('Condition',r.health+'%');
  if(d.output){
