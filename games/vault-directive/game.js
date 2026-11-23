@@ -10,6 +10,7 @@ const fmt=n=>Math.max(0,Math.floor(Number(n)||0)).toLocaleString();
 let s=null,panel='tutorial',panelId=null,modalType=null,zoom=1,last=performance.now(),lastPaint=0,lastSave=0,lastLog='',alerted=false;
 let selectedSite='grove',surfaceOpen=false,sideScroll=0;
 const residentNodes=new Map();
+let lastTerrainHtml='',lastRoomsHtml='',lastVisitorsHtml='',lastPinsHtml='',lastDetailsHtml='',lastSideContent='',lastSidePanel='';
 if(!D){$('mapStatus').textContent='ERROR: GAME ENGINE DID NOT LOAD';$('bottomHint').textContent='Try refreshing. The data engine is missing.';return;}
 function load(){try{const a=JSON.parse(localStorage.getItem(KEY));return D.valid(a)?a:null;}catch{return null;}}
 function save(){if(!s)return;try{localStorage.setItem(KEY,JSON.stringify(s));}catch{}}
@@ -28,6 +29,7 @@ function showIntro(){
 function start(newVault){
  s=newVault;s.task=null;s.speed=1;panel='tutorial';panelId=null;modalType=null;last=performance.now();
  surfaceOpen=false;selectedSite='grove';residentNodes.forEach(n=>n.remove());residentNodes.clear();
+ lastTerrainHtml='';lastRoomsHtml='';lastVisitorsHtml='';lastPinsHtml='';lastDetailsHtml='';lastSideContent='';lastSidePanel='';
  if(!Array.isArray(s.expeditionHistory))s.expeditionHistory=[];
  if(!s.lastExpedition)s.lastExpedition=null;
  $('surfaceLayer').classList.add('hidden');
@@ -74,7 +76,7 @@ function renderTerrain(){
   (c.kind==='rubble'?'<span class="location-mark">CLEAR</span>':'')+
   '</button>');
  }
- $('earth').innerHTML=parts.join('');
+ const html=parts.join('');if(lastTerrainHtml!==html){$('earth').innerHTML=html;lastTerrainHtml=html;}
 }
 function renderRooms(){
  let html='';
@@ -88,13 +90,14 @@ function renderRooms(){
   '<span class="room-name">'+safe(d.name.toUpperCase())+'</span><span class="room-mark">'+d.icon+'</span>'+
   '<div class="room-art">'+Array.from({length:machines},()=>'<span class="machine"></span>').join('')+'</div>'+
   '<div class="room-people"></div><span class="room-nameplate">'+(r.type==='quarters'?'BEDS +4':r.workers.length?D.workersOnDuty(s,r).length+' ON DUTY / '+r.workers.length+' ASSIGNED':'NO STAFF')+'</span>'+
-  '<div class="room-floor"></div><div class="room-progress"><i style="width:'+Math.floor(r.progress)+'%"></i></div>'+
+  '<div class="room-floor"></div><div class="room-progress"><i style="width:0%"></i></div>'+
   (r.ready?'<button type="button" class="collect" data-command="collect" data-id="'+r.id+'" title="Collect '+d.name+' resources">'+d.icon+'</button>':'')+
   (s.threat?'<span class="alarm">!</span>':'')+
   '</div>';
  }
- $('roomLayer').innerHTML=html;
+ if(lastRoomsHtml!==html){$('roomLayer').innerHTML=html;lastRoomsHtml=html;}
 }
+
 // Residents are unique, persistent DOM nodes. This prevents duplicate people
 // in rooms and gives each resident one actual destination at any moment.
 function renderPeople(){
@@ -179,7 +182,8 @@ function updateHud(){
  'CLICK ROOMS, PEOPLE AND CONSTRUCTION TILES TO INTERACT';
 }
 function renderVisitors(){
- $('outsidePeople').innerHTML=s.visitors.map(p=>'<div class="outside-applicant" title="'+safe(p.name)+' is waiting"><span class="bubble-talk">KNOCK!'+(p.checks?' ?':'')+'</span>'+personMarkup(p,'walk').replace('data-command="person"','data-command="visitors"')+'</div>').join('');
+ const html=s.visitors.map(p=>'<div class="outside-applicant" title="'+safe(p.name)+' is waiting"><span class="bubble-talk">KNOCK!'+(p.checks?' ?':'')+'</span>'+personMarkup(p,'walk').replace('data-command="person"','data-command="visitors"')+'</div>').join('');
+ if(lastVisitorsHtml!==html){$('outsidePeople').innerHTML=html;lastVisitorsHtml=html;}
 }
 function meter(label,value,red=false){
  return '<div class="metric-row"><span>'+safe(label)+'</span><b style="'+(red?'color:#efaa8f':'')+'">'+safe(value)+'</b></div>';
@@ -263,7 +267,7 @@ function renderSurface(){
   pins+='<button type="button" class="site-pin'+(selectedSite===site.id?' active':'')+'" data-command="siteSelect" data-value="'+site.id+'" style="left:'+point.x+'%;top:'+point.y+'%">'+
   '<strong>'+point.icon+'</strong><span>'+safe(site.name.toUpperCase())+'</span><small>'+safe(site.distance)+'</small></button>';
  }
- const pinHost=$('surfaceSites');if(pinHost.innerHTML!==pins)pinHost.innerHTML=pins;
+ const pinHost=$('surfaceSites');if(lastPinsHtml!==pins){pinHost.innerHTML=pins;lastPinsHtml=pins;}
  const target=D.SITES.find(x=>x.id===selectedSite)||D.SITES[0],busy=!!s.task;
  const active=s.task?.type==='scavenge'?D.SITES.find(x=>x.id===s.task.meta):null;
  let details;
@@ -276,7 +280,7 @@ function renderSurface(){
   (last?'<span class="explore-report">LAST RETURN: '+safe(last.site)+' · '+Object.entries(last.loot).filter(([,v])=>v>0).map(([k,v])=>'+'+v+' '+k).join(', ')+(last.hazard?' · HAZARD ENCOUNTER':'')+'</span>':'')+'</div>'+
   '<button type="button" data-command="search" data-value="'+target.id+'" '+(busy?'disabled':'')+'>SEND OVERSEER →</button>';
  }
- const info=$('surfaceDetails');if(info.innerHTML!==details)info.innerHTML=details;
+ const info=$('surfaceDetails');if(lastDetailsHtml!==details){info.innerHTML=details;lastDetailsHtml=details;}
  updateSurfaceProgress();
 }
 function updateSurfaceProgress(){
@@ -475,7 +479,7 @@ function showPanel(){
  $('sideEyebrow').textContent=panel==='person'?'RESIDENT PERSONNEL FILE':panel==='room'?'FACILITY OPERATIONS':'OVERSEER TERMINAL';
  const body=$('sideContent'),same=body.dataset.panel===panel;
  const scroll=same?body.scrollTop:0;
- if(body.innerHTML!==content)body.innerHTML=content;
+ if(lastSideContent!==content||lastSidePanel!==panel){body.innerHTML=content;lastSideContent=content;lastSidePanel=panel;}
  body.dataset.panel=panel;
  body.scrollTop=scroll;
  const active=panel==='person'?'roster':['support','room','demolish'].includes(panel)?'build':panel==='inspect'?'tutorial':panel;
@@ -487,7 +491,11 @@ function renderAll(){
  if(!s)return;
  renderTerrain();renderRooms();renderPeople();renderVisitors();updateHud();renderCoach();renderSurface();showPanel();save();
  if(s.log[0]?.message&&s.log[0].message!==lastLog){
-  if(lastLog)toast(s.log[0].message,s.log[0].type==='danger');lastLog=s.log[0].message;
+  const event=s.log[0];
+  // Normal activities already give inline feedback. Avoid doubling every
+  // action with a toast; surface travel stages remain in the event log.
+  if(lastLog&&['danger','visitor'].includes(event.type))toast(event.message,event.type==='danger');
+  lastLog=event.message;
  }
 }
 function openModal(type){
@@ -669,8 +677,10 @@ function loop(now){
     previousRooms!==s.rooms.length||previousThreat!==!!s.threat||oldTutorial!==s.tutorial||
     oldLog!==s.log[0]?.message||previousNight!==D.night(s)||now-lastPaint>1400){
    renderAll();lastPaint=now;
-  }else{
-   for(const r of s.rooms){const node=document.querySelector('.room[data-room="'+r.id+'"] .room-progress i');if(node)node.style.width=Math.round(r.progress)+'%';}
+  }
+  for(const r of s.rooms){
+   const node=document.querySelector('.room[data-room="'+r.id+'"] .room-progress i');
+   if(node)node.style.width=Math.round(r.progress)+'%';
   }
   if(now-lastSave>4000){save();lastSave=now;}
  }catch(err){
