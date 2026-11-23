@@ -1232,7 +1232,7 @@
         (rm.captured?'OCCUPIED BY HOSTILES':roomActive(rm)?'POWERED':'OFFLINE / SHED FROM GRID')+'</span>'+
         '<p class="helper">'+descriptions[rm.type]+'</p>'+bar(rm.integrity,'Structural integrity')+
         '<p class="small-econ">'+(rm.type==='generator'?'Burns fuel to provide power':'Consumes '+systems.ROOMS[rm.type].draw+' power')+' · Grid '+data.generation+'/'+data.demand+
-        ' · '+crew.length+' assigned · Room air '+Math.round(rm.air||95)+'%</p>'+
+        ' · '+crew.length+' assigned · Room air '+Math.round(rm.air??95)+'%</p>'+
         '<p class="small-head">ASSIGN A RESIDENT</p>'+
         state.survivors.filter(r=>!r.dead).map(r=>
           '<button class="worker-choice" data-action="assign-room" data-id="'+r.id+'" data-room="'+rm.id+'">'+
