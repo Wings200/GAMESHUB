@@ -95,7 +95,7 @@ test('no Canvas boot path; new cutaway assets and controls exist',()=>{
  const ui=readFileSync(new URL('game.js',root),'utf8');
  const css=readFileSync(new URL('style.css',root),'utf8');
  for(const file of ['core.js','game.js','style.css','index.html'])assert.ok(existsSync(new URL(file,root)));
- assert.match(html,/src="\.\/core\.js\?v=routines-110"/);
+ assert.match(html,/src="\.\/core\.js\?v=homes-120"/);
  assert.match(html,/id="earth"/);assert.match(html,/id="roomLayer"/);
  assert.match(html,/id="outsidePeople"/);assert.match(html,/id="powerCount"/);
  assert.doesNotMatch(ui,/getContext\(/);
