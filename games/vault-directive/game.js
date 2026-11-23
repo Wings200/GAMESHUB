@@ -4,6 +4,7 @@
   // Foundation build: original single-player shelter survival loop.
   // All progress remains local to this browser. No account or server writes.
   const COLS = 52, ROWS = 19, TILE = 54;
+  const T = TILE;
   const SAVE_KEY = 'gameshub.vault-directive.foundation.v1';
   const ROOM_TYPES = {
     generator: { name: 'Field generator', cost: { scrap: 9, parts: 2 }, power: 7, use: 0, color: '#d5ac63', glyph: 'ϟ' },
@@ -349,6 +350,7 @@
       const p=projectFor(r.taskId);
       if(!p||p.status!=='active'){r.taskId=null;r.path=[];r.state='idle';continue;}
       if(p.kind==='dig'){
+        if(r.path && r.path.length){walkPath(r,r.path,dt);continue;}
         const target=chooseDigTarget(r,p);
         if(!target){
           if(p.cells.every(c=>state.terrain[c.y][c.x]===0)){completeProject(p);}
@@ -367,6 +369,7 @@
           if(p.cells.every(c=>state.terrain[c.y][c.x]===0)){completeProject(p);}
         }
       }else{
+        if(r.path && r.path.length){walkPath(r,r.path,dt);continue;}
         const stand=chooseBuildStand(r,p);
         if(!stand){r.state='waiting';continue;}
         if(Math.hypot(stand.stand.x-r.x,stand.stand.y-r.y)>.035){
