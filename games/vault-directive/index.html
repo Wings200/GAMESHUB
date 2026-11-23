@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#0b1218">
   <title>VAULT DIRECTIVE — GAMESHUB</title>
   <link rel="stylesheet" href="./style.css">
+  <script src="./systems.js" defer></script>
   <script src="./game.js" defer></script>
 </head>
 <body>
@@ -32,12 +33,15 @@
     <section class="resourcebar" aria-label="Settlement resources">
       <div class="resource"><span class="res-icon">♙</span><div><small>SURVIVORS</small><strong id="popValue">3 / 3</strong></div></div>
       <div class="resource"><span class="res-icon electric">ϟ</span><div><small>POWER</small><strong id="powerValue">0 / 0</strong></div></div>
-      <div class="resource"><span class="res-icon food">◒</span><div><small>RATIONS</small><strong id="foodValue">12</strong></div></div>
-      <div class="resource"><span class="res-icon water">◈</span><div><small>WATER</small><strong id="waterValue">14</strong></div></div>
+      <div class="resource"><span class="res-icon food">◒</span><div><small>RATIONS</small><strong id="foodValue">12.0</strong></div></div>
+      <div class="resource"><span class="res-icon water">◈</span><div><small>WATER</small><strong id="waterValue">14.0</strong></div></div>
+      <div class="resource"><span class="res-icon fuel">♨</span><div><small>FUEL</small><strong id="fuelValue">9.0</strong></div></div>
+      <div class="resource"><span class="res-icon meds">✚</span><div><small>MEDICINE</small><strong id="medsValue">2.0</strong></div></div>
       <div class="resource"><span class="res-icon metal">▤</span><div><small>SALVAGE</small><strong id="scrapValue">19</strong></div></div>
       <div class="resource"><span class="res-icon parts">⬡</span><div><small>COMPONENTS</small><strong id="partsValue">4</strong></div></div>
       <div class="resource morale"><span class="res-icon">♡</span><div><small>MORALE</small><strong id="moraleValue">72%</strong></div></div>
     </section>
+    <div class="economy-strip"><span>LIVE CONSUMPTION</span><span id="ratesValue">Food −0.6/min · Water −0.8/min · Generator fuel as used</span><span id="powerDetails">Emergency lights only</span></div>
 
     <div class="layout">
       <aside class="sidebar">
@@ -47,6 +51,8 @@
           <div class="tool-grid">
             <button class="tool active" data-tool="inspect" type="button"><span class="tool-icon">⌖</span><span><strong>Inspect</strong><small>Explore / select</small></span></button>
             <button class="tool" data-tool="dig" type="button"><span class="tool-icon">⚒</span><span><strong>Excavate</strong><small>Drag over earth</small></span></button>
+            <button class="tool" data-tool="door" type="button"><span class="tool-icon">▣</span><span><strong>Blast door</strong><small>Choose corridor</small></span></button>
+            <button class="tool" data-tool="ladder" type="button"><span class="tool-icon">♧</span><span><strong>Ladder</strong><small>Extend access</small></span></button>
           </div>
           <div class="tool-hint" id="toolHint">Click a survivor to view their status. Drag the world to move the camera.</div>
         </section>
@@ -57,12 +63,25 @@
             <button type="button" class="build-choice" data-room="bunks"><span class="build-glyph">▥</span><span><strong>Sleeping quarters</strong><small>7 salvage</small></span><em>REST</em></button>
             <button type="button" class="build-choice" data-room="water"><span class="build-glyph">◈</span><span><strong>Water treatment</strong><small>8 salvage · 1 component</small></span><em>WATER</em></button>
             <button type="button" class="build-choice" data-room="garden"><span class="build-glyph">❈</span><span><strong>Hydroponics</strong><small>8 salvage · 1 component</small></span><em>FOOD</em></button>
+            <details class="advanced-facilities" id="advancedFacilities"><summary>MORE FACILITIES / ADVANCED</summary>
+            <button type="button" class="build-choice" data-room="medbay"><span class="build-glyph">✚</span><span><strong>Medical bay</strong><small>10 salvage · 2 components</small></span><em>HEALTH</em></button>
+            <button type="button" class="build-choice" data-room="radio"><span class="build-glyph">⌁</span><span><strong>Radio beacon</strong><small>12 salvage · 2 components</small></span><em>RECRUIT</em></button>
+            <button type="button" class="build-choice" data-room="security"><span class="build-glyph">◇</span><span><strong>Security post</strong><small>10 salvage · 2 components</small></span><em>DEFENCE</em></button>
+            <button type="button" class="build-choice" data-room="storage"><span class="build-glyph">▤</span><span><strong>Storage depot</strong><small>8 salvage</small></span><em>STORAGE</em></button>
+            <button type="button" class="build-choice" data-room="ventilation"><span class="build-glyph">≋</span><span><strong>Air-handling plant</strong><small>9 salvage · 2 components</small></span><em>AIR</em></button>
+            <button type="button" class="build-choice" data-room="training"><span class="build-glyph">⌘</span><span><strong>Training center</strong><small>10 salvage · 2 components</small></span><em>SKILLS</em></button>
+            <button type="button" class="build-choice" data-room="workshop"><span class="build-glyph">⚒</span><span><strong>Workshop</strong><small>11 salvage · 2 components</small></span><em>CRAFT</em></button>
+            </details>
           </div>
         </section>
         <section class="side-section expedition-side">
           <div class="section-title"><span>03 / THE SURFACE</span><span class="tiny">FINITE SUPPLIES</span></div>
           <p>Explore actual sites, search rooms, and salvage old machinery. Loot doesn't regenerate.</p>
           <button id="expeditionsBtn" class="full action-secondary" type="button">⌁ &nbsp; OPEN WASTELAND MAP <span>↗</span></button>
+        </section>
+        <section class="side-section"><div class="section-title"><span>04 / PEOPLE & SAFETY</span><span>ESSENTIAL CONTROLS</span></div>
+          <button id="peopleBtn" class="full action-secondary" type="button">♙ &nbsp; MANAGE SURVIVORS <span>→</span></button>
+          <button id="securityBtn" class="full action-secondary" type="button" style="margin-top:8px">▣ &nbsp; SAFETY & CRISES <span>→</span></button>
         </section>
         <div class="side-bottom"><button id="saveBtn" type="button">↓ SAVE</button><button id="helpBtn" type="button">? TUTORIAL</button><button id="resetBtn" type="button">↺ NEW GAME</button></div>
       </aside>
@@ -78,21 +97,35 @@
           <div class="world-tooltip hidden" id="worldTooltip"></div>
         </div>
         <div class="status-strip"><span id="statusText">Three survivors. One abandoned entrance. Your next decision changes everything.</span><span class="kbd-hint">DRAG TO PAN · SCROLL TO ZOOM · ESC TO CANCEL</span></div>
+        <div class="arrival-dock" id="arrivalDock" aria-live="polite"></div>
         <div class="tutorial-panel" id="tutorialPanel">
           <div class="tutorial-top"><div><span class="eyebrow">OPTIONAL / OVERSEER TRAINING</span><h3>Your first day underground</h3></div><button id="skipTutorial" type="button">SKIP TUTORIAL ×</button></div>
+          <div class="objective-focus" id="objectiveFocus"></div>
           <div class="tutorial-tasks" id="tutorialTasks"></div>
-          <div class="tutorial-note" id="tutorialNote">The entire game remains accessible. Complete objectives in any order.</div>
+          <div class="tutorial-note" id="tutorialNote">One thing at a time. Everything else is optional.</div>
+          <button id="tutorialAction" class="objective-action" type="button">SHOW ME HOW →</button>
         </div>
       </main>
 
       <aside class="inspector">
         <div class="inspector-header"><span class="eyebrow">SETTLEMENT INTELLIGENCE</span><h2 id="inspectorTitle">Your survivors</h2><p id="inspectorSubtitle">Tap a resident to inspect or assign them.</p></div>
         <div id="inspectorBody"></div>
-        <div class="event-section"><div class="section-title"><span>FIELD REPORT</span><span>RECENT EVENTS</span></div><div id="eventLog" class="event-log" aria-live="polite"></div></div>
+        <div id="crisisSummary" class="crisis-summary"></div><div class="event-section"><div class="section-title"><span>FIELD REPORT</span><span>RECENT EVENTS</span></div><div id="eventLog" class="event-log" aria-live="polite"></div></div>
       </aside>
     </div>
 
-    <footer class="foot"><span>VAULT DIRECTIVE <b>FOUNDATION 0.1</b> — EARLY PLAYABLE BUILD</span><span>LOCAL SAVE · SINGLE PLAYER · NO MULTIPLAYER</span></footer>
+    <footer class="foot"><span>VAULT DIRECTIVE <b>SURVIVAL ALPHA 0.3</b> — EARLY PLAYABLE BUILD</span><span>LOCAL SAVE · SINGLE PLAYER · NO MULTIPLAYER</span></footer>
+  </div>
+
+  <div class="modal-backdrop hidden" id="securityModal" role="dialog" aria-modal="true" aria-labelledby="securityTitle">
+    <div class="expedition-card"><div class="modal-head"><div><span class="eyebrow">SETTLEMENT SECURITY</span><h2 id="securityTitle">Response center</h2></div>
+      <button id="closeSecurity" class="close-x" type="button" title="Close security center">×</button></div>
+      <div id="securityContent"></div>
+    </div>
+  </div>
+  <div class="modal-backdrop hidden" id="lossModal" role="dialog" aria-modal="true" aria-labelledby="lossTitle">
+    <div class="confirm-card"><span class="eyebrow">SETTLEMENT LOST</span><h2 id="lossTitle">The shelter has fallen</h2><p id="lossReason"></p>
+      <div><button id="lossClose" type="button">VIEW THE RUINS</button><button id="lossRestart" type="button">BEGIN AGAIN</button></div></div>
   </div>
 
   <div class="modal-backdrop" id="introModal" role="dialog" aria-modal="true" aria-labelledby="introTitle">

@@ -1,0 +1,34 @@
+name: VAULT DIRECTIVE gameplay checks
+
+on:
+  push:
+    branches:
+      - main
+      - 'fix/vault-directive-*'
+    paths:
+      - 'games/vault-directive/**'
+      - 'tests/vault-directive-*.test.mjs'
+      - '.github/workflows/vault-directive.yml'
+  pull_request:
+    paths:
+      - 'games/vault-directive/**'
+      - 'tests/vault-directive-*.test.mjs'
+      - '.github/workflows/vault-directive.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Survival simulation regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JavaScript syntax
+        run: |
+          node --check games/vault-directive/game.js
+          node --check games/vault-directive/systems.js
+      - name: Run survival and UI smoke tests
+        run: node --test tests/vault-directive-foundation.test.mjs

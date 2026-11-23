@@ -7,10 +7,17 @@
   const T = TILE;
   const SAVE_KEY = 'gameshub.vault-directive.foundation.v1';
   const ROOM_TYPES = {
-    generator: { name: 'Field generator', cost: { scrap: 9, parts: 2 }, power: 7, use: 0, color: '#d5ac63', glyph: 'ϟ' },
-    bunks: { name: 'Sleeping quarters', cost: { scrap: 7, parts: 0 }, power: 0, use: 0, color: '#9ab0a0', glyph: '▥' },
-    water: { name: 'Water treatment', cost: { scrap: 8, parts: 1 }, power: 0, use: 2, color: '#8acbd8', glyph: '◈' },
-    garden: { name: 'Hydroponics', cost: { scrap: 8, parts: 1 }, power: 0, use: 2, color: '#8ac69b', glyph: '❈' }
+    generator: { name: 'Field generator', cost: { scrap: 9, parts: 2 }, color: '#d5ac63', glyph: 'ϟ' },
+    bunks: { name: 'Sleeping quarters', cost: { scrap: 7, parts: 0 }, color: '#9ab0a0', glyph: '▥' },
+    water: { name: 'Water treatment', cost: { scrap: 8, parts: 1 }, color: '#8acbd8', glyph: '◈' },
+    garden: { name: 'Hydroponics', cost: { scrap: 8, parts: 1 }, color: '#8ac69b', glyph: '❈' },
+    medbay: { name: 'Medical bay', cost: { scrap: 10, parts: 2 }, color: '#91c8b3', glyph: '✚' },
+    radio: { name: 'Radio beacon', cost: { scrap: 12, parts: 2 }, color: '#b5a4d1', glyph: '⌁' },
+    security: { name: 'Security post', cost: { scrap: 10, parts: 2 }, color: '#ccaa86', glyph: '◇' },
+    storage: { name: 'Storage depot', cost: { scrap: 8, parts: 0 }, color: '#9ba7b6', glyph: '▤' },
+    ventilation: { name: 'Air-handling plant', cost: { scrap: 9, parts: 2 }, color: '#80c5bb', glyph: '≋' },
+    training: { name: 'Training center', cost: { scrap: 10, parts: 2 }, color: '#b6a1c7', glyph: '⌘' },
+    workshop: { name: 'Workshop', cost: { scrap: 11, parts: 2 }, color: '#d9a679', glyph: '⚒' }
   };
   const SURVIVORS = [
     { id: 1, name: 'Mara Voss', role: 'Mechanic', strength: 7, skin: '#b68b6c', hair: '#312720', coat: '#779c8e', x: 8.2, y: 7, energy: 87, hunger: 88, thirst: 89, health: 100, morale: 74 },
@@ -18,26 +25,33 @@
     { id: 3, name: 'Iris Chen', role: 'Medic', strength: 3, skin: '#c89c80', hair: '#222c30', coat: '#7c8eaa', x: 11.6, y: 7, energy: 86, hunger: 86, thirst: 86, health: 100, morale: 76 }
   ];
   const SITES = [
-    { id: 'clinic', name: 'Abandoned clinic', icon: '✚', subtitle: 'Medicine, water and supplies', threat: 'LOW · UNSTABLE INTERIOR',
+    { id: 'clinic', name: 'Abandoned clinic', icon: '✚', subtitle: 'Medicine, water and medical supplies', threat: 'LOW · UNSTABLE INTERIOR',
       rooms: [
         { name: 'Reception', icon: '▣', kind: 'Search', loot: { food: 2, water: 1, scrap: 1 }, danger: 0 },
-        { name: 'Pharmacy', icon: '✚', kind: 'Search', loot: { food: 1, water: 3, parts: 1 }, danger: 0 },
-        { name: 'Treatment', icon: '◇', kind: 'Search', loot: { water: 2, scrap: 3 }, danger: 6 },
+        { name: 'Pharmacy', icon: '✚', kind: 'Search', loot: { food: 1, water: 3, meds: 2, parts: 1 }, danger: 0 },
+        { name: 'Treatment', icon: '◇', kind: 'Search', loot: { water: 2, scrap: 3 }, danger: 6, hazard: 'infection' },
         { name: 'Backup plant', icon: 'ϟ', kind: 'Salvage', loot: { scrap: 6, parts: 2 }, danger: 0 }
       ] },
     { id: 'station', name: 'Roadside station', icon: '⌁', subtitle: 'Rations and usable hardware', threat: 'LOW · EXPOSED STRUCTURE',
       rooms: [
         { name: 'Shop front', icon: '▤', kind: 'Search', loot: { food: 4, water: 1 }, danger: 0 },
         { name: 'Stockroom', icon: '◫', kind: 'Search', loot: { food: 3, water: 2, scrap: 1 }, danger: 0 },
-        { name: 'Garage', icon: '⚙', kind: 'Salvage', loot: { scrap: 6, parts: 1 }, danger: 4 },
+        { name: 'Garage', icon: '⚙', kind: 'Salvage', loot: { scrap: 6, parts: 1, fuel: 3 }, danger: 4, enemy: 'raiders' },
         { name: 'Workshop', icon: '⚒', kind: 'Salvage', loot: { scrap: 5, parts: 2 }, danger: 0 }
       ] },
     { id: 'depot', name: 'Freight depot', icon: '▥', subtitle: 'Metal and industrial components', threat: 'ELEVATED · FALLING DEBRIS',
       rooms: [
         { name: 'Gatehouse', icon: '⌑', kind: 'Search', loot: { water: 2, food: 1 }, danger: 0 },
-        { name: 'Warehouse', icon: '▥', kind: 'Salvage', loot: { scrap: 8 }, danger: 7 },
-        { name: 'Maintenance', icon: '⚙', kind: 'Salvage', loot: { scrap: 6, parts: 3 }, danger: 0 },
+        { name: 'Warehouse', icon: '▥', kind: 'Salvage', loot: { scrap: 8 }, danger: 7, enemy: 'raiders' },
+        { name: 'Maintenance', icon: '⚙', kind: 'Salvage', loot: { scrap: 6, parts: 3, fuel: 2 }, danger: 0 },
         { name: 'Loading bay', icon: '◈', kind: 'Salvage', loot: { scrap: 7, parts: 1 }, danger: 9 }
+      ] },
+    { id: 'relay', name: 'Broken relay station', icon: '⌁', subtitle: 'Rescue a stranded survivor and recover communications gear', threat: 'ELEVATED · HOSTILE PRESENCE',
+      rooms: [
+        { name: 'Receiving hall', icon: '▣', kind: 'Search', loot: { food: 2, water: 1 }, danger: 0 },
+        { name: 'Security desk', icon: '◇', kind: 'Search', loot: { scrap: 3, parts: 1 }, danger: 7, enemy: 'raiders' },
+        { name: 'Control room', icon: '⌁', kind: 'Salvage', loot: { parts: 3, fuel: 2, scrap: 3 }, danger: 0 },
+        { name: 'Locked shelter', icon: '♡', kind: 'Rescue', loot: { meds: 1 }, danger: 0, rescue:true }
       ] }
   ];
 
@@ -72,12 +86,12 @@
     for (let y = 3; y <= 7; y++) terrain[y][8] = 0;
     for (let x = 7; x <= 12; x++) terrain[7][x] = 0;
     return {
-      version: 1, minutes: 480, speed: 1, paused: false, nextId: 1,
+      version: 2, minutes: 480, speed: 1, paused: false, nextId: 1,
       terrain, digProgress: {}, rooms: [], projects: [],
       survivors: SURVIVORS.map(r=>({...r, taskId: null, state: 'idle', path: [], wait: 0})),
       resources: { food: 12, water: 14, scrap: 19, parts: 4 },
       tutorialEnabled: true, tutorialFlags: { inspect: false, dig: false, assign: false, build: false, scavenge: false },
-      introSeen: false, productionTime: 0, expedition: null,
+      introSeen: false, productionTime: 0, expedition: null, discoveredSites: [], discovery: null,
       sites: SITES.map(site=>({ id:site.id, rooms:site.rooms.map(()=>({searched:false})) })),
       logs: [{time:'DAY 01 · 08:00', text:'Three survivors reached the abandoned hatch. Shelter systems offline.', warning:false}]
     };
@@ -87,8 +101,8 @@
       const raw = localStorage.getItem(SAVE_KEY);
       if (raw) {
         const value = JSON.parse(raw);
-        if (value.version === 1 && Array.isArray(value.terrain) && value.terrain.length === ROWS &&
-            Array.isArray(value.survivors) && value.survivors.length === 3 &&
+        if ((value.version === 1 || value.version === 2) && Array.isArray(value.terrain) && value.terrain.length === ROWS &&
+            Array.isArray(value.survivors) && value.survivors.length >= 1 &&
             value.resources && Array.isArray(value.sites)) {
           for (const r of value.survivors) { r.path = []; r.wait = 0; }
           return value;
@@ -119,26 +133,29 @@
   }
   function flag(k) { if (state.tutorialFlags && !state.tutorialFlags[k]) {state.tutorialFlags[k]=true;renderTutorial();} }
   function powerData() {
-    const generation = state.rooms.filter(r=>r.type==='generator').length * ROOM_TYPES.generator.power;
-    const demand = state.rooms.reduce((n,r)=>n+ROOM_TYPES[r.type].use,0);
-    return {generation,demand,online:generation>0 && generation>=demand};
+    const data=window.VDSystems.power(state);
+    return {...data,online: data.generation>=data.demand,onlineRooms:data.online};
   }
   function roomActive(room) {
-    return room.type === 'generator' || room.type === 'bunks' || powerData().online;
+    return window.VDSystems.active(state,room);
   }
   function cellFree(x,y) {return valid(x,y) && state.terrain[y][x] === 0;}
   function walkable(x,y) {
     return cellFree(x,y) && (!isSurface(x,y));
   }
   function isSurface(x,y){return y < 3;}
-  function movementAllowed(a,b) {
+  function movementAllowed(a,b,ignoreClosedDoors=false) {
     if (!cellFree(b.x,b.y)) return false;
+    if (!ignoreClosedDoors && state.doors.some(d=>d.closed && d.hp>0 && (d.x===b.x&&d.y===b.y || d.x===a.x&&d.y===a.y))) return false;
     if (a.y === b.y) return true;
+    const verticalLadder = v => state.ladders.some(l=>l.x===v.x && l.y===v.y) ||
+      (v.x===8 && v.y>=3 && v.y<=7);
+    if(verticalLadder(a) && verticalLadder(b)) return true;
     // Residents cannot float up raw vertical excavations. The original entrance has a ladder.
     // More player-built vertical transport arrives in a later systems milestone.
     return a.x === 8 && b.x === 8 && a.y >= 3 && a.y <= 7 && b.y >= 3 && b.y <= 7;
   }
-  function bfs(from, to) {
+  function bfs(from, to, ignoreClosedDoors=false) {
     const sx = Math.round(from.x), sy = Math.round(from.y);
     if (!valid(sx,sy) || !cellFree(sx,sy) || !cellFree(to.x,to.y)) return null;
     const q=[{x:sx,y:sy}], seen=new Set([key(sx,sy)]), parent={};
@@ -150,7 +167,7 @@
       }
       for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
         const n={x:c.x+dx,y:c.y+dy}, nk=key(n.x,n.y);
-        if(!seen.has(nk)&&movementAllowed(c,n)){seen.add(nk);parent[nk]=key(c.x,c.y);q.push(n);}
+        if(!seen.has(nk)&&movementAllowed(c,n,ignoreClosedDoors)){seen.add(nk);parent[nk]=key(c.x,c.y);q.push(n);}
       }
     }
     return null;
@@ -176,9 +193,11 @@
     document.querySelectorAll('.tool').forEach(b=>b.classList.toggle('active',b.dataset.tool===tool));
     document.querySelectorAll('.build-choice').forEach(b=>b.classList.toggle('active',tool==='build' && b.dataset.room===buildType));
     worldWrap.classList.toggle('tool-dig',tool==='dig');
-    worldWrap.classList.toggle('tool-build',tool==='build');
+    worldWrap.classList.toggle('tool-build',tool==='build'||tool==='door'||tool==='ladder');
     $('toolHint').textContent=tool==='dig'?'Click and drag across solid earth beside the existing passage. Confirm workers in the right panel.':
       tool==='build'?'Drag sideways across cleared space to place '+ROOM_TYPES[buildType].name+'. The preview snaps to a standard floor.':
+      tool==='door'?'Click a cleared corridor tile with passages on both sides to build a reinforced blast-door chamber.':
+      tool==='ladder'?'Click an excavated shaft tile beside another ladder tile to extend vertical access.':
       'Click a survivor, project or room to inspect. Drag empty space to pan the camera.';
     selection = null;chosenWorkers.clear();renderInspector();updateHud();
   }
@@ -218,7 +237,8 @@
     const cells=[];
     for(let dy=0;dy<2;dy++)for(let dx=0;dx<w;dx++){
       const cx=x+dx,cy=y+dy;
-      if(!cellFree(cx,cy)||isProtected(cx,cy)||roomAt(cx,cy)||jobAt(cx,cy)){
+      if(!cellFree(cx,cy)||isProtected(cx,cy)||roomAt(cx,cy)||jobAt(cx,cy)||
+        state.doors.some(d=>d.x===cx&&d.y===cy)||state.ladders.some(l=>l.x===cx&&l.y===cy)){
         toast('This room requires two rows of clear, unused, excavated space.');return;
       }
       cells.push({x:cx,y:cy});
@@ -232,6 +252,24 @@
     report('Construction planned: '+def.name+'. Assign a builder to begin.');
     setToolKeepSelection('inspect');renderInspector();saveGame();
   }
+  function requestUpgrade(roomId){
+    const rm=window.VDSystems.room(state,roomId);
+    if(!rm || rm.captured || rm.integrity<=0){toast('You must reclaim and repair the room before upgrading.');return;}
+    if(rm.level>=3){toast('This facility is fully upgraded.');return;}
+    if(state.projects.some(p=>p.status!=='done'&&p.status!=='cancelled'&&
+      (p.roomId===roomId||p.kind==='build'&&p.x===rm.x&&p.y===rm.y))){
+      toast('Construction is already scheduled in this room.');return;
+    }
+    const project={
+      id:nextId(),kind:'upgrade',roomId,roomType:rm.type,x:rm.x,y:rm.y,width:rm.width,
+      cells:Array.from({length:rm.width},(_,i)=>({x:rm.x+i,y:rm.y+1})),
+      status:'planned',workers:[],progress:0,cost:window.VDSystems.upgradeCost(rm)
+    };
+    state.projects.push(project);
+    selection={kind:'project',id:project.id};chosenWorkers.clear();
+    report('Upgrade planned for '+ROOM_TYPES[rm.type].name+'. Assign a builder to begin.');
+    renderInspector();saveGame();
+  }
   function selectResident(id) {
     selection={kind:'resident',id};flag('inspect');renderInspector();
   }
@@ -242,8 +280,11 @@
   function startProject(id){
     const p=projectFor(id);if(!p)return;
     if(!chosenWorkers.size){toast('Choose at least one survivor to assign.');return;}
-    if(p.kind==='build' && p.status==='planned'){
-      const cost=ROOM_TYPES[p.roomType].cost;
+    if(Array.from(chosenWorkers).some(id=>state.survivors.find(r=>r.id===id)?.child)){
+      toast('Dependent children cannot be assigned to construction or rescue crews.');return;
+    }
+    if((p.kind==='build'||p.kind==='upgrade') && p.status==='planned'){
+      const cost=p.kind==='upgrade'?p.cost:ROOM_TYPES[p.roomType].cost;
       if(state.resources.scrap<cost.scrap || state.resources.parts<cost.parts){
         toast('Insufficient supplies. Explore the surface to gather more.');return;
       }
@@ -257,19 +298,19 @@
       const r=state.survivors.find(s=>s.id===id2);if(!r)continue;
       const old=projectFor(r.taskId);
       if(old && old.id!==p.id)old.workers=old.workers.filter(w=>w!==r.id);
-      r.taskId=p.id;r.state='idle';r.path=[];r.workTarget=null;r.wait=0;
+      r.taskId=p.id;r.jobRoom=null;r.defending=false;r.state='idle';r.path=[];r.workTarget=null;r.wait=0;
     }
     const newStart=p.status==='planned';p.status='active';
     if(p.kind==='dig'){flag('assign');report(p.workers.length+' survivor(s) assigned to the excavation zone.');}
-    else report(p.workers.length+' survivor(s) assigned to build '+ROOM_TYPES[p.roomType].name+'.');
+    else if(p.kind==='rescue')report('Rescue team dispatched. They are clearing the rubble.');
+    else report(p.workers.length+' survivor(s) assigned to '+(p.kind==='upgrade'?'upgrade ':'build ')+ROOM_TYPES[p.roomType].name+'.');
     if(!newStart)toast('Crew updated.');
     renderInspector();updateHud();saveGame();
   }
   function cancelProject(id){
     const p=projectFor(id);if(!p)return;
-    if(p.kind==='build'&&p.status==='active'){
-      // The materials remain with the building crew until dismantling is complete.
-      const cost=ROOM_TYPES[p.roomType].cost;
+    if((p.kind==='build'||p.kind==='upgrade')&&p.status==='active'){
+      const cost=p.kind==='upgrade'?p.cost:ROOM_TYPES[p.roomType].cost;
       state.resources.scrap+=cost.scrap;state.resources.parts+=cost.parts;
     }
     for(const r of state.survivors)if(r.taskId===id){r.taskId=null;r.state='idle';r.path=[];r.workTarget=null;}
@@ -321,24 +362,33 @@
     p.status='done';
     for(const r of state.survivors)if(r.taskId===p.id){r.taskId=null;r.state='idle';r.path=[];r.wait=0;}
     if(p.kind==='build'){
-      state.rooms.push({id:nextId(),type:p.roomType,x:p.x,y:p.y,width:p.width});
+      state.rooms.push({id:nextId(),type:p.roomType,x:p.x,y:p.y,width:p.width,integrity:100,priority:p.roomType==='water'?1:2,air:95,focus:'S',captured:false,level:1,rushAttempts:0});
       flag('build');report(ROOM_TYPES[p.roomType].name+' construction complete. The room is now operational.');
-      toast('ROOM ONLINE · '+ROOM_TYPES[p.roomType].name.toUpperCase());
+      toast('ROOM CONSTRUCTED · '+ROOM_TYPES[p.roomType].name.toUpperCase());
+    }else if(p.kind==='upgrade'){
+      const rm=window.VDSystems.room(state,p.roomId);
+      if(rm){rm.level=Math.min(3,rm.level+1);rm.integrity=100;
+        report(ROOM_TYPES[rm.type].name+' upgraded to level '+rm.level+'.');
+        toast('FACILITY UPGRADED · LEVEL '+rm.level);}
+    }else if(p.kind==='rescue'){
+      report('Rubble cleared. Emergency rescue order completed.');
     }else{
       report('Excavation complete. '+p.cells.length+' terrain tiles cleared and ready for building.');
       toast('EXCAVATION COMPLETE');
     }
     if(selection && selection.kind==='project' && selection.id===p.id)selection=null;
+    chosenWorkers.clear();
     renderInspector();saveGame();
   }
   function updateProjectWorkers(dt){
     for(const r of state.survivors){
-      if(state.expedition && state.expedition.crew.includes(r.id))continue;
+      if(r.dead){r.state='dead';r.path=[];continue;}
+      if((state.expedition && state.expedition.crew.includes(r.id)) || (state.discovery && state.discovery.crewId===r.id))continue;
       r.hunger=Math.max(0,r.hunger-dt*.047);
       r.thirst=Math.max(0,r.thirst-dt*.063);
       if(r.state!=='resting')r.energy=Math.max(0,r.energy-dt*(r.taskId?0.068:0.025));
-      if(r.hunger<57 && state.resources.food>0){state.resources.food--;r.hunger=Math.min(100,r.hunger+36);report(r.name+' ate a ration.');}
-      if(r.thirst<57 && state.resources.water>0){state.resources.water--;r.thirst=Math.min(100,r.thirst+39);report(r.name+' drank water.');}
+      if(r.hunger<57 && state.resources.food>=.1){r.hunger=Math.min(100,r.hunger+36);report(r.name+' ate a ration.');}
+      if(r.thirst<57 && state.resources.water>=.1){r.thirst=Math.min(100,r.thirst+39);report(r.name+' drank water.');}
       if((r.hunger<12||r.thirst<12)&&Math.random()<dt*.06){r.health=Math.max(0,r.health-1);r.morale=Math.max(0,r.morale-2);}
       if(r.energy<24 && r.state!=='resting'){r.state='resting';r.path=[];r.wait=0;report(r.name+' is taking an essential rest break.');}
       if(r.state==='resting'){
@@ -347,8 +397,56 @@
         if(r.energy>=80){r.state='idle';report(r.name+' is rested and returning to their assignment.');}
         continue;
       }
+      if(r.dead){r.state='dead';r.path=[];continue;}
+      if(r.child){r.state='child';r.path=[];continue;}
+      if(r.striking){r.state='strike';r.path=[];continue;}
+      if(r.trapped){r.state='trapped';r.path=[];continue;}
+      if(r.defending){r.state='defending';continue;}
       const p=projectFor(r.taskId);
-      if(!p||p.status!=='active'){r.taskId=null;r.path=[];r.state='idle';continue;}
+      if(!p||p.status!=='active'){
+        r.taskId=null;
+        if(r.jobRoom){
+          const clock=state.minutes%1440;
+          const onDayShift=clock>=480&&clock<1200;
+          const offDuty=(r.shift==='day'&&!onDayShift)||(r.shift==='night'&&onDayShift);
+          if(offDuty){
+            r.state='off-duty';r.path=[];r.energy=Math.min(100,r.energy+dt*.55);continue;
+          }
+          const rm=state.rooms.find(q=>q.id===r.jobRoom);
+          if(rm){
+            const target={x:Math.min(rm.x+rm.width-1,Math.max(rm.x,rm.x+Math.floor(rm.width/2))),y:rm.y+1};
+            if(Math.hypot(target.x-r.x,target.y-r.y)<.05){
+              r.x=target.x;r.y=target.y;r.path=[];r.state='working';
+            }else{
+              if(!r.path||!r.path.length)r.path=bfs({x:Math.round(r.x),y:Math.round(r.y)},target)||[];
+              if(r.path.length)walkPath(r,r.path,dt);else r.state='waiting';
+            }
+            continue;
+          }
+          r.jobRoom=null;
+        }
+        r.path=[];r.state='idle';continue;
+      }
+      if(p.kind==='rescue'){
+        const event=state.traps.find(t=>t.id===p.rescueId&&!t.rescued);
+        if(!event){completeProject(p);continue;}
+        const candidates=neighbours(event.x,event.y).filter(c=>cellFree(c.x,c.y));
+        let best=null;
+        for(const c of candidates){const path=bfs({x:Math.round(r.x),y:Math.round(r.y)},c);
+          if(path && (!best || path.length<best.path.length))best={c,path};}
+        if(!best){r.state='waiting';continue;}
+        if(Math.hypot(best.c.x-r.x,best.c.y-r.y)>.06){
+          if(!r.path||!r.path.length)r.path=best.path;
+          walkPath(r,r.path,dt);continue;
+        }
+        r.state='rescuing';r.x=best.c.x;r.y=best.c.y;
+        p.progress+=dt*(.75+r.strength*.10);
+        if(p.progress>=22){
+          state.terrain[event.y][event.x]=0;window.VDSystems.finishRescue(state,p.rescueId,{report});
+          completeProject(p);
+        }
+        continue;
+      }
       if(p.kind==='dig'){
         if(r.path && r.path.length){walkPath(r,r.path,dt);continue;}
         let target=null;
@@ -373,6 +471,14 @@
         if(state.digProgress[k]>=hardness){
           state.terrain[target.cell.y][target.cell.x]=0;
           delete state.digProgress[k];r.workTarget=null;r.energy=Math.max(0,r.energy-.3);
+          if(target.cell.y>=11 && hash(target.cell.x+Math.floor(state.simSeconds),target.cell.y)>.993 &&
+            !state.traps.some(t=>!t.rescued && t.people.includes(r.id))){
+            state.terrain[target.cell.y][target.cell.x]=2;
+            const incident=window.VDSystems.trap(state,r.id,target.cell.x,target.cell.y,{report});
+            if(incident){const rescue=window.VDSystems.rescue(state,incident.id,{report});
+              if(rescue.ok){selection={kind:'project',id:rescue.job.id};chosenWorkers.clear();renderInspector();}}
+            continue;
+          }
           if(p.cells.every(c=>state.terrain[c.y][c.x]===0)){completeProject(p);}
         }
       }else{
@@ -401,6 +507,7 @@
             if(r){r.state='idle';r.x=8;r.y=7;r.taskId=null;r.path=[];}
           }
           const site=siteById(e.site);
+          if(e.rescued){for(let k=0;k<e.rescued;k++)window.VDSystems.createArrival(state,'rescue');}
           state.expedition=null;expeditionRepaintKey='';
           flag('scavenge');report('Scavengers returned from '+site.name+' with '+lootString(e.loot)+'.');
           toast('EXPEDITION RETURNED · SUPPLIES DELIVERED');saveGame();
@@ -413,7 +520,29 @@
       const target=e.action.index+.5;
       if(e.action.phase==='walking'){
         e.position+=(Math.sign(target-e.position))*Math.min(Math.abs(target-e.position),dt*1.13);
-        if(Math.abs(target-e.position)<.012){e.position=target;e.action.phase='searching';}
+        if(Math.abs(target-e.position)<.012){
+          e.position=target;e.action.phase=e.action.enemy?'combat':'searching';
+          if(e.action.enemy){
+            e.message='HOSTILES: '+(e.action.enemy==='ferals'?'Feral infected':'Raiders')+
+              ' block access to this room. Choose FIGHT or RETREAT.';
+            renderExpedition();
+          }
+        }
+      }else if(e.action.phase==='combat'){
+        return;
+      }else if(e.action.phase==='fighting'){
+        const team=e.crew.map(id=>state.survivors.find(r=>r.id===id)).filter(r=>r&&!r.dead);
+        const damage=team.reduce((v,r)=>v+(r.weapon||1)*1.4+(r.skills?.S||4)*.12,0);
+        e.action.enemyHp=Math.max(0,e.action.enemyHp-damage*dt);
+        for(const r of team){r.health=Math.max(1,r.health-dt*(e.action.enemy==='ferals'?.46:.36)/Math.max(1,team.length));}
+        if(e.action.enemyHp<=0){
+          e.message='Threat neutralized. The scavengers are clearing the room.';
+          if(e.action.enemy==='ferals'&&team.length){
+            team[0].infection=Math.min(100,(team[0].infection||0)+12);
+            report(team[0].name+' was exposed to infection during the encounter.',true);
+          }
+          e.action.phase='searching';e.action.progress=0;renderExpedition();
+        }
       }else{
         e.action.progress+=dt;
         if(e.action.progress>=e.action.duration){
@@ -421,40 +550,74 @@
           const progress=state.sites.find(s=>s.id===e.site);
           progress.rooms[e.action.index].searched=true;
           for(const k of Object.keys(room.loot)){e.loot[k]=(e.loot[k]||0)+room.loot[k];}
+          if(room.rescue){e.rescued=(e.rescued||0)+1;}
           if(room.danger){
             const r=state.survivors.find(s=>s.id===e.crew[0]);
-            if(r){r.health=Math.max(1,r.health-room.danger);}
+            if(r){
+              r.health=Math.max(1,r.health-room.danger);
+              if(room.hazard==='infection'){r.infection=Math.min(100,(r.infection||0)+23);}
+            }
             e.message=room.name+' cleared. Loose debris injured '+(r?r.name:'a survivor')+' (−'+room.danger+' health). Found '+lootString(room.loot)+'.';
-          }else e.message=room.name+' searched. Found '+lootString(room.loot)+'.';
+          }else e.message=room.name+(room.rescue?' cleared. A stranded survivor has joined your return party!':
+            ' searched. Found '+lootString(room.loot)+'.');
           e.action=null;report(e.message,!!room.danger);saveGame();renderExpedition();
         }
       }
     }
   }
   function tick(dt) {
-    if(state.paused)return;
+    if(state.paused||state.loss)return;
     const step=dt*state.speed;
     state.minutes+=step*2.3;
+    updateSurvey(step);
     updateProjectWorkers(step);
     updateExpedition(step);
-    state.productionTime+=step;
-    if(state.productionTime>=14){
-      state.productionTime-=14;
-      if(powerData().online){
-        const water=state.rooms.filter(r=>r.type==='water').length;
-        const garden=state.rooms.filter(r=>r.type==='garden').length;
-        if(water){state.resources.water+=water*2;report('Water treatment produced '+water*2+' clean water.');}
-        if(garden){state.resources.food+=garden*2;report('Hydroponics harvested '+garden*2+' rations.');}
-      }
-      const avg=state.survivors.reduce((v,r)=>v+r.morale,0)/3;
-      if(state.resources.food===0||state.resources.water===0)
-        state.survivors.forEach(r=>r.morale=Math.max(4,r.morale-.6));
-      else if(avg<75)state.survivors.forEach(r=>r.morale=Math.min(82,r.morale+.2));
-    }
+    window.VDSystems.tick(state,step,{
+      report,accessible:reachableFromEntrance,
+      roomRoute:(a,b)=>!!bfs({x:a.x,y:a.y+1},{x:b.x,y:b.y+1})
+    });
+    window.VDSystems.tickRaid(state,step,{report},bfs);
   }
-  function siteById(id){return SITES.find(s=>s.id===id);}
+  function allSites(){return SITES.concat(state.discoveredSites||[]);}
+  function siteById(id){return allSites().find(s=>s.id===id);}
+  function startSurvey(){
+    if(state.discovery){toast('A survey team is already scouting the wasteland.');return;}
+    if(state.expedition){toast('Finish the active expedition before launching another survey.');return;}
+    if(state.resources.food<1||state.resources.water<1){toast('Survey requires one ration and one water for the scout.');return;}
+    const available=window.VDSystems.alive(state).filter(r=>!r.taskId&&!r.trapped&&!r.striking&&!r.child);
+    if(!available.length){toast('No available scout. Free a resident first.');return;}
+    available.sort((a,b)=>(b.skills?.P||0)-(a.skills?.P||0));
+    const scout=available[0];
+    state.resources.food-=1;state.resources.water-=1;
+    state.discovery={crewId:scout.id,remaining:24};
+    scout.state='survey';scout.path=[];
+    report(scout.name+' departed to map an unknown stretch of the wasteland.');
+    renderExpedition();saveGame();
+  }
+  function updateSurvey(dt){
+    if(!state.discovery)return;
+    const plan=state.discovery;plan.remaining-=dt;
+    if(plan.remaining>0)return;
+    const scout=window.VDSystems.get(state,plan.crewId);
+    if(scout){scout.state='idle';scout.x=8;scout.y=7;scout.path=[];}
+    const index=(state.discoveredSites?.length||0)+1;
+    const templates=['clinic','station','depot','relay'];
+    const names=['Old service tunnels','Collapsed shopping row','Abandoned pump station',
+      'Fallen residential block','Subway junction','Sealed maintenance works','Roadside warehouse'];
+    const source=SITES.find(s=>s.id===templates[index%templates.length]);
+    const newSite={
+      id:'discovered-'+index,name:names[(index-1)%names.length]+' '+String(Math.ceil(index/names.length)).padStart(2,'0'),
+      icon:source.icon,subtitle:'Newly charted site · room-by-room salvage',threat:source.threat,
+      rooms:source.rooms.map(r=>({...r,loot:{...r.loot}}))
+    };
+    state.discoveredSites.push(newSite);
+    state.sites.push({id:newSite.id,rooms:newSite.rooms.map(()=>({searched:false}))});
+    viewedSite=newSite.id;state.discovery=null;
+    report(scout.name+' discovered '+newSite.name+'. There are four unexplored rooms.',false);
+    toast('NEW WASTELAND LOCATION DISCOVERED');renderExpedition();saveGame();
+  }
   function lootString(loot){
-    const names={scrap:'salvage',parts:'components',food:'rations',water:'water'};
+    const names={scrap:'salvage',parts:'components',food:'rations',water:'water',fuel:'fuel',meds:'medicine'};
     const entries=Object.entries(loot).filter(([,n])=>n>0).map(([k,n])=>n+' '+(names[k]||k));
     return entries.length?entries.join(', '):'no supplies';
   }
@@ -463,8 +626,8 @@
     if(state.expedition){toast('A scavenging team is already deployed.');return;}
     const crew=Array.from(chosenCrew);
     if(!crew.length){toast('Choose at least one available survivor.');return;}
-    if(crew.some(id=>{const r=state.survivors.find(s=>s.id===id);return !r||r.taskId;})){toast('Assigned workers must finish or leave their current job first.');return;}
-    state.expedition={site:viewedSite,crew,phase:'outbound',travel:0,position:0.16,action:null,loot:{food:0,water:0,scrap:0,parts:0},message:'Traveling to the site. Arrival in approximately six seconds.'};
+    if(crew.some(id=>{const r=state.survivors.find(s=>s.id===id);return !r||r.taskId||r.dead||r.trapped||r.child;})){toast('Assigned workers must finish or leave their current job first.');return;}
+    state.expedition={site:viewedSite,crew,phase:'outbound',travel:0,position:0.16,action:null,loot:{food:0,water:0,scrap:0,parts:0,fuel:0,meds:0},message:'Traveling to the site. Arrival in approximately six seconds.'};
     for(const id of crew){const r=state.survivors.find(s=>s.id===id);r.state='expedition';r.path=[];}
     chosenCrew.clear();report('Scavenging team departed for '+siteById(viewedSite).name+'.');renderExpedition();saveGame();
   }
@@ -473,9 +636,24 @@
     const siteState=state.sites.find(s=>s.id===e.site);
     if(!siteState||siteState.rooms[index].searched){toast('That section has already been searched.');return;}
     const room=siteById(e.site).rooms[index];
-    e.action={index,phase:'walking',progress:0,duration:room.kind==='Salvage'?5:3};
+    e.action={index,phase:'walking',progress:0,duration:room.kind==='Salvage'?5:3,
+      enemy:room.enemy||null,enemyHp:room.enemy?(room.enemy==='ferals'?24:35):0};
     e.message='Moving to '+room.name+' to '+room.kind.toLowerCase()+' the area.';
     renderExpedition();
+  }
+  function fightExpedition(){
+    const e=state.expedition;
+    if(!e||!e.action||e.action.phase!=='combat')return;
+    e.action.phase='fighting';
+    e.message='Combat underway. Your equipped scavengers are engaging the enemy.';
+    report(e.message,true);renderExpedition();
+  }
+  function retreatExpedition(){
+    const e=state.expedition;
+    if(!e||!e.action||e.action.phase!=='combat')return;
+    e.phase='returning';e.travel=0;e.action=null;
+    e.message='Your team disengaged and is returning with collected supplies.';
+    report(e.message,true);renderExpedition();
   }
   function recallExpedition() {
     const e=state.expedition;if(!e||e.phase!=='exploring'||e.action)return;
@@ -551,9 +729,54 @@
           const amount=state.digProgress[key(c.x,c.y)]||0;
           if(amount>0){ctx.fillStyle='#edbf78';ctx.fillRect(c.x*T+8,(c.y+1)*T-10,(T-16)*bound(amount/(4.5+c.y*.24),0,1),3);}
         }
+      }else if(p.kind==='rescue'){
+        for(const cell of p.cells){
+          ctx.strokeStyle='#f19e77';ctx.lineWidth=3;
+          ctx.setLineDash([6,4]);ctx.strokeRect(cell.x*T+2,cell.y*T+2,T-4,T-4);ctx.setLineDash([]);
+          ctx.fillStyle='#f5ad87';ctx.textAlign='center';ctx.font='bold 10px sans-serif';
+          ctx.fillText('RESCUE',cell.x*T+T/2,cell.y*T-9);
+        }
       }else drawBuildFrame(p);
     }
     for(const room of state.rooms)drawRoom(room,now);
+    for(const ladder of state.ladders){
+      const x=ladder.x*T,y=ladder.y*T;
+      ctx.fillStyle='rgba(53,72,76,.62)';ctx.fillRect(x+14,y+2,T-28,T-4);
+      ctx.strokeStyle='#b7ba9c';ctx.lineWidth=3;ctx.beginPath();
+      ctx.moveTo(x+18,y+3);ctx.lineTo(x+18,y+T-3);
+      ctx.moveTo(x+T-18,y+3);ctx.lineTo(x+T-18,y+T-3);
+      for(let i=10;i<T;i+=12){ctx.moveTo(x+18,y+i);ctx.lineTo(x+T-18,y+i);}ctx.stroke();
+    }
+    for(const door of state.doors){
+      const x=door.x*T,y=door.y*T;
+      ctx.fillStyle=door.closed?'#5b6d6d':'#34494e';
+      ctx.fillRect(x+3,y+3,T-6,T-6);
+      ctx.strokeStyle=door.closed?'#e5b16c':'#8eb8a6';ctx.lineWidth=3;
+      ctx.strokeRect(x+3,y+3,T-6,T-6);
+      for(let i=0;i<3;i++){ctx.strokeStyle=door.closed?'#a5a99a':'#6c9388';
+        ctx.beginPath();ctx.moveTo(x+8+i*15,y+8);ctx.lineTo(x+8+i*15,y+T-8);ctx.stroke();}
+      if(!door.closed){ctx.fillStyle='#14262b';ctx.fillRect(x+21,y+3,12,T-6);}
+      ctx.fillStyle=door.closed?'#e1b27a':'#b0d8c2';ctx.textAlign='center';ctx.font='bold 8px sans-serif';
+      ctx.fillText(door.closed?'SEALED':'OPEN',x+T/2,y-5);
+    }
+    for(const incident of state.incidents){
+      const rm=state.rooms.find(r=>r.id===incident.roomId);
+      if(!rm)continue;
+      const x=(rm.x+rm.width/2)*T,y=(rm.y+.8)*T;
+      ctx.save();ctx.fillStyle=incident.kind==='fire'?'#e79a61':'#a2bb84';
+      ctx.shadowBlur=14;ctx.shadowColor=ctx.fillStyle;ctx.font='bold 31px sans-serif';ctx.textAlign='center';
+      ctx.fillText(incident.kind==='fire'?'♨':'◉',x,y+Math.sin(now*.008)*4);ctx.restore();
+    }
+    if(state.threat){
+      const raid=state.threat;
+      const x=(raid.x+.5)*T,y=(raid.y+.94)*T;
+      ctx.fillStyle='#682f36';ctx.fillRect(x-14,y-35,27,33);
+      ctx.fillStyle='#c6a48c';ctx.beginPath();ctx.arc(x,y-45,11,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#c9534c';ctx.fillRect(x-14,y-57,28,6);
+      ctx.fillStyle='#f4c5b2';ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillText(
+        raid.kind==='ferals'?'FERALS':'RAIDERS',x,y-67);
+      ctx.fillStyle='#e68b72';ctx.fillRect(x-20,y-61,40*bound(raid.hp/(raid.kind==='ferals'?72:95),0,1),3);
+    }
     for(const r of state.survivors) {
       if(state.expedition && state.expedition.crew.includes(r.id))continue;
       drawSurvivor(r,now);
@@ -574,7 +797,16 @@
   }
   function drawTile(x,y) {
     const px=x*T,py=y*T,v=hash(x,y);
-    if(state.terrain[y][x]===1) {
+    if(state.terrain[y][x]===2){
+      ctx.fillStyle='#4d4942';ctx.fillRect(px,py,T,T);
+      ctx.fillStyle='#8c7061';
+      for(let i=0;i<7;i++){
+        const rx=px+4+hash(x*7+i,y)*42,ry=py+9+hash(x,y*8+i)*36;
+        ctx.beginPath();ctx.moveTo(rx,ry-8);ctx.lineTo(rx+8,ry-3);ctx.lineTo(rx+11,ry+6);
+        ctx.lineTo(rx-4,ry+7);ctx.closePath();ctx.fill();
+      }
+      ctx.strokeStyle='#d88f70';ctx.strokeRect(px+2,py+2,T-4,T-4);
+    }else if(state.terrain[y][x]===1) {
       const rocky=y>=11;
       ctx.fillStyle=rocky?(v>.5?'#3c4546':'#41413c'):(v>.50?'#5a493c':'#624e3e');
       ctx.globalAlpha=rocky?.43:.32;ctx.fillRect(px,py,T,T);ctx.globalAlpha=1;
@@ -638,7 +870,7 @@
     ctx.fillRect(x+13,y+14,w-26,h-31);
     ctx.fillStyle=online?'#e7d59a':'#667579';ctx.fillRect(x+w/2-14,y+10,28,3);
     if(online){ctx.shadowBlur=15;ctx.shadowColor='#e2bd78';ctx.fillRect(x+w/2-11,y+13,22,4);ctx.shadowBlur=0;}
-    ctx.fillStyle='#c8c5ab';ctx.font='bold 9px sans-serif';ctx.textAlign='left';ctx.fillText(def.name.toUpperCase(),x+13,y+22);
+    ctx.fillStyle=online?'#c8c5ab':'#80908b';ctx.font='bold 9px sans-serif';ctx.textAlign='left';ctx.fillText(def.name.toUpperCase(),x+13,y+22);
     if(room.type==='generator'){
       const cx=x+w/2,cy=y+h-36;
       ctx.fillStyle='#303f41';ctx.fillRect(cx-54,cy-21,108,40);ctx.strokeStyle='#998d77';ctx.lineWidth=3;ctx.strokeRect(cx-54,cy-21,108,40);
@@ -680,11 +912,30 @@
         }
       }
     }
+    if(['medbay','radio','security','storage','ventilation','training','workshop'].includes(room.type)){
+      const cx=x+w/2,cy=y+h-39;
+      ctx.fillStyle='#2f4242';ctx.fillRect(cx-32,cy-26,64,46);
+      ctx.strokeStyle=def.color;ctx.lineWidth=2;ctx.strokeRect(cx-32,cy-26,64,46);
+      ctx.fillStyle=online?def.color:'#52646a';ctx.font='bold 35px sans-serif';ctx.textAlign='center';
+      ctx.fillText(def.glyph,cx,cy+9);
+      if(room.type==='radio'){
+        ctx.strokeStyle='#b7c9b8';ctx.beginPath();ctx.moveTo(cx,cy-26);ctx.lineTo(cx,cy-52);ctx.stroke();
+        ctx.beginPath();ctx.arc(cx,cy-47,7,Math.PI*1.1,Math.PI*1.9);ctx.stroke();
+      }
+    }
+    if(room.captured){
+      const surveillance=state.rooms.some(r=>r.type==='security'&&roomActive(r));
+      ctx.fillStyle=surveillance?'rgba(65,19,24,.40)':'rgba(10,14,19,.80)';
+      ctx.fillRect(x+8,y+12,w-16,h-24);
+      ctx.fillStyle='#f1a18c';ctx.font='bold 11px sans-serif';ctx.textAlign='center';
+      ctx.fillText(surveillance?'HOSTILE CONTROL':'SIGNAL LOST · HOSTILE CONTROL',x+w/2,y+h/2);
+    }
     if(!online && room.type!=='generator'){
       ctx.fillStyle='rgba(3,7,11,.43)';ctx.fillRect(x+8,y+12,w-16,h-23);
       ctx.fillStyle='#e4a484';ctx.font='bold 10px sans-serif';ctx.fillText('NO POWER',x+15,y+h-19);
     }
-    ctx.strokeStyle=def.color;ctx.lineWidth=2;ctx.strokeRect(x+1,y+1,w-2,h-2);
+    ctx.strokeStyle=room.captured?'#dc876e':def.color;ctx.lineWidth=2;ctx.strokeRect(x+1,y+1,w-2,h-2);
+    if(room.integrity<99){ctx.fillStyle='#a65b4d';ctx.fillRect(x+10,y+h-11,(w-20)*bound(room.integrity/100,0,1),3);}
     if(selection&&selection.kind==='room'&&selection.id===room.id){ctx.lineWidth=3;ctx.strokeStyle='#f2d19b';ctx.strokeRect(x-3,y-3,w+6,h+6);}
   }
   function drawBuildFrame(p){
@@ -704,9 +955,13 @@
     const px=(r.x+.5)*T,foot=residentFloor(r),working=r.state==='digging'||r.state==='building';
     const swing=(r.state==='walking'?Math.sin(now*.016+r.id)*5:working?Math.sin(now*.013+r.id)*3:Math.sin(now*.002+r.id)*.7);
     const selected=selection&&selection.kind==='resident'&&selection.id===r.id;
+    if(r.child){ctx.save();ctx.translate(px,foot);ctx.scale(.72,.72);ctx.translate(-px,-foot);}
     if(selected){ctx.strokeStyle='#f7d194';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(px,foot-2,20,7,0,0,7);ctx.stroke();}
     ctx.fillStyle='rgba(0,0,0,.34)';ctx.beginPath();ctx.ellipse(px,foot,12,4,0,0,7);ctx.fill();
-    if(r.state==='resting'){
+    if(r.dead){
+      ctx.fillStyle='#7f675e';ctx.fillRect(px-19,foot-13,30,9);
+      ctx.fillStyle=r.skin;ctx.beginPath();ctx.arc(px-22,foot-12,6,0,Math.PI*2);ctx.fill();
+    }else if(r.state==='resting'){
       ctx.fillStyle=r.coat;ctx.fillRect(px-17,foot-15,29,12);
       ctx.fillStyle=r.skin;ctx.beginPath();ctx.arc(px-19,foot-12,7,0,7);ctx.fill();
     }else{
@@ -735,7 +990,7 @@
       ctx.fillStyle='#e6ede3';ctx.shadowBlur=4;ctx.shadowColor='#0b1619';ctx.fillText(r.name.split(' ')[0].toUpperCase(),px,foot-70);ctx.shadowBlur=0;
       if(r.state!=='idle'){ctx.font='8px sans-serif';ctx.fillStyle=r.state==='resting'?'#ebcc92':'#b2d3c6';ctx.fillText(r.state.toUpperCase(),px,foot-81);}
     }
-    ctx.lineCap='butt';
+    ctx.lineCap='butt';if(r.child)ctx.restore();
   }
   function drawDragHighlight(a,b){
     if(!a||!b)return;
@@ -792,52 +1047,101 @@
       '<div class="log-entry'+(item.warning?' warning':'')+'"><strong>'+item.time+'</strong>'+item.text+'</div>').join('');
   }
   function updateHud(){
-    const r=state.resources,p=powerData();
-    $('popValue').textContent=state.survivors.length+' / '+state.survivors.length;
+    const r=state.resources,p=powerData(),systems=window.VDSystems;
+    const count=systems.alive(state).length;
+    $('popValue').textContent=count+' / '+systems.capacity(state);
     $('powerValue').textContent=p.generation+' / '+p.demand;
-    $('foodValue').textContent=fmt(r.food);
-    $('waterValue').textContent=fmt(r.water);
+    $('foodValue').textContent=r.food.toFixed(1);
+    $('waterValue').textContent=r.water.toFixed(1);
+    $('fuelValue').textContent=r.fuel.toFixed(1);
+    $('medsValue').textContent=r.meds.toFixed(1);
     $('scrapValue').textContent=fmt(r.scrap);
     $('partsValue').textContent=fmt(r.parts);
-    const morale=state.survivors.reduce((a,v)=>a+v.morale,0)/state.survivors.length;
+    const morale=state.survivors.reduce((a,v)=>a+v.morale,0)/Math.max(state.survivors.length,1);
     $('moraleValue').textContent=Math.round(morale)+'%';
     $('dayClock').textContent=timeString();
     const hour=Math.floor((state.minutes%1440)/60);
     $('dayPhase').textContent=hour>=7&&hour<19?'SURFACE DAYLIGHT':'SURFACE NIGHT';
-    $('worldStatus').textContent=state.rooms.length?'EXPANDING SHELTER':'UNDEVELOPED';
-    $('worldSubStatus').textContent=state.rooms.length ? state.rooms.length+' BUILT ROOMS · '+state.projects.filter(p=>p.status==='active').length+' WORK ORDERS' : 'NO FUNCTIONAL ROOMS';
+    $('worldStatus').textContent=state.threat?'HOSTILE BREACH':state.rooms.length?'EXPANDING SHELTER':'UNDEVELOPED';
+    $('worldSubStatus').textContent=state.rooms.length ? state.rooms.length+' BUILT ROOMS · '+state.projects.filter(p=>p.status==='active').length+
+      ' WORK ORDERS' : 'NO FUNCTIONAL ROOMS';
     $('pauseBtn').textContent=state.paused?'▶':'Ⅱ';
     document.querySelectorAll('.speed').forEach(b=>b.classList.toggle('active',Number(b.dataset.speed)===state.speed));
     $('worldLabel').textContent=state.rooms.length?'SECTOR 01 · DEVELOPING SHELTER':'SECTOR 01 · ABANDONED ENTRY';
-    const tutorialComplete=Object.values(state.tutorialFlags).every(Boolean);
-    if(tutorialComplete&&state.tutorialEnabled){$('tutorialNote').textContent='Orientation complete. The shelter is yours to develop. You can hide this guide anytime.';}
+    const rate=state.resourceRate||{food:0,water:0,fuel:0};
+    const show=(v)=>((v>=0?'+':'')+Number(v).toFixed(1));
+    $('ratesValue').textContent='Food '+show(rate.food)+'/min · Water '+show(rate.water)+
+      '/min · Fuel '+show(rate.fuel)+'/min';
+    $('powerDetails').textContent=(p.lit?(p.spare>=0?'GRID STABLE · '+p.spare+' SPARE':'POWER DEFICIT · '+Math.abs(p.spare)+' SHORT'):
+      'NO GRID POWER · INSTALL A GENERATOR')+' · AIR '+Math.round(state.airQuality)+'%';
+    $('powerDetails').style.color=p.spare<0?'#f0ab82':'#bed0c5';
+    renderArrivals();renderCrisisSummary();
+    showLoss();
   }
   function renderTutorial(){
     const panel=$('tutorialPanel');
     panel.classList.toggle('hidden',!state.tutorialEnabled);
     const steps=[
-      ['inspect','Inspect a survivor'],
-      ['dig','Mark an excavation'],
-      ['assign','Assign a digger'],
-      ['build','Finish your first room'],
-      ['scavenge','Return from scavenging']
+      ['inspect','Meet your team','Inspect a survivor',
+       'You have three people, each with different skills. Open the right panel to see who can help.'],
+      ['dig','Clear a safe room','Excavate ground',
+       'Choose EXCAVATE and drag across the glowing ground next to the entrance. The walls are real, so you must dig them out.'],
+      ['assign','Send a worker','Assign a digger',
+       'Select your excavation order. Pick Mara, Eli or Iris and press CONFIRM & ASSIGN CREW. They will physically walk to the work.'],
+      ['build','Build your first facility','Construct a room',
+       'Once the area is clear, choose a generator, drag sideways across two clear rows, and assign a builder.'],
+      ['staff','Put somebody to work','Staff a facility',
+       'Click the new room, then assign someone to run it. An unstaffed generator makes only emergency power.'],
+      ['scavenge','Resupply the shelter','Explore a location',
+       'Open the WASTELAND MAP, send a free resident, search rooms, then bring your supplies home.'],
+      ['recruit','Welcome a survivor','Accept a visitor',
+       'Build sleeping quarters to create beds. When somebody reaches the hatch, decide whether to admit them.']
     ];
+    const done=steps.filter(row=>state.tutorialFlags[row[0]]).length;
     $('tutorialTasks').innerHTML=steps.map(([k,label],i)=>
       '<div class="tutorial-task'+(state.tutorialFlags[k]?' done':'')+'"><strong>'+(state.tutorialFlags[k]?'✓':String(i+1).padStart(2,'0'))+'</strong><span>'+label+'</span></div>').join('');
-    const next=steps.find(([k])=>!state.tutorialFlags[k]);
-    const tips={
-      inspect:'Click one of your three survivors to inspect their condition and Strength.',
-      dig:'Select EXCAVATE on the left, then drag a rectangle in the glowing earth to the right of the entry passage.',
-      assign:'Select the marked dig zone, choose which resident will work, and confirm the crew in the right panel.',
-      build:'Once you have two clear rows, choose a room on the left. Drag across the empty space, then assign a builder.',
-      scavenge:'Open WASTELAND MAP, deploy a resident, explore rooms, then bring your findings home.'
-    };
-    $('tutorialNote').textContent=next?tips[next[0]]:'Orientation complete. The shelter is yours to develop.';
+    const next=steps.find(row=>!state.tutorialFlags[row[0]]);
+    if(next){
+      $('objectiveFocus').innerHTML='<span class="eyebrow">NEXT STEP / '+(done+1)+' OF '+steps.length+
+        '</span><strong>'+next[1]+'</strong><p>'+next[3]+'</p>';
+      $('tutorialNote').textContent='Only this objective needs your attention right now. Everything else can wait.';
+      $('tutorialAction').classList.remove('hidden');
+      $('tutorialAction').textContent=next[0]==='recruit'?'SHOW VISITORS / HOUSING →':"TAKE ME TO THIS STEP →";
+    }else{
+      $('objectiveFocus').innerHTML='<strong>YOU HAVE THE CONTROLS.</strong><p>All initial tasks completed. Expand or explore at your own pace. You can still reopen this guide.</p>';
+      $('tutorialNote').textContent='Orientation completed · '+steps.length+' / '+steps.length;
+      $('tutorialAction').classList.add('hidden');
+    }
     const target=next?next[0]:null;
     document.querySelectorAll('.tool').forEach(b=>b.classList.toggle('tutorial-highlight',state.tutorialEnabled &&
       ((target==='inspect'&&b.dataset.tool==='inspect')||(target==='dig'&&b.dataset.tool==='dig'))));
-    document.querySelectorAll('.build-choice').forEach(b=>b.classList.toggle('tutorial-highlight',state.tutorialEnabled&&target==='build'&&b.dataset.room==='generator'));
+    document.querySelectorAll('.build-choice').forEach(b=>b.classList.toggle('tutorial-highlight',state.tutorialEnabled &&
+      ((target==='build'&&b.dataset.room==='generator')||(target==='recruit'&&b.dataset.room==='bunks'))));
     $('expeditionsBtn').classList.toggle('tutorial-highlight',state.tutorialEnabled&&target==='scavenge');
+    $('peopleBtn').classList.toggle('tutorial-highlight',state.tutorialEnabled&&target==='staff');
+  }
+  function guideNext(){
+    const order=['inspect','dig','assign','build','staff','scavenge','recruit'];
+    const next=order.find(k=>!state.tutorialFlags[k]);
+    if(!next)return;
+    if(next==='inspect'){selection=null;renderInspector();toast('Click a survivor on the right to inspect their skills.');}
+    if(next==='dig'){setTool('dig');panToHatch();toast('Drag across the golden glowing earth just right of the entrance.');}
+    if(next==='assign'){
+      const p=state.projects.find(p=>p.kind==='dig' && (p.status==='planned'||p.status==='active'));
+      if(p){selection={kind:'project',id:p.id};chosenWorkers=new Set(p.workers);renderInspector();}
+      else {setTool('dig');toast('First select some ground to dig.');}
+    }
+    if(next==='build'){setTool('build','generator');panToHatch();toast('Drag across an excavated space, then assign a builder.');}
+    if(next==='staff'){
+      const room=state.rooms[0];
+      if(room){selection={kind:'room',id:room.id};renderInspector();}
+      else {setTool('build','generator');toast('Construct a room first.');}
+    }
+    if(next==='scavenge')openExpedition();
+    if(next==='recruit'){
+      if(state.arrivals.length){renderArrivals();toast('Choose whether to welcome the person at the hatch.');}
+      else {setTool('build','bunks');toast('Build sleeping quarters, then watch for arrivals at the hatch.');}
+    }
   }
   function bar(value,label){
     return '<div class="stat"><div class="stat-header"><span>'+label+'</span><strong>'+Math.round(value)+'%</strong></div>'+
@@ -851,73 +1155,275 @@
       '<button class="secondary-btn" data-action="back" type="button">← ALL SURVIVORS</button></div>';
   }
   function renderInspector(){
-    const body=$('inspectorBody');
+    const body=$('inspectorBody'),systems=window.VDSystems;
+    const residentButtons=state.survivors.map(s=>{
+      const dead=s.dead?' · DEAD':'';
+      return '<div class="survivor-card'+(s.dead?' dead':'')+'" role="button" tabindex="0" data-action="inspect-resident" data-id="'+s.id+'">'+
+        '<div class="avatar">'+s.name[0]+'</div><div><div class="resident-title">'+s.name+dead+'</div>'+
+        '<div class="resident-sub">'+s.role+' · LV '+s.level+' · STR '+s.skills.S+'</div>'+
+        '<div class="mini-state">'+(s.jobRoom?('WORKING · '+(ROOM_TYPES[systems.room(state,s.jobRoom)?.type]?.name||'Assigned')):s.state.toUpperCase())+
+        ' · HP '+Math.ceil(s.health)+'</div></div></div>';
+    }).join('');
     if(!selection){
-      $('inspectorTitle').textContent='Your survivors';
-      $('inspectorSubtitle').textContent='Three people. All shelter work is physical.';
+      $('inspectorTitle').textContent='Your residents';
+      $('inspectorSubtitle').textContent=systems.alive(state).length+' living · '+systems.capacity(state)+' bed capacity · Manage individually';
       const jobs=state.projects.filter(p=>p.status==='active'||p.status==='planned');
-      body.innerHTML=state.survivors.map(s=>
-        '<div class="survivor-card" role="button" tabindex="0" data-action="inspect-resident" data-id="'+s.id+'">'+
-        '<div class="avatar">'+s.name[0]+'</div><div><div class="resident-title">'+s.name+'</div>'+
-        '<div class="resident-sub">'+s.role+' · STR '+s.strength+'</div><div class="mini-state">'+s.state.toUpperCase()+'</div></div></div>').join('')+
-        '<div class="divider"></div><p class="small-head">Active work orders</p>'+
-        (jobs.length?jobs.map(p=>'<button class="worker-choice" data-action="inspect-project" data-id="'+p.id+'"><span>'+(p.kind==='dig'?'⚒ Excavation':'▣ '+ROOM_TYPES[p.roomType].name)+'</span><small>'+p.status.toUpperCase()+'</small></button>').join(''):'<p class="helper">No active work orders. Start by marking an excavation area.</p>');
+      const working=state.survivors.filter(r=>r.jobRoom&&!r.dead).length;
+      body.innerHTML='<p class="small-head">RESIDENT ROSTER</p>'+residentButtons+
+        '<p class="inspector-info">Staffed facilities: '+working+' assigned. Click a resident to change their job, shift, equipment or medical care.</p>'+
+        '<div class="divider"></div><p class="small-head">OPEN WORK ORDERS</p>'+
+        (jobs.length?jobs.map(p=>'<button class="worker-choice" data-action="inspect-project" data-id="'+p.id+'"><span>'+
+          (p.kind==='dig'?'⚒ Excavation':p.kind==='rescue'?'⚠ Rescue':'▣ '+ROOM_TYPES[p.roomType].name)+
+          '</span><small>'+p.status.toUpperCase()+'</small></button>').join(''):
+          '<p class="helper">No work orders. You can dig a new room, explore the wasteland or manage your staff.</p>');
       return;
     }
     if(selection.kind==='resident'){
-      const s=state.survivors.find(r=>r.id===selection.id);
-      if(!s){selection=null;renderInspector();return;}
-      $('inspectorTitle').textContent=s.name;
-      $('inspectorSubtitle').textContent='Personal condition · '+s.role;
-      body.innerHTML=detailSummary(s);return;
+      const r=systems.get(state,selection.id);
+      if(!r){selection=null;renderInspector();return;}
+      $('inspectorTitle').textContent=r.name;
+      $('inspectorSubtitle').textContent='Level '+r.level+' · '+r.role+' · Age '+r.age+' · '+r.state;
+      const jobOptions='<option value="">Unassigned / general duty</option>'+state.rooms.map(room=>
+        '<option value="'+room.id+'"'+(r.jobRoom===room.id?' selected':'')+'>'+
+        ROOM_TYPES[room.type].name+' · '+systems.getRoomWorkers(state,room.id).length+' active</option>').join('');
+      const statLabels={S:'Strength',P:'Perception',E:'Endurance',C:'Charisma',I:'Intelligence',A:'Agility',L:'Luck'};
+      const skills='<div class="attribute-grid">'+Object.entries(statLabels).map(([k,label])=>
+        '<div title="'+label+'"><span>'+k+'</span><strong>'+r.skills[k]+'</strong></div>').join('')+'</div>';
+      body.innerHTML='<div class="detail-card"><div class="small-head">'+r.name+'</div>'+
+        '<span class="pill '+(r.dead||r.trapped?'warn':'')+'">'+(r.dead?'DECEASED':r.trapped?'TRAPPED':r.state.toUpperCase())+'</span>'+
+        '<p class="inspector-info">Age '+r.age+' · Level '+r.level+' · Defence '+r.weapon+' · Loyalty '+Math.round(r.loyalty)+'% · Shift '+r.shift+'</p>'+skills+
+        bar(r.health,'Health')+bar(r.energy,'Energy')+bar(r.hunger,'Hunger')+bar(r.thirst,'Hydration')+
+        bar(r.morale,'Morale')+(r.infection?bar(r.infection,'Infection level'):'')+
+        '<div class="divider"></div><label class="management-label" for="residentJob">WORK ASSIGNMENT</label>'+
+        '<select class="management-select" id="residentJob" data-resident="'+r.id+'" '+(r.dead||r.child?'disabled':'')+'>'+jobOptions+'</select>'+
+        '<label class="management-label" for="residentShift">WORK SCHEDULE</label>'+
+        '<select class="management-select" id="residentShift" data-resident="'+r.id+'" '+(r.dead?'disabled':'')+'>'+
+        ['flex','day','night'].map(v=>'<option value="'+v+'" '+(r.shift===v?'selected':'')+'>'+({flex:'Flexible / any time',day:'Day shift',night:'Night shift'}[v])+'</option>').join('')+'</select>'+
+        '<button class="management-control" data-action="equip" data-id="'+r.id+'" '+(r.dead?'disabled':'')+'>⚒ Upgrade defensive gear · 3 salvage, 1 component</button>'+
+        '<button class="management-control" data-action="negotiate" data-id="'+r.id+'" '+(r.dead?'disabled':'')+'>♡ Negotiate / improve morale · 1 ration, 1 water</button>'+
+        '<button class="management-control" data-action="heal" data-id="'+r.id+'" '+(r.dead?'disabled':'')+'>✚ Medical treatment · 1 medicine</button>'+
+        (r.dead?'<button class="management-control" data-action="revive" data-id="'+r.id+'">✚ Revive in medical bay · 3 medicine</button>':
+          '<button class="management-control" data-action="'+(r.defending?'stand-down':'defend')+'" data-id="'+r.id+'">'+
+          (r.defending?'◌ Stand down from defence':'◇ Assign to emergency defence')+'</button>')+
+        '<button class="secondary-btn" data-action="focus-resident" data-id="'+r.id+'">⌖ LOCATE IN WORLD</button>'+
+        '<button class="secondary-btn" data-action="back">← ALL RESIDENTS</button></div>';return;
     }
     if(selection.kind==='room'){
-      const room=state.rooms.find(r=>r.id===selection.id);
-      if(!room){selection=null;renderInspector();return;}
-      const def=ROOM_TYPES[room.type];
+      const rm=systems.room(state,selection.id);
+      if(!rm){selection=null;renderInspector();return;}
+      const def=ROOM_TYPES[rm.type],data=powerData(),crew=state.survivors.filter(r=>r.jobRoom===rm.id&&!r.dead);
       $('inspectorTitle').textContent=def.name;
-      $('inspectorSubtitle').textContent='Constructed · level '+room.y+' · '+room.width+' tiles wide';
-      const p=powerData();
+      $('inspectorSubtitle').textContent='Level '+rm.y+' · '+rm.width+' tiles wide · '+crew.length+' assigned';
+      const descriptions={
+        generator:'Generates 3 emergency power automatically; staff residents to increase output. Consumes fuel continuously.',
+        bunks:'Expands capacity and allows exhausted residents to recover faster when electricity is available.',
+        water:'Staff with high-Perception residents to turn electricity into clean drinking water.',
+        garden:'Staff with high-Agility residents to grow steady food supplies.',
+        medbay:'Staff with high-Intelligence residents to produce medical supplies and treat injuries.',
+        radio:'Staff with high-Charisma residents to attract more surface refugees.',
+        security:'Equip defenders and monitor the settlement. Powered security posts enable surveillance in hostile sectors.',
+        storage:'Expands storage limits for salvaged metal, food, medicine, components and fuel. Uses lighting power.',
+        ventilation:'Circulates clean air. Staff with capable residents to improve deep shelter oxygen recovery.',
+        training:'Residents practice a chosen attribute here and steadily develop that skill. Requires electricity.',
+        workshop:'Staff a powered workshop to craft medicine, fuel and components from salvage.'
+      };
       body.innerHTML='<div class="detail-card"><p class="small-head">ROOM OPERATIONS</p>'+
-        '<span class="pill '+(!roomActive(room)?'warn':'')+'">'+(roomActive(room)?'OPERATIONAL':'OFFLINE · NO POWER')+'</span>'+
-        '<p class="helper">'+(room.type==='generator'?'Provides '+def.power+' grid power.':
-          room.type==='bunks'?'Improves resident recovery while resting.':
-          room.type==='water'?'Produces 2 water every production cycle while powered.':
-          'Produces 2 rations every production cycle while powered.')+'</p>'+
-        '<p class="inspector-info">Grid '+p.generation+' generated / '+p.demand+' required</p>'+
+        '<span class="pill '+(!roomActive(rm)?'warn':'')+'">'+
+        (rm.captured?'OCCUPIED BY HOSTILES':roomActive(rm)?'POWERED':'OFFLINE / SHED FROM GRID')+'</span>'+
+        '<p class="helper">'+descriptions[rm.type]+'</p>'+bar(rm.integrity,'Structural integrity')+
+        '<p class="small-econ">'+(rm.type==='generator'?'Burns fuel to provide power':'Consumes '+systems.ROOMS[rm.type].draw+' power')+' · Grid '+data.generation+'/'+data.demand+
+        ' · '+crew.length+' assigned · Room air '+Math.round(rm.air??95)+'%</p>'+
+        '<p class="small-head">ASSIGN A RESIDENT</p>'+
+        state.survivors.filter(r=>!r.dead).map(r=>
+          '<button class="worker-choice" data-action="assign-room" data-id="'+r.id+'" data-room="'+rm.id+'">'+
+          '<span>'+(r.jobRoom===rm.id?'✓ ':'○ ')+r.name+'</span><small>'+systems.ROOMS[rm.type].skill+' '+r.skills[systems.ROOMS[rm.type].skill]+'</small></button>').join('')+
+        (rm.type==='bunks'?
+          '<p class="small-head">FAMILY GROWTH</p><p class="helper">Two adult residents may plan a family in functioning living quarters when morale is healthy and a bed is free.</p>'+
+          '<select class="management-select" id="familyParentA">'+
+          state.survivors.filter(r=>!r.dead&&!r.child).map(r=>'<option value="'+r.id+'">'+r.name+'</option>').join('')+'</select>'+
+          '<select class="management-select" id="familyParentB">'+
+          state.survivors.filter(r=>!r.dead&&!r.child).map((r,i)=>'<option value="'+r.id+'" '+(i===1?'selected':'')+'>'+r.name+'</option>').join('')+'</select>'+
+          '<button class="management-control" data-action="start-family">♡ START A FAMILY</button>'+
+          '<p class="inspector-info">'+state.familyPlans.length+' family plan(s) in progress</p>':'')+
+        (rm.type==='training'?
+          '<label class="management-label">TRAINING FOCUS</label><select class="management-select" id="trainingFocus" data-room="'+rm.id+'">'+
+          ['S','P','E','C','I','A','L'].map(v=>'<option value="'+v+'" '+((rm.focus||'S')===v?'selected':'')+'>'+v+' · '+({S:'Strength',P:'Perception',E:'Endurance',C:'Charisma',I:'Intelligence',A:'Agility',L:'Luck'}[v])+'</option>').join('')+
+          '</select>':'')+
+        (rm.type==='workshop'?
+          '<p class="small-head">CRAFT SUPPLIES</p>'+
+          '<button class="management-control" data-action="craft" data-kind="medicine">✚ Medicine · 3 salvage, 1 component → 2 meds</button>'+
+          '<button class="management-control" data-action="craft" data-kind="fuel">♨ Fuel · 4 salvage, 1 component → 3 fuel</button>'+
+          '<button class="management-control" data-action="craft" data-kind="components">⬡ Components · 7 salvage → 2 parts</button>':'')+
+        '<label class="management-label">POWER PRIORITY</label>'+
+        '<select class="management-select" id="roomPriority" data-room="'+rm.id+'">'+
+        [1,2,3].map(v=>'<option value="'+v+'" '+((rm.priority||2)===v?'selected':'')+'>'+({1:'Critical',2:'Normal',3:'Low'}[v])+'</option>').join('')+'</select>'+
+        '<button class="management-control" data-action="upgrade-room" data-id="'+rm.id+'" '+(rm.level>=3?'disabled':'')+
+          '>⬆ UPGRADE TO LEVEL '+Math.min(3,rm.level+1)+' · '+window.VDSystems.upgradeCost(rm).scrap+
+          ' salvage / '+window.VDSystems.upgradeCost(rm).parts+' components</button>'+
+        (['garden','water','medbay'].includes(rm.type)?
+          '<button class="management-control" data-action="rush-room" data-id="'+rm.id+'">ϟ RUSH PRODUCTION · '+Math.round(window.VDSystems.rushRisk(state,rm.id)*100)+'% fire risk</button>':'')+
+        '<button class="secondary-btn" data-action="repair" data-id="'+rm.id+'">⚒ REPAIR / RECLAIM (3 SALVAGE)</button>'+
+        '<button class="secondary-btn" data-action="back">← SETTLEMENT</button></div>';return;
+    }
+    if(selection.kind==='door'){
+      const door=state.doors.find(d=>d.id===selection.id);
+      if(!door){selection=null;renderInspector();return;}
+      $('inspectorTitle').textContent='Blast-door chamber';
+      $('inspectorSubtitle').textContent='Physical security checkpoint';
+      body.innerHTML='<div class="detail-card"><p class="small-head">'+(door.closed?'SEALED':'OPEN')+
+        ' · INTEGRITY '+Math.ceil(door.hp)+'</p>'+bar(door.hp,'Door durability')+
+        '<p class="helper">A closed door blocks residents and intruders. Make sure you do not trap your own people in the wrong sector.</p>'+
+        '<button class="primary-btn" data-action="toggle-door" data-id="'+door.id+'">'+(door.closed?'OPEN DOOR':'LOCK DOWN DOOR')+'</button>'+
+        '<button class="secondary-btn" data-action="repair" data-id="'+door.id+'">REPAIR DOOR · 3 SALVAGE</button>'+
         '<button class="secondary-btn" data-action="back">← SETTLEMENT</button></div>';return;
     }
     if(selection.kind==='project'){
       const p=projectFor(selection.id);
       if(!p){selection=null;renderInspector();return;}
-      $('inspectorTitle').textContent=p.kind==='dig'?'Excavation order':'Construction order';
-      $('inspectorSubtitle').textContent=p.kind==='dig'?'Manual digging · partial progress is saved':ROOM_TYPES[p.roomType].name+' · '+p.width+' tiles wide';
+      const rescue=p.kind==='rescue';
+      $('inspectorTitle').textContent=rescue?'Emergency rescue':p.kind==='dig'?'Excavation order':p.kind==='upgrade'?'Facility upgrade':'Construction order';
+      $('inspectorSubtitle').textContent=rescue?'Manual crew rescue · trapped survivors need oxygen':p.kind==='dig'?
+        'Manual digging · progress is saved':ROOM_TYPES[p.roomType].name+' · '+p.width+' tiles wide';
       const done=p.kind==='dig'?p.cells.filter(c=>!state.terrain[c.y][c.x]).length:0;
-      const progress=p.kind==='dig'?done/Math.max(p.cells.length,1)*100:p.progress/(13+p.width*.6)*100;
-      if(p.status==='planned' && !chosenWorkers.size && p.workers.length)chosenWorkers=new Set(p.workers);
-      const workers=state.survivors.map(r=>{
-        const assigned=chosenWorkers.has(r.id);
-        const busy=r.taskId&&r.taskId!==p.id;
-        const away=state.expedition&&state.expedition.crew.includes(r.id);
-        return '<button class="worker-choice '+(assigned?'chosen':'')+'" data-action="choose-worker" data-id="'+r.id+'"'+(away?' disabled':'')+'>'+
+      const progress=rescue?p.progress/22*100:p.kind==='dig'?done/Math.max(p.cells.length,1)*100:p.progress/(13+p.width*.6)*100;
+      if(p.status==='planned'&&!chosenWorkers.size&&p.workers.length)chosenWorkers=new Set(p.workers);
+      const workers=state.survivors.filter(r=>!r.dead).map(r=>{
+        const assigned=chosenWorkers.has(r.id),busy=r.taskId&&r.taskId!==p.id,
+          away=state.expedition&&state.expedition.crew.includes(r.id);
+        return '<button class="worker-choice '+(assigned?'chosen':'')+'" data-action="choose-worker" data-id="'+r.id+'"'+(away||r.trapped||r.child?' disabled':'')+'>'+
           '<span>'+(assigned?'✓ ':'○ ')+r.name+(busy?' · REASSIGN':'')+'</span><small>STR '+r.strength+'</small></button>';
       }).join('');
-      const costs=p.kind==='build'?ROOM_TYPES[p.roomType].cost:null;
+      const costs=p.kind==='build'?ROOM_TYPES[p.roomType].cost:p.kind==='upgrade'?p.cost:null;
       body.innerHTML='<div class="detail-card"><span class="pill '+(p.status==='planned'?'warn':'')+'">'+p.status.toUpperCase()+'</span>'+
-        '<p class="small-head" style="margin-top:14px">'+(p.kind==='dig'?p.cells.length+' EARTH TILES':ROOM_TYPES[p.roomType].name.toUpperCase())+'</p>'+
-        '<p class="helper">'+(p.kind==='dig'?'Residents physically move along accessible passages, dig reachable terrain, and keep partial progress after breaks.':
-          'Workers must walk to the cleared construction area before assembling equipment.')+'</p>'+
+        '<p class="small-head" style="margin-top:14px">'+(rescue?'TRAPPED PERSON / RUBBLE CLEARANCE':p.kind==='dig'?p.cells.length+' EARTH TILES':ROOM_TYPES[p.roomType].name.toUpperCase()+(p.kind==='upgrade'?' LEVEL '+(window.VDSystems.room(state,p.roomId)?.level+1):''))+'</p>'+
+        '<p class="helper">'+(rescue?'Rescuers must access the collapsed area and clear rubble before the trapped resident runs out of air.':
+          p.kind==='dig'?'Workers travel along accessible passages and physically dig reachable earth.':
+          'Builders walk to the cleared room, carrying the required salvage and components.')+'</p>'+
         '<div class="stat"><div class="stat-header"><span>Progress</span><strong>'+Math.round(progress)+'%</strong></div>'+
         '<div class="progress-track"><div class="progress-fill" style="width:'+bound(progress,0,100)+'%"></div></div></div>'+
-        (costs?'<p class="inspector-info">Cost: '+costs.scrap+' salvage'+(costs.parts?', '+costs.parts+' components':'')+
-          (p.status==='active'?' · RESERVED':' · DUE ON CONFIRM')+'</p>':'')+
-        '<p class="small-head">ASSIGN SPECIFIC RESIDENTS</p>'+workers+
+        (costs?'<p class="inspector-info">Cost: '+costs.scrap+' salvage'+(costs.parts?', '+costs.parts+' components':'')+'</p>':'')+
+        '<p class="small-head">SELECT YOUR WORK CREW</p>'+workers+
         '<button class="primary-btn" data-action="start-project" data-id="'+p.id+'">'+(p.status==='planned'?'CONFIRM & ASSIGN CREW':'UPDATE WORK CREW')+' →</button>'+
         '<button class="secondary-btn" data-action="cancel-project" data-id="'+p.id+'">CANCEL WORK ORDER</button>'+
         '<button class="secondary-btn" data-action="back">← RETURN TO SETTLEMENT</button></div>';return;
     }
   }
-  function showIntro() {$('introModal').classList.toggle('hidden',state.introSeen);}
+  function applySystem(result){
+    if(!result?.ok){toast(result?.error||'This action is unavailable.');return false;}
+    updateHud();renderInspector();renderArrivals();renderSecurity();saveGame();return true;
+  }
+  function renderArrivals(){
+    const dock=$('arrivalDock');
+    if(!state.arrivals.length){dock.innerHTML='';return;}
+    const room=window.VDSystems.capacity(state),pop=window.VDSystems.alive(state).length;
+    dock.innerHTML='<strong>♙ '+state.arrivals.length+' PERSON'+(state.arrivals.length===1?'':'S')+' WAITING AT THE HATCH</strong>'+
+      '<p>New survivors do not join automatically. Review them and choose what happens next. Beds: '+pop+' / '+room+'.</p>'+
+      state.arrivals.map(a=>'<div class="visitor">'+a.candidate.name+' · '+a.candidate.role+
+        ' · Skilled in '+Object.entries(a.candidate.skills).sort((a,b)=>b[1]-a[1])[0][0]+
+        '<div class="arrival-actions"><button data-visitor="admit" data-id="'+a.id+'" '+(pop>=room?'disabled':'')+'>WELCOME SURVIVOR</button>'+
+        '<button data-visitor="reject" data-id="'+a.id+'">TURN AWAY</button></div></div>').join('')+
+      (pop>=room?'<p class="warning-message">No free beds. Build sleeping quarters before admitting anyone else.</p>':'');
+  }
+  function renderCrisisSummary(){
+    const root=$('crisisSummary'),threat=state.threat,events=state.incidents,traps=state.traps.filter(t=>!t.rescued);
+    if(!threat&&!events.length&&!traps.length){root.innerHTML='';return;}
+    root.innerHTML='<strong>⚠ ACTIVE EMERGENCY</strong>'+
+      '<p>'+(threat?(threat.kind==='ferals'?'FERAL OUTBREAK':'RAIDERS AT THE GATE')+' · '+
+        Math.ceil(threat.hp)+' attacker strength · ':'')+
+        (events.length?events.length+' interior incident(s) · ':'')+
+        (traps.length?traps.length+' trapped area(s)':'')+'</p>'+
+      '<button id="openCrisis" type="button">OPEN RESPONSE CENTER →</button>';
+  }
+  function renderSecurity(){
+    if($('securityModal').classList.contains('hidden'))return;
+    const dom=$('securityContent'),systems=window.VDSystems;
+    const raid=state.threat,incidents=state.incidents,traps=state.traps.filter(t=>!t.rescued);
+    const responders=systems.alive(state);
+    dom.innerHTML='<div class="security-list">'+
+      '<div class="security-item '+(raid?'warning':'')+'"><h3>External threats</h3>'+
+      (raid?'<p>'+raid.kind.toUpperCase()+' · HP '+Math.ceil(raid.hp)+' · '+raid.phase+
+        ' · '+raid.controlled.length+' rooms captured.</p>':
+        '<p>No raiders currently inside the shelter. Security remains your responsibility.</p>')+
+      '<p>Defenders with upgraded gear provide stronger resistance. They can be ordered to stand down after the alarm.</p>'+
+      (raid?responders.map(r=>'<button data-security="defend" data-id="'+r.id+'">'+
+        (r.defending?'✓ ':'◇ ')+r.name+'</button>').join(''):'')+
+      '<label style="display:flex;align-items:center;gap:10px;font-size:11px;margin-top:10px"><input id="autoLockdown" type="checkbox" '+
+        (state.autoLockdown?'checked':'')+'>Automatically close all installed doors during raids</label></div>'+
+      '<div class="security-item"><h3>Blast-door chambers · '+state.doors.length+'</h3>'+
+      (state.doors.length?state.doors.map(d=>
+        '<p>Checkpoint '+d.x+','+d.y+' · '+(d.closed?'SEALED':'OPEN')+' · '+Math.ceil(d.hp)+'% integrity'+
+        ' <button data-security="door" data-id="'+d.id+'">'+(d.closed?'OPEN':'SEAL')+'</button>'+
+        ' <button data-security="repair" data-id="'+d.id+'">REPAIR</button></p>').join(''):
+        '<p>None installed. Use the BLAST DOOR tool to build a chamber inside a two-sided corridor. It costs 7 salvage and 2 components.</p>')+'</div>'+
+      '<div class="security-item '+(incidents.length?'warning':'')+'"><h3>Internal emergencies</h3>'+
+      (incidents.length?incidents.map(e=>{
+        const r=systems.room(state,e.roomId);
+        return '<p>'+e.kind.toUpperCase()+' in '+(r?ROOM_TYPES[r.type].name:'Unknown room')+
+          ' · Severity '+Math.ceil(e.severity)+'. Assign someone to the affected room to contain it.</p>'+
+          responders.map(p=>'<button data-security="contain" data-id="'+p.id+'">'+p.name+'</button>').join('');
+      }).join(''):'<p>All rooms clear of fire and vermin.</p>')+'</div>'+
+      '<div class="security-item '+(traps.length?'warning':'')+'"><h3>Excavation rescue</h3>'+
+      (traps.length?traps.map(t=>'<p>Collapse at '+t.x+','+t.y+' · Oxygen '+Math.ceil(t.air)+'% · Survivor(s) '+
+        t.people.map(id=>systems.get(state,id)?.name||'Unknown').join(', ')+
+        '</p><button data-security="rescue" data-id="'+t.id+'">PLAN MANUAL RESCUE</button>'+
+        '<button data-security="trap-conserve" data-id="'+t.id+'">CONSERVE AIR</button>'+
+        '<button data-security="trap-clear" data-id="'+t.id+'">ATTEMPT SELF-RESCUE</button>').join(''):
+        '<p>No trapped residents. Deep excavations are more dangerous; keep a spare digger ready.</p>')+'</div>'+
+      '<div class="security-item"><h3>Overseer policies</h3>'+
+      '<p>Policies affect every resident. Rationing saves supplies but reduces morale; overtime keeps production moving at the cost of energy and trust.</p>'+
+      '<label class="policy-toggle"><input data-policy="rationing" type="checkbox" '+
+        (state.policy.rationing?'checked':'')+'> Emergency rationing</label>'+
+      '<label class="policy-toggle"><input data-policy="overtime" type="checkbox" '+
+        (state.policy.overtime?'checked':'')+'> Overtime shifts</label></div>'+
+      '<div class="security-item"><h3>Settlement conditions</h3>'+
+      '<p>'+state.rooms.filter(r=>r.captured).length+' rooms occupied · '+
+        state.survivors.filter(r=>r.infection>0&&!r.dead).length+' residents infected · '+
+        state.survivors.filter(r=>r.dead).length+' dead · '+
+        state.rooms.filter(r=>r.integrity<100).length+' damaged rooms.</p></div></div>';
+  }
+  function guideDoor(x,y){
+    const action=window.VDSystems.door(state,x,y,{report});
+    if(action.ok){selection={kind:'door',id:action.door.id};setToolKeepSelection('inspect');renderInspector();}
+    applySystem(action);
+  }
+  function guideLadder(x,y){
+    if(!valid(x,y) || !cellFree(x,y) || y<7 || y>=ROWS-1 || state.ladders.some(l=>l.x===x&&l.y===y)){
+      toast('Use a cleared shaft tile below the entrance, without an existing ladder.');return;
+    }
+    if(state.resources.scrap<2){toast('You need 2 salvage to build a ladder extension.');return;}
+    const vertical=neighbours(x,y).some(n=>n.x===x && (state.ladders.some(l=>l.x===n.x&&l.y===n.y) ||
+      (n.x===8&&n.y>=3&&n.y<=7)));
+    if(!vertical){toast('Ladder segments must connect vertically to an existing ladder.');return;}
+    state.resources.scrap-=2;state.ladders.push({x,y});
+    report('Ladder segment installed. The new vertical route is accessible.');
+    toast('LADDER CONNECTED');updateHud();saveGame();
+  }
+  function useSecurityCommand(action,id){
+    const systems=window.VDSystems;
+    let result;
+    if(action==='defend'){const r=systems.get(state,id);result=r?.defending?systems.standDown(state,id,{report}):systems.defend(state,id,{report});}
+    else if(action==='contain')result=systems.contain(state,id,{report});
+    else if(action==='door')result=systems.toggleDoor(state,id,{report});
+    else if(action==='repair')result=systems.repair(state,id,{report});
+    else if(action==='trap-conserve')result=systems.trappedOrder(state,id,'conserve',{report});
+    else if(action==='trap-clear')result=systems.trappedOrder(state,id,'clear',{report});
+    else if(action==='rescue'){
+      result=systems.rescue(state,id,{report});
+      if(result.ok){
+        selection={kind:'project',id:result.job.id};
+        chosenWorkers.clear();renderInspector();$('securityModal').classList.add('hidden');
+        toast('Rescue planned. Select your rescuers in the right panel.');
+      }
+    }
+    if(result)applySystem(result);
+  }
+  function showLoss(){
+    if(!state.loss)return;
+    if(!$('lossModal').classList.contains('hidden'))return;
+    $('lossReason').textContent=state.loss.reason+' You can inspect the remains, or start a new settlement.';
+    $('lossModal').classList.remove('hidden');
+  }
+    function showIntro() {$('introModal').classList.toggle('hidden',state.introSeen);}
   function openExpedition(){
     $('expeditionModal').classList.remove('hidden');
     viewedSite=state.expedition?state.expedition.site:viewedSite;
@@ -931,7 +1437,11 @@
       $('expeditionTitle').textContent='Surface survey';
       $('expeditionDescription').textContent='Select an abandoned location, choose your scavengers, then inspect rooms and recover supplies. Explored rooms stay empty.';
       const site=siteById(viewedSite),progress=state.sites.find(s=>s.id===site.id);
-      root.innerHTML='<div class="site-grid">'+SITES.map(s=>{
+      root.innerHTML='<div class="survey-strip"><button class="action-secondary" id="surveySite" type="button" '+
+        (state.discovery?'disabled':'')+'>'+ (state.discovery?
+          'SCOUTING NEW TERRITORY · '+Math.ceil(state.discovery.remaining)+'s REMAINING':
+          '⌖ SEND A SCOUT TO DISCOVER A NEW LOCATION · 1 FOOD + 1 WATER')+'</button></div>'+
+        '<div class="site-grid">'+allSites().map(s=>{
         const spent=state.sites.find(a=>a.id===s.id).rooms.filter(r=>r.searched).length;
         return '<button class="site-card '+(viewedSite===s.id?'active':'')+'" data-site="'+s.id+'">'+
           '<span class="site-tag">'+s.threat+'</span><strong>'+s.icon+' &nbsp; '+s.name+'</strong><small>'+s.subtitle+
@@ -940,8 +1450,8 @@
         '<p class="helper">'+(4-progress.rooms.filter(r=>r.searched).length)+' unexplored sectors remain. Your team will physically search each accessible room. Salvaging machinery takes longer than searching cabinets.</p>'+
         '<p class="small-head">CHOOSE SCAVENGERS (UP TO 2)</p>'+
         state.survivors.map(r=>{
-          const active=chosenCrew.has(r.id),busy=!!r.taskId;
-          return '<label class="expedition-avatar '+(active?'active':'')+'"><span>'+r.name+' · '+r.role+(busy?' · ON DUTY':'')+'</span>'+
+          const active=chosenCrew.has(r.id),busy=!!r.taskId||!!r.dead||!!r.trapped||!!r.child;
+          return '<label class="expedition-avatar '+(active?'active':'')+'"><span>'+r.name+' · '+r.role+(busy?' · UNAVAILABLE':'')+'</span>'+
             '<input type="checkbox" data-crew="'+r.id+'" '+(active?'checked ':'')+(busy?'disabled':'')+'></label>';
         }).join('')+
         '<button class="primary-btn" id="launchExpedition" type="button">DEPLOY SCAVENGING TEAM →</button></div>';
@@ -957,7 +1467,12 @@
           '" data-explore="'+i+'" '+(progress.rooms[i].searched||e.action?'disabled':'')+'>'+
           '<span class="room-icon">'+r.icon+'</span><strong>'+r.name+'</strong><small>'+(progress.rooms[i].searched?'SEARCHED':'CLICK TO '+r.kind.toUpperCase())+'</small></button>').join('')+'</div>'+
           '<div id="expeditionMessage" class="site-log">'+e.message+'</div>'+
-          '<p class="inspector-info">BACKPACK: '+lootString(e.loot)+'</p>'+
+          '<p class="inspector-info">BACKPACK: '+lootString(e.loot)+(e.rescued?' · '+e.rescued+' PERSON RESCUED':'')+'</p>'+
+          (e.action&&e.action.phase==='combat'?
+            '<div class="expedition-toolbar"><button class="primary-btn" id="fightExpedition">⚔ FIGHT HOSTILES</button>'+
+              '<button class="secondary-btn" id="retreatExpedition">RETREAT WITH SUPPLIES</button></div>':'')+
+          (e.action&&e.action.phase==='fighting'?
+            '<div class="expedition-progress">DEFENDING TEAM ENGAGED · ENEMY HP '+Math.ceil(e.action.enemyHp)+'</div>':'')+
           '<button class="primary-btn" id="returnExpedition" '+(e.action?'disabled':'')+' type="button">RETURN TO SHELTER WITH SUPPLIES →</button>';
         const scene=$('expeditionScene');
         scene.addEventListener('click',ev=>{
@@ -992,7 +1507,7 @@
     $('cancelReset').addEventListener('click',()=>{$('confirmModal').classList.add('hidden');});
     $('confirmReset').addEventListener('click',()=>{
       try{localStorage.removeItem(SAVE_KEY);}catch(err){}
-      state=makeNewGame();tool='inspect';buildType=null;selection=null;chosenWorkers.clear();
+      state=window.VDSystems.normalize(makeNewGame());tool='inspect';buildType=null;selection=null;chosenWorkers.clear();
       cameraInitialized=false;resizeCanvas();$('confirmModal').classList.add('hidden');showIntro();renderAll();saveGame();
     });
     $('startWithTutorial').addEventListener('click',()=>{
@@ -1012,6 +1527,35 @@
     $('zoomIn').addEventListener('click',()=>zoomAt(1.18));
     $('zoomOut').addEventListener('click',()=>zoomAt(1/1.18));
     $('expeditionsBtn').addEventListener('click',openExpedition);
+    $('tutorialAction').addEventListener('click',guideNext);
+    $('peopleBtn').addEventListener('click',()=>{selection=null;chosenWorkers.clear();renderInspector();toast('Choose a resident to assign a job or schedule.');});
+    $('securityBtn').addEventListener('click',()=>{$('securityModal').classList.remove('hidden');renderSecurity();});
+    $('closeSecurity').addEventListener('click',()=>{$('securityModal').classList.add('hidden');});
+    $('crisisSummary').addEventListener('click',ev=>{if(ev.target.closest('#openCrisis')){
+      $('securityModal').classList.remove('hidden');renderSecurity();}});
+    $('arrivalDock').addEventListener('click',ev=>{
+      const b=ev.target.closest('[data-visitor]');if(!b)return;
+      const cmd=b.dataset.visitor,id=b.dataset.id;
+      applySystem(cmd==='admit'?window.VDSystems.admit(state,id,{report}):
+        window.VDSystems.reject(state,id,{report}));
+      renderTutorial();
+    });
+    $('securityContent').addEventListener('click',ev=>{
+      const b=ev.target.closest('[data-security]');if(!b)return;
+      useSecurityCommand(b.dataset.security,Number(b.dataset.id));
+    });
+    $('securityContent').addEventListener('change',ev=>{
+      if(ev.target.id==='autoLockdown'){
+        state.autoLockdown=ev.target.checked;report('Automatic security lockdown '+(state.autoLockdown?'enabled':'disabled')+'.');saveGame();
+      }
+      if(ev.target.dataset.policy){
+        applySystem(window.VDSystems.setPolicy(state,ev.target.dataset.policy,ev.target.checked,{report}));
+      }
+    });
+    $('lossClose').addEventListener('click',()=>{$('lossModal').classList.add('hidden');});
+    $('lossRestart').addEventListener('click',()=>{
+      $('lossModal').classList.add('hidden');$('confirmModal').classList.remove('hidden');
+    });
     $('closeExpedition').addEventListener('click',closeExpedition);
     $('expeditionContent').addEventListener('click',ev=>{
       const site=ev.target.closest('[data-site]');
@@ -1019,7 +1563,10 @@
       const explore=ev.target.closest('[data-explore]');
       if(explore){exploreRoom(Number(explore.dataset.explore));return;}
       if(ev.target.closest('#launchExpedition'))launchExpedition();
+      if(ev.target.closest('#surveySite'))startSurvey();
       if(ev.target.closest('#returnExpedition'))recallExpedition();
+      if(ev.target.closest('#fightExpedition'))fightExpedition();
+      if(ev.target.closest('#retreatExpedition'))retreatExpedition();
     });
     $('expeditionContent').addEventListener('change',ev=>{
       const c=ev.target.closest('[data-crew]');if(!c)return;
@@ -1036,11 +1583,46 @@
       else if(action==='choose-worker')chooseWorker(id);
       else if(action==='start-project')startProject(id);
       else if(action==='cancel-project')cancelProject(id);
+      else if(action==='start-family')applySystem(window.VDSystems.startFamily(state,
+        Number($('familyParentA').value),Number($('familyParentB').value),{report}));
+      else if(action==='upgrade-room')requestUpgrade(id);
+      else if(action==='rush-room')applySystem(window.VDSystems.rush(state,id,{report}));
+      else if(action==='craft')applySystem(window.VDSystems.craft(state,el.dataset.kind,{report}));
+      else if(action==='negotiate')applySystem(window.VDSystems.negotiate(state,id,{report}));
+      else if(action==='assign-room'){
+        applySystem(window.VDSystems.assignment(state,id,Number(el.dataset.room),{report}));
+        flag('staff');renderTutorial();
+      }
+      else if(action==='heal')applySystem(window.VDSystems.heal(state,id,{report}));
+      else if(action==='revive')applySystem(window.VDSystems.revive(state,id,{report}));
+      else if(action==='equip')applySystem(window.VDSystems.equip(state,id,{report}));
+      else if(action==='defend')applySystem(window.VDSystems.defend(state,id,{report}));
+      else if(action==='stand-down')applySystem(window.VDSystems.standDown(state,id,{report}));
+      else if(action==='toggle-door')applySystem(window.VDSystems.toggleDoor(state,id,{report}));
+      else if(action==='repair')applySystem(window.VDSystems.repair(state,id,{report}));
       else if(action==='focus-resident'){
         const r=state.survivors.find(s=>s.id===id);
         if(r){camera.x=(r.x+.5)*T-screenWidth/camera.zoom/2;camera.y=(r.y+.5)*T-screenHeight/camera.zoom/2;clampCamera();}
       }
       else if(action==='back'){selection=null;chosenWorkers.clear();renderInspector();}
+    });
+    $('inspectorBody').addEventListener('change',ev=>{
+      const el=ev.target;
+      if(el.id==='residentJob'){
+        const id=Number(el.dataset.resident),roomId=Number(el.value);
+        const result=roomId?window.VDSystems.assignment(state,id,roomId,{report}):
+          window.VDSystems.unassign(state,id,{report});
+        if(applySystem(result)&&roomId){flag('staff');renderTutorial();}
+      }
+      if(el.id==='residentShift')applySystem(window.VDSystems.shift(state,Number(el.dataset.resident),el.value,{report}));
+      if(el.id==='trainingFocus'){
+        const rm=state.rooms.find(r=>r.id===Number(el.dataset.room));
+        if(rm){rm.focus=el.value;report('Training center focus updated to '+el.value+'.');saveGame();}
+      }
+      if(el.id==='roomPriority'){
+        const room=state.rooms.find(r=>r.id===Number(el.dataset.room));
+        if(room){room.priority=Number(el.value);report('Power priority updated.');updateHud();saveGame();}
+      }
     });
     $('inspectorBody').addEventListener('keydown',ev=>{
       if((ev.key==='Enter'||ev.key===' ')&&ev.target.dataset.action==='inspect-resident'){
@@ -1072,8 +1654,20 @@
       try{if(canvas.hasPointerCapture(ev.pointerId))canvas.releasePointerCapture(ev.pointerId);}catch(err){}
       if(old.kind==='dig')markZone(old.start,old.current);
       else if(old.kind==='build')placeRoom(old.start,old.current);
+      else if(old.kind==='door')guideDoor(old.current.x,old.current.y);
+      else if(old.kind==='ladder')guideLadder(old.current.x,old.current.y);
       else if(!old.moved){
         const pt=screenToWorld(screenPosition(ev));
+        const click=pointToTile(screenPosition(ev));
+        const blast=state.doors.find(d=>d.x===click.x&&d.y===click.y);
+        if(blast){selection={kind:'door',id:blast.id};renderInspector();return;}
+        const trapped=state.traps.find(t=>!t.rescued&&t.x===click.x&&t.y===click.y);
+        if(trapped){
+          const p=state.projects.find(p=>p.kind==='rescue'&&p.rescueId===trapped.id&&p.status!=='cancelled');
+          if(p){selection={kind:'project',id:p.id};chosenWorkers=new Set(p.workers);renderInspector();}
+          else useSecurityCommand('rescue',trapped.id);
+          return;
+        }
         const resident=state.survivors.find(r=>
           !(state.expedition&&state.expedition.crew.includes(r.id)) &&
           Math.hypot((r.x+.5)*T-pt.x,(r.y+.6)*T-pt.y)<30);
@@ -1095,6 +1689,8 @@
     window.addEventListener('keydown',ev=>{
       if(ev.key==='Escape'){
         if(!$('confirmModal').classList.contains('hidden'))$('confirmModal').classList.add('hidden');
+        else if(!$('securityModal').classList.contains('hidden'))$('securityModal').classList.add('hidden');
+        else if(!$('lossModal').classList.contains('hidden'))$('lossModal').classList.add('hidden');
         else if(!$('expeditionModal').classList.contains('hidden'))closeExpedition();
         else if(!drag){setTool('inspect');}
         return;
@@ -1112,13 +1708,14 @@
     if(window.ResizeObserver)new ResizeObserver(resizeCanvas).observe(worldWrap);
     else window.addEventListener('resize',resizeCanvas);
   }
-  function renderAll(){renderTutorial();renderInspector();updateHud();drawLog();}
+  function renderAll(){renderTutorial();renderInspector();updateHud();drawLog();renderArrivals();renderCrisisSummary();}
   function frame(now){
     const dt=Math.min(.065,(now-last)/1000);last=now;
     tick(dt);drawScene(now);
     panelTime+=dt;saveTime+=dt;
     if(panelTime>.45){
       panelTime=0;updateHud();updateExpeditionProgressUi();
+      if(!$('securityModal').classList.contains('hidden'))renderSecurity();
       if(selection&&selection.kind==='project')renderInspector();
       if(selection&&selection.kind==='resident')renderInspector();
       const e=state.expedition;
@@ -1131,7 +1728,13 @@
     requestAnimationFrame(frame);
   }
 
-  state=loadGame();
+  state=window.VDSystems.normalize(loadGame());
+  state.discoveredSites=state.discoveredSites||[];
+  state.discovery=state.discovery||null;
+  for(const site of SITES){
+    if(!state.sites.find(p=>p.id===site.id))
+      state.sites.push({id:site.id,rooms:site.rooms.map(()=>({searched:false}))});
+  }
   attachEvents();resizeCanvas();renderAll();showIntro();
   requestAnimationFrame(frame);
 })();
