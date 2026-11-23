@@ -272,10 +272,11 @@
       return {ok:false,msg:'A blast-door chamber must connect passages on both sides.'};
     if(s.res.scrap<6||s.res.parts<1)return {ok:false,msg:'Requires 6 salvage and 1 component.'};
     s.res.scrap-=6;s.res.parts--;
-    const d={id:++s.nextId,x,y,closed:false,hp:100};
-    s.doors.push(d);s.tasks.door=true;
-    message(s,'Reinforced blast door installed. It can isolate an entire sector.');
-    return {ok:true,door:d};
+    const job={id:++s.nextId,kind:'door',x,y,w:1,cells:[{x,y}],workers:[],
+      progress:0,required:12,done:false,cancelled:false};
+    s.jobs.push(job);const builder=selectWorkerFor(s,job);
+    message(s,'Blast-door chamber ordered. '+(builder?builder.name+' is constructing the security checkpoint.':'Assign a worker to construct it.'));
+    return {ok:true,job};
   }
   function toggleDoor(s,id){
     const d=s.doors.find(d=>d.id===id);
@@ -286,12 +287,34 @@
     return {ok:true,door:d};
   }
   function repair(s,id){
-    if(s.res.scrap<3)return {ok:false,msg:'Repairs require 3 salvage.'};
-    const obj=s.doors.find(x=>x.id===id)||getRoom(s,id);
+    const door=s.doors.find(x=>x.id===id),room=getRoom(s,id),obj=door||room;
     if(!obj)return {ok:false,msg:'Nothing to repair.'};
-    s.res.scrap-=3;obj.hp=obj.hp===undefined?undefined:clamp(obj.hp+45,0,100);
-    if(obj.integrity!==undefined){obj.integrity=clamp(obj.integrity+45,0,100);obj.captured=false;}
-    message(s,'Damaged equipment repaired and secured.');return {ok:true};
+    if(room?.captured&&s.threat)return {ok:false,msg:'Drive out the invaders before reclaiming this room.'};
+    if(s.jobs.some(j=>j.kind==='repair'&&j.objectId===id&&!j.done&&!j.cancelled))
+      return {ok:false,msg:'A repair team has already been assigned here.'};
+    if(s.res.scrap<3)return {ok:false,msg:'Repairs require 3 salvage.'};
+    s.res.scrap-=3;
+    const job={id:++s.nextId,kind:'repair',objectId:id,isDoor:!!door,
+      x:obj.x,y:obj.y,w:room?.w||1,cells:[{x:obj.x,y:obj.y+(door?0:2)}],
+      workers:[],progress:0,required:12,done:false,cancelled:false};
+    s.jobs.push(job);const builder=selectWorkerFor(s,job);
+    message(s,'Repair order sent'+(builder?' to '+builder.name:'; awaiting a worker')+'.');
+    return {ok:true,job};
+  }
+  function cancelJob(s,id){
+    const job=s.jobs.find(j=>j.id===id&&!j.done&&!j.cancelled);
+    if(!job)return {ok:false,msg:'That work order is no longer active.'};
+    job.cancelled=true;
+    let scrap=0,parts=0;
+    if(job.kind==='build'){scrap=ROOM[job.type].cost[0];parts=ROOM[job.type].cost[1];}
+    else if(job.kind==='door'){scrap=6;parts=1;}
+    else if(job.kind==='upgrade'){const r=getRoom(s,job.roomId);scrap=4+(r?.level||1)*5;parts=(r?.level||1)+1;}
+    else if(job.kind==='repair')scrap=3;
+    const recovery=job.progress>0?.5:1;
+    s.res.scrap+=Math.floor(scrap*recovery);s.res.parts+=Math.floor(parts*recovery);
+    for(const p of s.people)if(p.taskId===id){p.taskId=null;p.state='idle';p.path=[];}
+    message(s,'Work order cancelled. Salvageable materials were returned.');
+    return {ok:true};
   }
   function createVisitor(s,rescued=false){
     const n=FIRST[Math.floor(rand(s)*FIRST.length)]+' '+LAST[Math.floor(rand(s)*LAST.length)];
@@ -398,6 +421,19 @@
       s.tasks.built=true;message(s,ROOM[j.type].name+' built. Assign a worker to operate it.');
     }
     if(j.kind==='upgrade'){const r=getRoom(s,j.roomId);if(r){r.level++;r.integrity=100;message(s,ROOM[r.type].name+' upgraded to level '+r.level+'.');}}
+    if(j.kind==='door'){
+      s.doors.push({id:++s.nextId,x:j.x,y:j.y,closed:false,hp:100});
+      s.tasks.door=true;
+      message(s,'A fortified blast-door chamber has been physically constructed.');
+    }
+    if(j.kind==='repair'){
+      const obj=j.isDoor?s.doors.find(d=>d.id===j.objectId):getRoom(s,j.objectId);
+      if(obj){
+        if(j.isDoor)obj.hp=clamp(obj.hp+55,0,100);
+        else{obj.integrity=clamp(obj.integrity+55,0,100);obj.captured=false;}
+        message(s,'Damaged '+(j.isDoor?'security door':'facility')+' repaired by the construction team.');
+      }
+    }
     if(j.kind==='rescue'){
       const trap=s.events.find(e=>e.id===j.trapId);
       if(trap){trap.cleared=true;s.terrain[trap.y][trap.x]=0;
@@ -413,6 +449,11 @@
       const f=findDigWork(s,p,j);
       if(!f){if(j.cells.every(c=>s.terrain[c.y][c.x]===0))finishJob(s,j);else p.state='waiting';return;}
       target=f.tile;stand=f.stand;
+    }else if(j.kind==='door'||(j.kind==='repair'&&j.isDoor)){
+      const y=j.y;
+      const spots=[{x:j.x-1,y},{x:j.x+1,y}].filter(t=>walkable(s,t.x,t.y));
+      stand=spots.find(t=>route(s,p,t))||null;
+      if(!stand){p.state='waiting';return;}
     }else if(j.kind==='rescue'){
       const event=s.events.find(e=>e.id===j.trapId&&!e.cleared);
       if(!event){finishJob(s,j);return;}
@@ -840,7 +881,7 @@
     W,H,TILE,SAVE,ROOM,LOCATIONS,SKILLS,create:fresh,load:safeLoad,save,erase,valid,cell,isFloor,rowTop,clamp,
     terrainClear,ladderAt,doorAt,roomAt,jobAt,walkable,route,connected,roomConnected,getRoom,getPerson,
     live,team,capacity,power,powered,resourceCap,assign,unassign,assignJob,dig,build,upgrade,installLadder,installDoor,toggleDoor,
-    repair,createVisitor,admit,reject,medicine,equip,dispatch,changeShift,rush,collect,rescue,rescuerOrder,incident,respond,raid,
+    repair,cancelJob,createVisitor,admit,reject,medicine,equip,dispatch,changeShift,rush,collect,rescue,rescuerOrder,incident,respond,raid,
     getSite,startExpedition,searchSiteRoom,fight,returnExpedition,startSurvey,startFamily,tick,message
   };
 })();
