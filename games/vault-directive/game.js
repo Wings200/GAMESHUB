@@ -280,6 +280,9 @@
   function startProject(id){
     const p=projectFor(id);if(!p)return;
     if(!chosenWorkers.size){toast('Choose at least one survivor to assign.');return;}
+    if(Array.from(chosenWorkers).some(id=>state.survivors.find(r=>r.id===id)?.child)){
+      toast('Dependent children cannot be assigned to construction or rescue crews.');return;
+    }
     if((p.kind==='build'||p.kind==='upgrade') && p.status==='planned'){
       const cost=p.kind==='upgrade'?p.cost:ROOM_TYPES[p.roomType].cost;
       if(state.resources.scrap<cost.scrap || state.resources.parts<cost.parts){
@@ -380,6 +383,7 @@
   function updateProjectWorkers(dt){
     for(const r of state.survivors){
       if(r.dead){r.state='dead';r.path=[];continue;}
+      if(r.child){r.state='child';r.path=[];continue;}
       if((state.expedition && state.expedition.crew.includes(r.id)) || (state.discovery && state.discovery.crewId===r.id))continue;
       r.hunger=Math.max(0,r.hunger-dt*.047);
       r.thirst=Math.max(0,r.thirst-dt*.063);
@@ -580,7 +584,7 @@
     if(state.discovery){toast('A survey team is already scouting the wasteland.');return;}
     if(state.expedition){toast('Finish the active expedition before launching another survey.');return;}
     if(state.resources.food<1||state.resources.water<1){toast('Survey requires one ration and one water for the scout.');return;}
-    const available=window.VDSystems.alive(state).filter(r=>!r.taskId&&!r.trapped&&!r.striking);
+    const available=window.VDSystems.alive(state).filter(r=>!r.taskId&&!r.trapped&&!r.striking&&!r.child);
     if(!available.length){toast('No available scout. Free a resident first.');return;}
     available.sort((a,b)=>(b.skills?.P||0)-(a.skills?.P||0));
     const scout=available[0];
@@ -622,7 +626,7 @@
     if(state.expedition){toast('A scavenging team is already deployed.');return;}
     const crew=Array.from(chosenCrew);
     if(!crew.length){toast('Choose at least one available survivor.');return;}
-    if(crew.some(id=>{const r=state.survivors.find(s=>s.id===id);return !r||r.taskId||r.dead||r.trapped;})){toast('Assigned workers must finish or leave their current job first.');return;}
+    if(crew.some(id=>{const r=state.survivors.find(s=>s.id===id);return !r||r.taskId||r.dead||r.trapped||r.child;})){toast('Assigned workers must finish or leave their current job first.');return;}
     state.expedition={site:viewedSite,crew,phase:'outbound',travel:0,position:0.16,action:null,loot:{food:0,water:0,scrap:0,parts:0,fuel:0,meds:0},message:'Traveling to the site. Arrival in approximately six seconds.'};
     for(const id of crew){const r=state.survivors.find(s=>s.id===id);r.state='expedition';r.path=[];}
     chosenCrew.clear();report('Scavenging team departed for '+siteById(viewedSite).name+'.');renderExpedition();saveGame();
@@ -951,6 +955,7 @@
     const px=(r.x+.5)*T,foot=residentFloor(r),working=r.state==='digging'||r.state==='building';
     const swing=(r.state==='walking'?Math.sin(now*.016+r.id)*5:working?Math.sin(now*.013+r.id)*3:Math.sin(now*.002+r.id)*.7);
     const selected=selection&&selection.kind==='resident'&&selection.id===r.id;
+    if(r.child){ctx.save();ctx.translate(px,foot);ctx.scale(.72,.72);ctx.translate(-px,-foot);}
     if(selected){ctx.strokeStyle='#f7d194';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(px,foot-2,20,7,0,0,7);ctx.stroke();}
     ctx.fillStyle='rgba(0,0,0,.34)';ctx.beginPath();ctx.ellipse(px,foot,12,4,0,0,7);ctx.fill();
     if(r.dead){
@@ -985,7 +990,7 @@
       ctx.fillStyle='#e6ede3';ctx.shadowBlur=4;ctx.shadowColor='#0b1619';ctx.fillText(r.name.split(' ')[0].toUpperCase(),px,foot-70);ctx.shadowBlur=0;
       if(r.state!=='idle'){ctx.font='8px sans-serif';ctx.fillStyle=r.state==='resting'?'#ebcc92':'#b2d3c6';ctx.fillText(r.state.toUpperCase(),px,foot-81);}
     }
-    ctx.lineCap='butt';
+    ctx.lineCap='butt';if(r.child)ctx.restore();
   }
   function drawDragHighlight(a,b){
     if(!a||!b)return;
@@ -1177,7 +1182,7 @@
       const r=systems.get(state,selection.id);
       if(!r){selection=null;renderInspector();return;}
       $('inspectorTitle').textContent=r.name;
-      $('inspectorSubtitle').textContent='Level '+r.level+' · '+r.role+' · '+r.state;
+      $('inspectorSubtitle').textContent='Level '+r.level+' · '+r.role+' · Age '+r.age+' · '+r.state;
       const jobOptions='<option value="">Unassigned / general duty</option>'+state.rooms.map(room=>
         '<option value="'+room.id+'"'+(r.jobRoom===room.id?' selected':'')+'>'+
         ROOM_TYPES[room.type].name+' · '+systems.getRoomWorkers(state,room.id).length+' active</option>').join('');
@@ -1186,11 +1191,11 @@
         '<div title="'+label+'"><span>'+k+'</span><strong>'+r.skills[k]+'</strong></div>').join('')+'</div>';
       body.innerHTML='<div class="detail-card"><div class="small-head">'+r.name+'</div>'+
         '<span class="pill '+(r.dead||r.trapped?'warn':'')+'">'+(r.dead?'DECEASED':r.trapped?'TRAPPED':r.state.toUpperCase())+'</span>'+
-        '<p class="inspector-info">Level '+r.level+' · Defence '+r.weapon+' · Loyalty '+Math.round(r.loyalty)+'% · Shift '+r.shift+'</p>'+skills+
+        '<p class="inspector-info">Age '+r.age+' · Level '+r.level+' · Defence '+r.weapon+' · Loyalty '+Math.round(r.loyalty)+'% · Shift '+r.shift+'</p>'+skills+
         bar(r.health,'Health')+bar(r.energy,'Energy')+bar(r.hunger,'Hunger')+bar(r.thirst,'Hydration')+
         bar(r.morale,'Morale')+(r.infection?bar(r.infection,'Infection level'):'')+
         '<div class="divider"></div><label class="management-label" for="residentJob">WORK ASSIGNMENT</label>'+
-        '<select class="management-select" id="residentJob" data-resident="'+r.id+'" '+(r.dead?'disabled':'')+'>'+jobOptions+'</select>'+
+        '<select class="management-select" id="residentJob" data-resident="'+r.id+'" '+(r.dead||r.child?'disabled':'')+'>'+jobOptions+'</select>'+
         '<label class="management-label" for="residentShift">WORK SCHEDULE</label>'+
         '<select class="management-select" id="residentShift" data-resident="'+r.id+'" '+(r.dead?'disabled':'')+'>'+
         ['flex','day','night'].map(v=>'<option value="'+v+'" '+(r.shift===v?'selected':'')+'>'+({flex:'Flexible / any time',day:'Day shift',night:'Night shift'}[v])+'</option>').join('')+'</select>'+
@@ -1232,6 +1237,14 @@
         state.survivors.filter(r=>!r.dead).map(r=>
           '<button class="worker-choice" data-action="assign-room" data-id="'+r.id+'" data-room="'+rm.id+'">'+
           '<span>'+(r.jobRoom===rm.id?'✓ ':'○ ')+r.name+'</span><small>'+systems.ROOMS[rm.type].skill+' '+r.skills[systems.ROOMS[rm.type].skill]+'</small></button>').join('')+
+        (rm.type==='bunks'?
+          '<p class="small-head">FAMILY GROWTH</p><p class="helper">Two adult residents may plan a family in functioning living quarters when morale is healthy and a bed is free.</p>'+
+          '<select class="management-select" id="familyParentA">'+
+          state.survivors.filter(r=>!r.dead&&!r.child).map(r=>'<option value="'+r.id+'">'+r.name+'</option>').join('')+'</select>'+
+          '<select class="management-select" id="familyParentB">'+
+          state.survivors.filter(r=>!r.dead&&!r.child).map((r,i)=>'<option value="'+r.id+'" '+(i===1?'selected':'')+'>'+r.name+'</option>').join('')+'</select>'+
+          '<button class="management-control" data-action="start-family">♡ START A FAMILY</button>'+
+          '<p class="inspector-info">'+state.familyPlans.length+' family plan(s) in progress</p>':'')+
         (rm.type==='training'?
           '<label class="management-label">TRAINING FOCUS</label><select class="management-select" id="trainingFocus" data-room="'+rm.id+'">'+
           ['S','P','E','C','I','A','L'].map(v=>'<option value="'+v+'" '+((rm.focus||'S')===v?'selected':'')+'>'+v+' · '+({S:'Strength',P:'Perception',E:'Endurance',C:'Charisma',I:'Intelligence',A:'Agility',L:'Luck'}[v])+'</option>').join('')+
@@ -1277,7 +1290,7 @@
       const workers=state.survivors.filter(r=>!r.dead).map(r=>{
         const assigned=chosenWorkers.has(r.id),busy=r.taskId&&r.taskId!==p.id,
           away=state.expedition&&state.expedition.crew.includes(r.id);
-        return '<button class="worker-choice '+(assigned?'chosen':'')+'" data-action="choose-worker" data-id="'+r.id+'"'+(away||r.trapped?' disabled':'')+'>'+
+        return '<button class="worker-choice '+(assigned?'chosen':'')+'" data-action="choose-worker" data-id="'+r.id+'"'+(away||r.trapped||r.child?' disabled':'')+'>'+
           '<span>'+(assigned?'✓ ':'○ ')+r.name+(busy?' · REASSIGN':'')+'</span><small>STR '+r.strength+'</small></button>';
       }).join('');
       const costs=p.kind==='build'?ROOM_TYPES[p.roomType].cost:p.kind==='upgrade'?p.cost:null;
@@ -1427,7 +1440,7 @@
         '<p class="helper">'+(4-progress.rooms.filter(r=>r.searched).length)+' unexplored sectors remain. Your team will physically search each accessible room. Salvaging machinery takes longer than searching cabinets.</p>'+
         '<p class="small-head">CHOOSE SCAVENGERS (UP TO 2)</p>'+
         state.survivors.map(r=>{
-          const active=chosenCrew.has(r.id),busy=!!r.taskId||!!r.dead||!!r.trapped;
+          const active=chosenCrew.has(r.id),busy=!!r.taskId||!!r.dead||!!r.trapped||!!r.child;
           return '<label class="expedition-avatar '+(active?'active':'')+'"><span>'+r.name+' · '+r.role+(busy?' · UNAVAILABLE':'')+'</span>'+
             '<input type="checkbox" data-crew="'+r.id+'" '+(active?'checked ':'')+(busy?'disabled':'')+'></label>';
         }).join('')+
@@ -1557,6 +1570,8 @@
       else if(action==='choose-worker')chooseWorker(id);
       else if(action==='start-project')startProject(id);
       else if(action==='cancel-project')cancelProject(id);
+      else if(action==='start-family')applySystem(window.VDSystems.startFamily(state,
+        Number($('familyParentA').value),Number($('familyParentB').value),{report}));
       else if(action==='upgrade-room')requestUpgrade(id);
       else if(action==='rush-room')applySystem(window.VDSystems.rush(state,id,{report}));
       else if(action==='craft')applySystem(window.VDSystems.craft(state,el.dataset.kind,{report}));
