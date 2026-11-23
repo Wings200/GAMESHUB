@@ -91,7 +91,7 @@
       survivors: SURVIVORS.map(r=>({...r, taskId: null, state: 'idle', path: [], wait: 0})),
       resources: { food: 12, water: 14, scrap: 19, parts: 4 },
       tutorialEnabled: true, tutorialFlags: { inspect: false, dig: false, assign: false, build: false, scavenge: false },
-      introSeen: false, productionTime: 0, expedition: null,
+      introSeen: false, productionTime: 0, expedition: null, discoveredSites: [], discovery: null,
       sites: SITES.map(site=>({ id:site.id, rooms:site.rooms.map(()=>({searched:false})) })),
       logs: [{time:'DAY 01 · 08:00', text:'Three survivors reached the abandoned hatch. Shelter systems offline.', warning:false}]
     };
@@ -355,7 +355,7 @@
   }
   function updateProjectWorkers(dt){
     for(const r of state.survivors){
-      if(state.expedition && state.expedition.crew.includes(r.id))continue;
+      if((state.expedition && state.expedition.crew.includes(r.id)) || (state.discovery && state.discovery.crewId===r.id))continue;
       r.hunger=Math.max(0,r.hunger-dt*.047);
       r.thirst=Math.max(0,r.thirst-dt*.063);
       if(r.state!=='resting')r.energy=Math.max(0,r.energy-dt*(r.taskId?0.068:0.025));
@@ -543,12 +543,50 @@
     if(state.paused||state.loss)return;
     const step=dt*state.speed;
     state.minutes+=step*2.3;
+    updateSurvey(step);
     updateProjectWorkers(step);
     updateExpedition(step);
     window.VDSystems.tick(state,step,{report,accessible:reachableFromEntrance});
     window.VDSystems.tickRaid(state,step,{report},bfs);
   }
-  function siteById(id){return SITES.find(s=>s.id===id);}
+  function allSites(){return SITES.concat(state.discoveredSites||[]);}
+  function siteById(id){return allSites().find(s=>s.id===id);}
+  function startSurvey(){
+    if(state.discovery){toast('A survey team is already scouting the wasteland.');return;}
+    if(state.expedition){toast('Finish the active expedition before launching another survey.');return;}
+    if(state.resources.food<1||state.resources.water<1){toast('Survey requires one ration and one water for the scout.');return;}
+    const available=window.VDSystems.alive(state).filter(r=>!r.taskId&&!r.trapped&&!r.striking);
+    if(!available.length){toast('No available scout. Free a resident first.');return;}
+    available.sort((a,b)=>(b.skills?.P||0)-(a.skills?.P||0));
+    const scout=available[0];
+    state.resources.food-=1;state.resources.water-=1;
+    state.discovery={crewId:scout.id,remaining:24};
+    scout.state='survey';scout.path=[];
+    report(scout.name+' departed to map an unknown stretch of the wasteland.');
+    renderExpedition();saveGame();
+  }
+  function updateSurvey(dt){
+    if(!state.discovery)return;
+    const plan=state.discovery;plan.remaining-=dt;
+    if(plan.remaining>0)return;
+    const scout=window.VDSystems.get(state,plan.crewId);
+    if(scout){scout.state='idle';scout.x=8;scout.y=7;scout.path=[];}
+    const index=(state.discoveredSites?.length||0)+1;
+    const templates=['clinic','station','depot','relay'];
+    const names=['Old service tunnels','Collapsed shopping row','Abandoned pump station',
+      'Fallen residential block','Subway junction','Sealed maintenance works','Roadside warehouse'];
+    const source=SITES.find(s=>s.id===templates[index%templates.length]);
+    const newSite={
+      id:'discovered-'+index,name:names[(index-1)%names.length]+' '+String(Math.ceil(index/names.length)).padStart(2,'0'),
+      icon:source.icon,subtitle:'Newly charted site · room-by-room salvage',threat:source.threat,
+      rooms:source.rooms.map(r=>({...r,loot:{...r.loot}}))
+    };
+    state.discoveredSites.push(newSite);
+    state.sites.push({id:newSite.id,rooms:newSite.rooms.map(()=>({searched:false}))});
+    viewedSite=newSite.id;state.discovery=null;
+    report(scout.name+' discovered '+newSite.name+'. There are four unexplored rooms.',false);
+    toast('NEW WASTELAND LOCATION DISCOVERED');renderExpedition();saveGame();
+  }
   function lootString(loot){
     const names={scrap:'salvage',parts:'components',food:'rations',water:'water',fuel:'fuel',meds:'medicine'};
     const entries=Object.entries(loot).filter(([,n])=>n>0).map(([k,n])=>n+' '+(names[k]||k));
@@ -1343,7 +1381,11 @@
       $('expeditionTitle').textContent='Surface survey';
       $('expeditionDescription').textContent='Select an abandoned location, choose your scavengers, then inspect rooms and recover supplies. Explored rooms stay empty.';
       const site=siteById(viewedSite),progress=state.sites.find(s=>s.id===site.id);
-      root.innerHTML='<div class="site-grid">'+SITES.map(s=>{
+      root.innerHTML='<div class="survey-strip"><button class="action-secondary" id="surveySite" type="button" '+
+        (state.discovery?'disabled':'')+'>'+ (state.discovery?
+          'SCOUTING NEW TERRITORY · '+Math.ceil(state.discovery.remaining)+'s REMAINING':
+          '⌖ SEND A SCOUT TO DISCOVER A NEW LOCATION · 1 FOOD + 1 WATER')+'</button></div>'+
+        '<div class="site-grid">'+allSites().map(s=>{
         const spent=state.sites.find(a=>a.id===s.id).rooms.filter(r=>r.searched).length;
         return '<button class="site-card '+(viewedSite===s.id?'active':'')+'" data-site="'+s.id+'">'+
           '<span class="site-tag">'+s.threat+'</span><strong>'+s.icon+' &nbsp; '+s.name+'</strong><small>'+s.subtitle+
@@ -1462,6 +1504,7 @@
       const explore=ev.target.closest('[data-explore]');
       if(explore){exploreRoom(Number(explore.dataset.explore));return;}
       if(ev.target.closest('#launchExpedition'))launchExpedition();
+      if(ev.target.closest('#surveySite'))startSurvey();
       if(ev.target.closest('#returnExpedition'))recallExpedition();
       if(ev.target.closest('#fightExpedition'))fightExpedition();
       if(ev.target.closest('#retreatExpedition'))retreatExpedition();
@@ -1623,6 +1666,8 @@
   }
 
   state=window.VDSystems.normalize(loadGame());
+  state.discoveredSites=state.discoveredSites||[];
+  state.discovery=state.discovery||null;
   for(const site of SITES){
     if(!state.sites.find(p=>p.id===site.id))
       state.sites.push({id:site.id,rooms:site.rooms.map(()=>({searched:false}))});
