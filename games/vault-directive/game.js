@@ -638,7 +638,14 @@ function bind(){
   const t=e.target.closest('.sector[data-index]');
   if(t){handleTile(Number(t.dataset.index));return;}
   const r=e.target.closest('.room[data-room]');
-  if(r){setPanel('room',Number(r.dataset.room));return;}
+  if(r){
+   const id=Number(r.dataset.room);
+   if(s&&s.tool==='demolish'){
+    const target=s.rooms.find(room=>room.id===id);
+    if(target)handleTile(target.cells[0]);
+   }else setPanel('room',id);
+   return;
+  }
  });
  document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){closeModal();return;}
