@@ -56,6 +56,9 @@ test('working reactors produce collectible power',()=>{
  task(D,s,'room',7,'power');
  const r=s.rooms.find(r=>r.type==='power');
  assert.ok(D.assign(s,p.id,r.id).ok);
+ // Production requires a healthy, hydrated and awake on-duty worker. Set the
+ // deterministic daytime window after the longer multi-stage expeditions.
+ s.clock=12*60;p.sick=false;p.hunger=90;p.thirst=90;s.res.food=15;s.res.water=15;
  passTime(D,s,20);assert.ok(r.ready);
  assert.ok(D.collect(s,r.id).ok);assert.ok(s.res.power>0);
 });
