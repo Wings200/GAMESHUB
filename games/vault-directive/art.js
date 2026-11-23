@@ -160,8 +160,10 @@ function roomFrame(ctx,s,r,t){
   txt(ctx,def.name.toUpperCase(),x+35,y+46,15,'#eee0c3','left',800);
   txt(ctx,'LV '+r.level,x+w-23,y+44,11,'#b4c1b6','right');
   if(r.captured){
-    paint(ctx,x+6,y+18,w-12,h-37,pwr?'#562e32a6':'#090f14cb');
-    txt(ctx,pwr?'HOSTILE CONTROL':'NO SURVEILLANCE',x+w/2,y+h/2,22,'#f4b5a2','center');
+    const observed=s.rooms.some(cam=>cam.type==='security'&&M().powered(s,cam)&&M().team(s,cam).length>0);
+    paint(ctx,x+6,y+18,w-12,h-37,observed?'#562e32a0':'#070d14dc');
+    txt(ctx,observed?'HOSTILE CONTROL · CAM ONLINE':'NO SURVEILLANCE',
+      x+w/2,y+h/2,20,'#f4b5a2','center');
   }else if(!pwr&&r.type!=='generator'){
     paint(ctx,x+7,y+20,w-14,h-40,'#0a1319aa');
     txt(ctx,'NO POWER',x+w/2,y+h*.64,17,'#c8a78f','center');
