@@ -10,6 +10,7 @@ const fmt=n=>Math.max(0,Math.floor(Number(n)||0)).toLocaleString();
 let s=null,panel='tutorial',panelId=null,modalType=null,zoom=1,last=performance.now(),lastPaint=0,lastSave=0,lastLog='',alerted=false;
 let selectedSite='grove',surfaceOpen=false,sideScroll=0;
 const residentNodes=new Map(),residentMotion=new Map();
+let draggingResidentId=null,dragHighlight=null;
 let lastTerrainHtml='',lastRoomsHtml='',lastVisitorsHtml='',lastPinsHtml='',lastDetailsHtml='',lastSideContent='',lastSidePanel='';
 if(!D){$('mapStatus').textContent='ERROR: GAME ENGINE DID NOT LOAD';$('bottomHint').textContent='Try refreshing. The data engine is missing.';return;}
 function load(){try{const a=JSON.parse(localStorage.getItem(KEY));return D.valid(a)?a:null;}catch{return null;}}
@@ -28,7 +29,7 @@ function showIntro(){
 }
 function start(newVault){
  s=newVault;s.task=null;s.speed=1;panel='tutorial';panelId=null;modalType=null;last=performance.now();
- surfaceOpen=false;selectedSite='grove';lastLog='';residentNodes.forEach(n=>n.remove());residentNodes.clear();residentMotion.clear();
+ surfaceOpen=false;selectedSite='grove';lastLog='';residentNodes.forEach(n=>n.remove());residentNodes.clear();residentMotion.clear();draggingResidentId=null;dragHighlight=null;
  lastTerrainHtml='';lastRoomsHtml='';lastVisitorsHtml='';lastPinsHtml='';lastDetailsHtml='';lastSideContent='';lastSidePanel='';
  if(!Array.isArray(s.expeditionHistory))s.expeditionHistory=[];
  if(!s.lastExpedition)s.lastExpedition=null;
@@ -120,6 +121,7 @@ function renderPeople(){
    node=document.createElement('span');
    node.dataset.command='person';node.dataset.id=String(p.id);
    node.dataset.residentId=String(p.id);
+   node.dataset.dragPerson=String(p.id);node.draggable=true;
    node.style.cssText='--shirt:'+p.shirt+';--skin:'+p.skin+';--hair:'+p.hair+';--pants:#3f5a61;';
    node.innerHTML='<span class="hair"></span><span class="face"></span><span class="body"></span><span class="arm left"></span><span class="arm right"></span><span class="leg left"></span><span class="leg right"></span><span class="dweller-name">'+safe(p.name)+'</span>';
    layer.appendChild(node);residentNodes.set(p.id,node);
@@ -422,18 +424,20 @@ function journalMarkup(){
 
 function residentCard(p){
  const job=p.job?s.rooms.find(r=>r.id===p.job):null;
- return '<div class="resident-card"><div class="resident-portrait">'+personMarkup(p,'')+'</div><div class="bio"><h3>'+safe(p.name)+'</h3>'+
+ return '<div class="resident-card" draggable="true" data-drag-person="'+p.id+'" title="Drag onto a room to assign this resident"><div class="resident-portrait">'+personMarkup(p,'')+'</div><div class="bio"><h3>'+safe(p.name)+'</h3>'+
  '<div class="bio-line">'+D.TRAITS[p.trait].label+' · '+(job?D.ROOMS[job.type].name:'UNASSIGNED')+' · '+p.shift.toUpperCase()+'</div><span class="routine-tag">'+safe(D.routine(s,p).label)+'</span>'+
  '<div class="microstats"><span>HP '+fmt(p.health)+'</span><span>MOOD '+fmt(p.mood)+'</span><span>LOYAL '+fmt(p.loyalty)+'</span></div>'+
  button('person','VIEW PROFILE →',p.id,'','small')+'</div></div>';
 }
 function rosterMarkup(){
- return '<p class="panel-intro">Residents move between their jobs, quarters and off-duty areas. Assign them to production rooms. Everyone has individual needs, skills and loyalty.</p>'+
+ return '<p class="panel-intro">Drag a resident from this panel onto a visible room, or open their profile for exact assignments. Rooms have limited staff and real day/night schedules.</p>'+
  (s.people.length?s.people.map(residentCard).join(''):'<div class="empty-msg">Nobody lives here yet.<br>Build quarters, then wait for a visitor to knock at the hatch.</div>')+
  button('visitors','REVIEW THE ENTRANCE'+(s.visitors.length?' · '+s.visitors.length+' WAITING':''),'','','primary');
 }
 function personMarkupPanel(p){
  const job=p.job?s.rooms.find(r=>r.id===p.job):null;
+ const home=D.bedFor(s,p);
+ const quarters=s.rooms.filter(r=>r.type==='quarters');
  const options=s.rooms.filter(r=>!['quarters','storage'].includes(r.type)).map(r=>{
   const locked=r.workers.length>=(r.type==='security'?3:2)&&!r.workers.includes(p.id);
   return '<button class="room-small" data-command="assign" data-id="'+p.id+'" data-value="'+r.id+'" '+(locked?'disabled':'')+'>'+safe(D.ROOMS[r.type].name)+' ('+r.workers.length+'/'+(r.type==='security'?3:2)+')</button>';
@@ -441,13 +445,15 @@ function personMarkupPanel(p){
  return '<div class="resident-card"><div class="resident-portrait">'+personMarkup(p,'')+'</div><div class="bio"><h3>'+safe(p.name)+'</h3><div class="bio-line">Age '+p.age+' · '+D.TRAITS[p.trait].label+'<br>'+safe(p.background)+'</div><span class="badge">'+(p.sick?'SICK':p.rebel?'DISSENTING':'RESIDENT')+'</span></div></div>'+
  meter('Health',fmt(p.health)+'% ',p.health<40)+meter('Hunger',fmt(p.hunger)+'%',p.hunger<35)+meter('Hydration',fmt(p.thirst)+'%',p.thirst<35)+meter('Energy',fmt(p.energy)+'%',p.energy<25)+meter('Morale',fmt(p.mood)+'%')+meter('Loyalty',fmt(p.loyalty)+'%')+
  '<div class="panel-section">SKILLS</div><div class="microstats">'+Object.entries(p.skills).map(([k,v])=>'<span>'+k.toUpperCase()+' '+v+'</span>').join('')+'</div>'+
- '<div class="panel-section">DAILY ROUTINE</div>'+meter('Current activity',D.routine(s,p).label)+meter('Assigned to',job?D.ROOMS[job.type].name:'None')+
+ '<div class="panel-section">DAILY ROUTINE</div>'+meter('Current activity',D.routine(s,p).label)+meter('Assigned job',job?D.ROOMS[job.type].name:'None')+meter('Home quarters',home?'L'+(D.xy(home.cells[0])[1]+1)+' / BAY '+(D.xy(home.cells[0])[0]+1):'No permanent bed')+
  '<div class="panel-section">ASSIGNMENTS & EQUIPMENT</div>'+
  button('shift','SHIFT: '+p.shift.toUpperCase()+' (CLICK TO CHANGE)',p.id)+
  button('equip','ISSUE WEAPON · 6 SCRAP'+(p.weapon?' · LEVEL '+p.weapon:''),p.id,'weapon')+
  button('equip','ISSUE BODY ARMOR · 5 SCRAP'+(p.armor?' · LEVEL '+p.armor:''),p.id,'armor')+
  (p.job?button('unassign','REMOVE FROM CURRENT JOB',p.id):'')+
- '<div class="panel-section">ASSIGN TO ROOM</div>'+
+ '<div class="panel-section">CHOOSE HOME QUARTERS</div>'+
+ (quarters.length?quarters.map(r=>button('assignHome','SET HOME: LEVEL '+(D.xy(r.cells[0])[1]+1)+' / BAY '+(D.xy(r.cells[0])[0]+1)+(home?.id===r.id?' ✓':''),p.id,r.id,'small')).join(''):'<p class="panel-intro">Build Living Quarters to house this resident.</p>')+
+ '<div class="panel-section">ASSIGN TO WORKPLACE</div>'+
  (options?'<div class="room-list">'+options+'</div>':'<div class="empty-msg">Build a production room before assigning workers.</div>')+
  button('roster','← ALL RESIDENTS','','','small');
 }
@@ -463,7 +469,16 @@ function roomMarkupPanel(r){
   '<div class="room-timer"><i style="width:'+Math.round(r.progress)+'%"></i></div>'+
   (r.ready?button('collect','◈ COLLECT '+d.type.toUpperCase(),r.id,'','primary'):'<p class="panel-intro">Assign workers to speed production. Production pauses while an assigned day worker sleeps at night.</p>');
  }
- if(r.type==='quarters')html+=meter('Beds supplied',4+' permanent');
+ if(r.type==='quarters'){
+  const assigned=s.people.filter(p=>D.bedFor(s,p)?.id===r.id);
+  html+=meter('Beds',assigned.length+' / 4 occupied')+
+   '<div class="panel-section">RESIDENTS ASSIGNED HERE</div>'+
+   (assigned.length?assigned.map(residentCard).join(''):'<p class="panel-intro">No one has a bed here yet.</p>');
+  if(s.selectedPerson){
+   const chosen=D.person(s,s.selectedPerson);
+   if(chosen)html+=button('assignHome','SET THIS AS '+safe(chosen.name.toUpperCase())+"'S HOME",chosen.id,r.id,'primary');
+  }
+ }
  if(r.workers.length)html+='<div class="panel-section">ON DUTY / ASSIGNED</div>'+r.workers.map(id=>{const p=D.person(s,id);return p?residentCard(p):'';}).join('');
  if(s.selectedPerson&&!['quarters','storage'].includes(r.type)){
   const p=D.person(s,s.selectedPerson);
@@ -622,6 +637,7 @@ function onCommand(node){
   const p=D.person(s,id);if(!p)return;
   s.selectedPerson=p.id;setPanel('person',p.id);toast(p.name+' selected. Choose a room to assign them.');return;
  }
+ if(command==='assignHome'){tell(D.assignHome(s,id,Number(value),false));setPanel('person',id);return;}
  if(command==='assign'){const previous=panel,r=D.assign(s,id,Number(value));tell(r);if(r.ok){s.selectedPerson=id;if(previous!=='room')setPanel('person',id);}return;}
  if(command==='unassign'){tell(D.unassign(s,id));setPanel('person',id);return;}
  if(command==='shift'){tell(D.shift(s,id));setPanel('person',id);return;}
