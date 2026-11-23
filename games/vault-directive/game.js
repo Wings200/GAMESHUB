@@ -26,7 +26,7 @@ function showIntro(){
  if(old)$('continueRun').innerHTML='CONTINUE '+safe(old.name.toUpperCase())+' <span>→</span>';
 }
 function start(newVault){
- s=newVault;s.task=null;s.speed=s.speed||1;panel='tutorial';panelId=null;modalType=null;last=performance.now();
+ s=newVault;s.task=null;s.speed=1;panel='tutorial';panelId=null;modalType=null;last=performance.now();
  surfaceOpen=false;selectedSite='grove';residentNodes.forEach(n=>n.remove());residentNodes.clear();
  if(!Array.isArray(s.expeditionHistory))s.expeditionHistory=[];
  if(!s.lastExpedition)s.lastExpedition=null;
@@ -220,7 +220,7 @@ function tutorialMarkup(){
  button('showBuild','▣ OPEN ROOM BLUEPRINTS')+
  button('visitors','♟ REVIEW WAITING SURVIVORS'+(s.visitors.length?' ('+s.visitors.length+')':''))+
  button('tech','✣ OPEN SKILL TREE')+
- (!s.skipTutorial&&s.tutorial<7?button('skip','SKIP TRAINING','','','small'):'');
+ (!s.skipTutorial&&s.tutorial<7?button('skip','HIDE GUIDED OBJECTIVES','','','small'):s.skipTutorial?button('resumeGuide','RESTORE GUIDED OBJECTIVES','','','small'):'');
 }
 function buildMarkup(){
  const selected=D.ROOMS[s.buildType];
@@ -506,7 +506,6 @@ function renderAll(){
   if(lastLog)toast(s.log[0].message,s.log[0].type==='danger');lastLog=s.log[0].message;
  }
 }
-function setPanel(type,id){panel=type;panelId=id??null;showPanel();}
 function openModal(type){
  if(!s)return;
  if(type==='scavenge'){setSurface(true);return;}
@@ -574,7 +573,7 @@ function onCommand(node){
  if(command==='closeModal'){closeModal();return;}
  if(command==='tutorial'){
   const target=D.TUTORIAL[Math.min(s.tutorial,7)][2];
-  if(target==='surface')openModal('scavenge');
+  if(target==='surface')setSurface(true);
   else if(target==='visitors')openModal('visitors');
   else if(target==='roster')setPanel('roster');
   else selectTool(target==='timber'?'timber':target);
@@ -590,7 +589,7 @@ function onCommand(node){
  if(command==='inspectRoom'){setPanel('room',id);return;}
  if(command==='search'){
   const r=D.start(s,'scavenge',null,value);
-  if(r.ok){selectedSite=value;setSurface(true);}else toast(r.message,true);tell(r);return;
+  if(r.ok){selectedSite=value;setSurface(true);}tell(r);return;
  }
  if(command==='visitors'){openModal('visitors');return;}
  if(command==='check'){tell(D.check(s,id));openModal('visitors');return;}
@@ -629,6 +628,8 @@ function onCommand(node){
 }
 function bind(){
  document.addEventListener('click',e=>{
+  const nav=e.target.closest('[data-panel]');
+  if(nav&&s){setPanel(nav.dataset.panel);return;}
   const cmd=e.target.closest('[data-command]');
   if(cmd){e.preventDefault();e.stopPropagation();onCommand(cmd);return;}
   const t=e.target.closest('.sector[data-index]');
@@ -647,15 +648,20 @@ function bind(){
  document.querySelectorAll('.action[data-tool]').forEach(btn=>btn.addEventListener('click',()=>{if(s)selectTool(btn.dataset.tool);}));
  $('newRun').addEventListener('click',()=>start(D.create($('vaultName').value)));
  $('continueRun').addEventListener('click',()=>{const old=load();if(old)start(old);else start(D.create($('vaultName').value));});
- $('surfaceBtn').addEventListener('click',()=>openModal('scavenge'));
+ $('surfaceBtn').addEventListener('click',()=>setSurface(true));
+ $('returnVaultBtn').addEventListener('click',()=>setSurface(false));
+ $('guideBtn').addEventListener('click',()=>setPanel('tutorial'));
+ $('coachAction').addEventListener('click',()=>{if(s)onCommand({dataset:{command:'tutorial'}});});
+ $('coachHide').addEventListener('click',()=>{if(s){s.skipTutorial=true;renderAll();save();}});
+ $('materialsBtn').addEventListener('click',()=>setPanel('supplies'));
  $('visitorsBtn').addEventListener('click',()=>openModal('visitors'));
  $('hatch').addEventListener('click',()=>openModal('visitors'));
  $('hatch').addEventListener('keydown',e=>{if(e.key==='Enter')openModal('visitors');});
- $('techBtn').addEventListener('click',()=>openModal('tech'));
+ $('techBtn').addEventListener('click',()=>setPanel('research'));
  $('rosterBtn').addEventListener('click',()=>setPanel('roster'));
  $('journalBtn').addEventListener('click',()=>openModal('journal'));
  $('menuBtn').addEventListener('click',()=>openModal('menu'));
- $('pauseBtn').addEventListener('click',()=>{if(!s)return;s.speed=s.speed?0:1;$('pauseBtn').classList.toggle('active',!s.speed);$('pauseBtn').textContent=s.speed?'Ⅱ':'▶';toast(s.speed?'Simulation resumed.':'Simulation paused.');});
+ $('pauseBtn').addEventListener('click',()=>{if(!s)return;s.speed=s.speed?0:1;$('pauseBtn').classList.toggle('active',!s.speed);$('pauseBtn').textContent=s.speed?'Ⅱ':'▶';save();toast(s.speed?'Simulation resumed.':'Simulation paused.');});
  $('speedBtn').addEventListener('click',()=>{if(!s)return;s.speed=s.speed===1?2:s.speed===2?3:1;$('speedBtn').textContent=s.speed+'×';toast('Simulation speed: '+s.speed+'×');});
  $('soundBtn').addEventListener('click',()=>{toast('Sound effects are not yet available; no audio is being played.');});
  $('centerBtn').addEventListener('click',centerVault);
@@ -669,14 +675,15 @@ function loop(now){
  if(!s)return;
  try{
   const beforeTask=!!s.task,previousVisitors=s.visitors.length,previousPeople=s.people.length,previousRooms=s.rooms.length,previousThreat=!!s.threat;
-  const oldTutorial=s.tutorial,oldLog=s.log[0]?.message;
+  const oldTutorial=s.tutorial,oldLog=s.log[0]?.message,previousNight=D.night(s);
   D.simulate(s,dt);
   updateHud();
+  updateSurfaceProgress();
   if(s.threat&&!previousThreat&&!alerted){alerted=true;toast('⚠ HOSTILE ALERT — RESIDENTS IN DANGER',true);}
   if(!s.threat)alerted=false;
   if(beforeTask!==!!s.task||previousVisitors!==s.visitors.length||previousPeople!==s.people.length||
     previousRooms!==s.rooms.length||previousThreat!==!!s.threat||oldTutorial!==s.tutorial||
-    oldLog!==s.log[0]?.message||now-lastPaint>1600){
+    oldLog!==s.log[0]?.message||previousNight!==D.night(s)||now-lastPaint>1400){
    renderAll();lastPaint=now;
   }else{
    for(const r of s.rooms){const node=document.querySelector('.room[data-room="'+r.id+'"] .room-progress i');if(node)node.style.width=Math.round(r.progress)+'%';}
@@ -685,7 +692,7 @@ function loop(now){
  }catch(err){
   console.error('[Vault Directive] simulation error',err);
   $('mapStatus').textContent='SIMULATION INTERRUPTED · UI STILL AVAILABLE';
-  toast('An error occurred. You can still inspect the vault; report the browser console error.',true);
+  if(!s._lastUiError||now-s._lastUiError>10000){toast('A simulation error occurred. Please report the browser console message.',true);s._lastUiError=now;}
  }
 }
 bind();showIntro();
