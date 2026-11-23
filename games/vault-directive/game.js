@@ -8,6 +8,8 @@ const CW=138,CH=122;
 const safe=v=>String(v??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));
 const fmt=n=>Math.max(0,Math.floor(Number(n)||0)).toLocaleString();
 let s=null,panel='tutorial',panelId=null,modalType=null,zoom=1,last=performance.now(),lastPaint=0,lastSave=0,lastLog='',alerted=false;
+let selectedSite='grove',surfaceOpen=false,sideScroll=0;
+const residentNodes=new Map();
 if(!D){$('mapStatus').textContent='ERROR: GAME ENGINE DID NOT LOAD';$('bottomHint').textContent='Try refreshing. The data engine is missing.';return;}
 function load(){try{const a=JSON.parse(localStorage.getItem(KEY));return D.valid(a)?a:null;}catch{return null;}}
 function save(){if(!s)return;try{localStorage.setItem(KEY,JSON.stringify(s));}catch{}}
@@ -24,7 +26,11 @@ function showIntro(){
  if(old)$('continueRun').innerHTML='CONTINUE '+safe(old.name.toUpperCase())+' <span>→</span>';
 }
 function start(newVault){
- s=newVault;s.task=null;s.speed=1;panel='tutorial';panelId=null;modalType=null;last=performance.now();
+ s=newVault;s.task=null;s.speed=s.speed||1;panel='tutorial';panelId=null;modalType=null;last=performance.now();
+ surfaceOpen=false;selectedSite='grove';residentNodes.forEach(n=>n.remove());residentNodes.clear();
+ if(!Array.isArray(s.expeditionHistory))s.expeditionHistory=[];
+ if(!s.lastExpedition)s.lastExpedition=null;
+ $('surfaceLayer').classList.add('hidden');
  $('welcome').classList.add('hidden');closeModal();renderAll();centerVault();save();
  toast('Entrance online. Open SCAVENGE to collect your first supplies.');
 }
@@ -71,7 +77,7 @@ function renderTerrain(){
  $('earth').innerHTML=parts.join('');
 }
 function roomPeople(r){
- const ids=r.workers.slice();
+ const ids=D.residentsIn(s,r).map(v=>v.person.id);
  if(r.type==='quarters'){
   for(const p of s.people){
    const resting=D.night(s)?p.shift==='day':p.shift==='night';
@@ -97,7 +103,7 @@ function renderRooms(){
   '<div class="room-bg"></div><div class="room-wall"></div><div class="room-light"></div>'+
   '<span class="room-name">'+safe(d.name.toUpperCase())+'</span><span class="room-mark">'+d.icon+'</span>'+
   '<div class="room-art">'+Array.from({length:machines},()=>'<span class="machine"></span>').join('')+'</div>'+
-  '<div class="room-people">'+roomPeople(r)+'</div><span class="room-nameplate">'+(r.workers.length?'STAFF '+r.workers.length:'NO STAFF')+(r.type==='quarters'?' · BEDS +4':'')+'</span>'+
+  '<div class="room-people"></div><span class="room-nameplate">'+(r.type==='quarters'?'BEDS +4':r.workers.length?D.workersOnDuty(s,r).length+' ON DUTY / '+r.workers.length+' ASSIGNED':'NO STAFF')+'</span>'+
   '<div class="room-floor"></div><div class="room-progress"><i style="width:'+Math.floor(r.progress)+'%"></i></div>'+
   (r.ready?'<button type="button" class="collect" data-command="collect" data-id="'+r.id+'" title="Collect '+d.name+' resources">'+d.icon+'</button>':'')+
   (s.threat?'<span class="alarm">!</span>':'')+
@@ -105,13 +111,52 @@ function renderRooms(){
  }
  $('roomLayer').innerHTML=html;
 }
+// Residents are unique, persistent DOM nodes. This prevents duplicate people
+// in rooms and gives each resident one actual destination at any moment.
+function renderPeople(){
+ const layer=$('peopleLayer');
+ const found=new Set(),slots={};
+ for(const p of s.people){
+  const activity=D.routine(s,p);
+  const room=s.rooms.find(r=>r.id===activity.roomId);
+  const key=String(activity.roomId??'hatch');
+  const spot=slots[key]||0;slots[key]=spot+1;
+  let node=residentNodes.get(p.id);
+  if(!node){
+   node=document.createElement('span');
+   node.dataset.command='person';node.dataset.id=String(p.id);
+   node.dataset.residentId=String(p.id);
+   node.style.cssText='--shirt:'+p.shirt+';--skin:'+p.skin+';--hair:'+p.hair+';--pants:#3f5a61;';
+   node.innerHTML='<span class="hair"></span><span class="face"></span><span class="body"></span><span class="arm left"></span><span class="arm right"></span><span class="leg left"></span><span class="leg right"></span><span class="dweller-name">'+safe(p.name)+'</span>';
+   layer.appendChild(node);residentNodes.set(p.id,node);
+  }
+  const phase=activity.phase;
+  node.className='dweller'+(phase==='sleep'?' sleep':phase==='sick'?' sick':phase==='working'||phase==='socializing'||phase==='meal'?' walk':phase==='guarding'?' guarding':'')+(p.weapon?' guard':'');
+  node.title=p.name+' — '+activity.label;
+  node.dataset.state=activity.label;
+  if(room){
+   const [x,y]=D.xy(room.cells[0]);
+   const columns=4,offset=Math.min(spot,7);
+   node.style.left=(x*CW+31+(offset%columns)*54)+'px';
+   node.style.top=(y*CH+46+(offset>=4?-3:0))+'px';
+  }else{
+   node.style.left=((D.START%9)*CW+56+(spot%3)*24)+'px';
+   node.style.top=(Math.floor(D.START/9)*CH+40)+'px';
+  }
+  found.add(p.id);
+ }
+ for(const [id,node] of residentNodes){
+  if(found.has(id))continue;
+  node.remove();residentNodes.delete(id);
+ }
+}
 function updateTask(){
  const miner=$('miner');miner.classList.toggle('busy',!!s.task);
- if(s.task&&s.task.type==='scavenge'){miner.style.top='112px';miner.style.left=(5*CW+65)+'px';}
- else if(s.task&&typeof s.task.i==='number'){
+ if(s.task&&s.task.type==='scavenge'){miner.style.opacity='0';miner.style.top='112px';miner.style.left=(5*CW+65)+'px';}
+ else if(s.task&&typeof s.task.i==='number'){miner.style.opacity='1';
   const [x,y]=D.xy(s.task.i);miner.style.top=(204+y*CH+33)+'px';miner.style.left=(x*CW+49)+'px';
  }else{
-  miner.style.top=(204+33)+'px';miner.style.left=(D.START*CW+49)+'px';
+  miner.style.opacity='1';miner.style.top=(204+33)+'px';miner.style.left=(D.START*CW+49)+'px';
  }
  $('mapStatus').textContent=s.threat?'⚠ '+s.threat.name+' · DEFEND YOUR VAULT':s.task?'OVERSEER WORKING · '+s.task.type.toUpperCase():'VAULT NETWORK · '+(D.night(s)?'NIGHT SHIFT':'DAY SHIFT');
  $('hudTime').textContent=D.time(s);
@@ -275,7 +320,7 @@ function showPanel(){
 }
 function renderAll(){
  if(!s)return;
- renderTerrain();renderRooms();renderVisitors();updateHud();showPanel();save();
+ renderTerrain();renderRooms();renderPeople();renderVisitors();updateHud();renderCoach();renderSurface();showPanel();save();
  if(s.log[0]?.message&&s.log[0].message!==lastLog){
   if(lastLog)toast(s.log[0].message,s.log[0].type==='danger');lastLog=s.log[0].message;
  }
