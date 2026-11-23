@@ -705,6 +705,10 @@ function loop(now){
     oldLog!==s.log[0]?.message||previousNight!==D.night(s)||now-lastPaint>1400){
    renderAll();lastPaint=now;
   }
+  // Save immediately when an action or resident arrival completes, while
+  // avoiding synchronous storage writes every visual refresh.
+  if((beforeTask&&!s.task)||previousVisitors!==s.visitors.length||
+     previousPeople!==s.people.length||previousRooms!==s.rooms.length){save();lastSave=now;}
   for(const r of s.rooms){
    const node=document.querySelector('.room[data-room="'+r.id+'"] .room-progress i');
    if(node)node.style.width=Math.round(r.progress)+'%';
