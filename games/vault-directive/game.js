@@ -76,22 +76,6 @@ function renderTerrain(){
  }
  $('earth').innerHTML=parts.join('');
 }
-function roomPeople(r){
- const ids=D.residentsIn(s,r).map(v=>v.person.id);
- if(r.type==='quarters'){
-  for(const p of s.people){
-   const resting=D.night(s)?p.shift==='day':p.shift==='night';
-   if(resting&&!ids.includes(p.id)){ids.push(p.id);if(ids.length>=4)break;}
-  }
- }else if(r.type==='recreation'){
-  for(const p of s.people){if(!p.job&&!ids.includes(p.id)){ids.push(p.id);if(ids.length>=3)break;}}
- }
- return ids.map(id=>{
-  const p=D.person(s,id);if(!p)return '';
-  const rest=r.type==='quarters';
-  return personMarkup(p,rest?'sleep':'walk');
- }).join('');
-}
 function renderRooms(){
  let html='';
  for(const r of s.rooms){
@@ -195,7 +179,7 @@ function updateHud(){
  'CLICK ROOMS, PEOPLE AND CONSTRUCTION TILES TO INTERACT';
 }
 function renderVisitors(){
- $('outsidePeople').innerHTML=s.visitors.map(p=>'<div class="outside-applicant" title="'+safe(p.name)+' is waiting"><span class="bubble-talk">KNOCK!'+(p.checks?' ?':'')+'</span>'+personMarkup(p,'walk')+'</div>').join('');
+ $('outsidePeople').innerHTML=s.visitors.map(p=>'<div class="outside-applicant" title="'+safe(p.name)+' is waiting"><span class="bubble-talk">KNOCK!'+(p.checks?' ?':'')+'</span>'+personMarkup(p,'walk').replace('data-command="person"','data-command="visitors"')+'</div>').join('');
 }
 function meter(label,value,red=false){
  return '<div class="metric-row"><span>'+safe(label)+'</span><b style="'+(red?'color:#efaa8f':'')+'">'+safe(value)+'</b></div>';
@@ -580,7 +564,7 @@ function onCommand(node){
   return;
  }
  if(command==='scavenge'||command==='openSurface'){setSurface(true);return;}
- if(command==='siteSelect'){if(D.SITES.some(x=>x.id===value)){selectedSite=value;setPanel('explore');renderSurface();}return;}
+ if(command==='siteSelect'){if(D.SITES.some(x=>x.id===value)){selectedSite=value;setSurface(true);renderSurface();}return;}
  if(command==='resourcesPanel'){setPanel('supplies');return;}
  if(command==='researchPanel'){setPanel('research');return;}
  if(command==='peoplePanel'){setPanel('roster');return;}
@@ -610,11 +594,11 @@ function onCommand(node){
   const p=D.person(s,id);if(!p)return;
   s.selectedPerson=p.id;setPanel('person',p.id);toast(p.name+' selected. Choose a room to assign them.');return;
  }
- if(command==='assign'){const r=D.assign(s,id,Number(value));tell(r);if(r.ok){s.selectedPerson=id;setPanel('person',id);}return;}
+ if(command==='assign'){const previous=panel,r=D.assign(s,id,Number(value));tell(r);if(r.ok){s.selectedPerson=id;if(previous!=='room')setPanel('person',id);}return;}
  if(command==='unassign'){tell(D.unassign(s,id));setPanel('person',id);return;}
  if(command==='shift'){tell(D.shift(s,id));setPanel('person',id);return;}
  if(command==='equip'){tell(D.equip(s,id,value));setPanel('person',id);return;}
- if(command==='collect'){tell(D.collect(s,id));setPanel('room',id);return;}
+ if(command==='collect'){tell(D.collect(s,id));return;}
  if(command==='tech'){setPanel('research');return;}
  if(command==='research'){tell(D.research(s,value));setPanel('research');return;}
  if(command==='journal'){setPanel('journal');return;}
