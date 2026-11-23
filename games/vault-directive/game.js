@@ -837,25 +837,36 @@
       '<div class="log-entry'+(item.warning?' warning':'')+'"><strong>'+item.time+'</strong>'+item.text+'</div>').join('');
   }
   function updateHud(){
-    const r=state.resources,p=powerData();
-    $('popValue').textContent=state.survivors.length+' / '+state.survivors.length;
+    const r=state.resources,p=powerData(),systems=window.VDSystems;
+    const count=systems.alive(state).length;
+    $('popValue').textContent=count+' / '+systems.capacity(state);
     $('powerValue').textContent=p.generation+' / '+p.demand;
-    $('foodValue').textContent=fmt(r.food);
-    $('waterValue').textContent=fmt(r.water);
+    $('foodValue').textContent=r.food.toFixed(1);
+    $('waterValue').textContent=r.water.toFixed(1);
+    $('fuelValue').textContent=r.fuel.toFixed(1);
+    $('medsValue').textContent=r.meds.toFixed(1);
     $('scrapValue').textContent=fmt(r.scrap);
     $('partsValue').textContent=fmt(r.parts);
-    const morale=state.survivors.reduce((a,v)=>a+v.morale,0)/state.survivors.length;
+    const morale=state.survivors.reduce((a,v)=>a+v.morale,0)/Math.max(state.survivors.length,1);
     $('moraleValue').textContent=Math.round(morale)+'%';
     $('dayClock').textContent=timeString();
     const hour=Math.floor((state.minutes%1440)/60);
     $('dayPhase').textContent=hour>=7&&hour<19?'SURFACE DAYLIGHT':'SURFACE NIGHT';
-    $('worldStatus').textContent=state.rooms.length?'EXPANDING SHELTER':'UNDEVELOPED';
-    $('worldSubStatus').textContent=state.rooms.length ? state.rooms.length+' BUILT ROOMS · '+state.projects.filter(p=>p.status==='active').length+' WORK ORDERS' : 'NO FUNCTIONAL ROOMS';
+    $('worldStatus').textContent=state.threat?'HOSTILE BREACH':state.rooms.length?'EXPANDING SHELTER':'UNDEVELOPED';
+    $('worldSubStatus').textContent=state.rooms.length ? state.rooms.length+' BUILT ROOMS · '+state.projects.filter(p=>p.status==='active').length+
+      ' WORK ORDERS' : 'NO FUNCTIONAL ROOMS';
     $('pauseBtn').textContent=state.paused?'▶':'Ⅱ';
     document.querySelectorAll('.speed').forEach(b=>b.classList.toggle('active',Number(b.dataset.speed)===state.speed));
     $('worldLabel').textContent=state.rooms.length?'SECTOR 01 · DEVELOPING SHELTER':'SECTOR 01 · ABANDONED ENTRY';
-    const tutorialComplete=Object.values(state.tutorialFlags).every(Boolean);
-    if(tutorialComplete&&state.tutorialEnabled){$('tutorialNote').textContent='Orientation complete. The shelter is yours to develop. You can hide this guide anytime.';}
+    const rate=state.resourceRate||{food:0,water:0,fuel:0};
+    const show=(v)=>((v>=0?'+':'')+Number(v).toFixed(1));
+    $('ratesValue').textContent='Food '+show(rate.food)+'/min · Water '+show(rate.water)+
+      '/min · Fuel '+show(rate.fuel)+'/min';
+    $('powerDetails').textContent=p.lit?(p.spare>=0?'GRID STABLE · '+p.spare+' SPARE':'POWER DEFICIT · '+Math.abs(p.spare)+' SHORT'):
+      'NO GRID POWER · INSTALL A GENERATOR';
+    $('powerDetails').style.color=p.spare<0?'#f0ab82':'#bed0c5';
+    renderArrivals();renderCrisisSummary();
+    showLoss();
   }
   function renderTutorial(){
     const panel=$('tutorialPanel');
@@ -1240,7 +1251,7 @@
     $('cancelReset').addEventListener('click',()=>{$('confirmModal').classList.add('hidden');});
     $('confirmReset').addEventListener('click',()=>{
       try{localStorage.removeItem(SAVE_KEY);}catch(err){}
-      state=makeNewGame();tool='inspect';buildType=null;selection=null;chosenWorkers.clear();
+      state=window.VDSystems.normalize(makeNewGame());tool='inspect';buildType=null;selection=null;chosenWorkers.clear();
       cameraInitialized=false;resizeCanvas();$('confirmModal').classList.add('hidden');showIntro();renderAll();saveGame();
     });
     $('startWithTutorial').addEventListener('click',()=>{
@@ -1260,6 +1271,32 @@
     $('zoomIn').addEventListener('click',()=>zoomAt(1.18));
     $('zoomOut').addEventListener('click',()=>zoomAt(1/1.18));
     $('expeditionsBtn').addEventListener('click',openExpedition);
+    $('tutorialAction').addEventListener('click',guideNext);
+    $('peopleBtn').addEventListener('click',()=>{selection=null;chosenWorkers.clear();renderInspector();toast('Choose a resident to assign a job or schedule.');});
+    $('securityBtn').addEventListener('click',()=>{$('securityModal').classList.remove('hidden');renderSecurity();});
+    $('closeSecurity').addEventListener('click',()=>{$('securityModal').classList.add('hidden');});
+    $('crisisSummary').addEventListener('click',ev=>{if(ev.target.closest('#openCrisis')){
+      $('securityModal').classList.remove('hidden');renderSecurity();}});
+    $('arrivalDock').addEventListener('click',ev=>{
+      const b=ev.target.closest('[data-visitor]');if(!b)return;
+      const cmd=b.dataset.visitor,id=b.dataset.id;
+      applySystem(cmd==='admit'?window.VDSystems.admit(state,id,{report}):
+        window.VDSystems.reject(state,id,{report}));
+      renderTutorial();
+    });
+    $('securityContent').addEventListener('click',ev=>{
+      const b=ev.target.closest('[data-security]');if(!b)return;
+      useSecurityCommand(b.dataset.security,Number(b.dataset.id));
+    });
+    $('securityContent').addEventListener('change',ev=>{
+      if(ev.target.id==='autoLockdown'){
+        state.autoLockdown=ev.target.checked;report('Automatic security lockdown '+(state.autoLockdown?'enabled':'disabled')+'.');saveGame();
+      }
+    });
+    $('lossClose').addEventListener('click',()=>{$('lossModal').classList.add('hidden');});
+    $('lossRestart').addEventListener('click',()=>{
+      $('lossModal').classList.add('hidden');$('confirmModal').classList.remove('hidden');
+    });
     $('closeExpedition').addEventListener('click',closeExpedition);
     $('expeditionContent').addEventListener('click',ev=>{
       const site=ev.target.closest('[data-site]');
@@ -1284,11 +1321,36 @@
       else if(action==='choose-worker')chooseWorker(id);
       else if(action==='start-project')startProject(id);
       else if(action==='cancel-project')cancelProject(id);
+      else if(action==='assign-room'){
+        applySystem(window.VDSystems.assignment(state,id,Number(el.dataset.room),{report}));
+        flag('staff');renderTutorial();
+      }
+      else if(action==='heal')applySystem(window.VDSystems.heal(state,id,{report}));
+      else if(action==='revive')applySystem(window.VDSystems.revive(state,id,{report}));
+      else if(action==='equip')applySystem(window.VDSystems.equip(state,id,{report}));
+      else if(action==='defend')applySystem(window.VDSystems.defend(state,id,{report}));
+      else if(action==='stand-down')applySystem(window.VDSystems.standDown(state,id,{report}));
+      else if(action==='toggle-door')applySystem(window.VDSystems.toggleDoor(state,id,{report}));
+      else if(action==='repair')applySystem(window.VDSystems.repair(state,id,{report}));
       else if(action==='focus-resident'){
         const r=state.survivors.find(s=>s.id===id);
         if(r){camera.x=(r.x+.5)*T-screenWidth/camera.zoom/2;camera.y=(r.y+.5)*T-screenHeight/camera.zoom/2;clampCamera();}
       }
       else if(action==='back'){selection=null;chosenWorkers.clear();renderInspector();}
+    });
+    $('inspectorBody').addEventListener('change',ev=>{
+      const el=ev.target;
+      if(el.id==='residentJob'){
+        const id=Number(el.dataset.resident),roomId=Number(el.value);
+        const result=roomId?window.VDSystems.assignment(state,id,roomId,{report}):
+          window.VDSystems.unassign(state,id,{report});
+        if(applySystem(result)&&roomId){flag('staff');renderTutorial();}
+      }
+      if(el.id==='residentShift')applySystem(window.VDSystems.shift(state,Number(el.dataset.resident),el.value,{report}));
+      if(el.id==='roomPriority'){
+        const room=state.rooms.find(r=>r.id===Number(el.dataset.room));
+        if(room){room.priority=Number(el.value);report('Power priority updated.');updateHud();saveGame();}
+      }
     });
     $('inspectorBody').addEventListener('keydown',ev=>{
       if((ev.key==='Enter'||ev.key===' ')&&ev.target.dataset.action==='inspect-resident'){
@@ -1320,8 +1382,20 @@
       try{if(canvas.hasPointerCapture(ev.pointerId))canvas.releasePointerCapture(ev.pointerId);}catch(err){}
       if(old.kind==='dig')markZone(old.start,old.current);
       else if(old.kind==='build')placeRoom(old.start,old.current);
+      else if(old.kind==='door')guideDoor(old.current.x,old.current.y);
+      else if(old.kind==='ladder')guideLadder(old.current.x,old.current.y);
       else if(!old.moved){
         const pt=screenToWorld(screenPosition(ev));
+        const click=pointToTile(screenPosition(ev));
+        const blast=state.doors.find(d=>d.x===click.x&&d.y===click.y);
+        if(blast){selection={kind:'door',id:blast.id};renderInspector();return;}
+        const trapped=state.traps.find(t=>!t.rescued&&t.x===click.x&&t.y===click.y);
+        if(trapped){
+          const p=state.projects.find(p=>p.kind==='rescue'&&p.rescueId===trapped.id&&p.status!=='cancelled');
+          if(p){selection={kind:'project',id:p.id};chosenWorkers=new Set(p.workers);renderInspector();}
+          else useSecurityCommand('rescue',trapped.id);
+          return;
+        }
         const resident=state.survivors.find(r=>
           !(state.expedition&&state.expedition.crew.includes(r.id)) &&
           Math.hypot((r.x+.5)*T-pt.x,(r.y+.6)*T-pt.y)<30);
@@ -1343,6 +1417,8 @@
     window.addEventListener('keydown',ev=>{
       if(ev.key==='Escape'){
         if(!$('confirmModal').classList.contains('hidden'))$('confirmModal').classList.add('hidden');
+        else if(!$('securityModal').classList.contains('hidden'))$('securityModal').classList.add('hidden');
+        else if(!$('lossModal').classList.contains('hidden'))$('lossModal').classList.add('hidden');
         else if(!$('expeditionModal').classList.contains('hidden'))closeExpedition();
         else if(!drag){setTool('inspect');}
         return;
@@ -1360,13 +1436,14 @@
     if(window.ResizeObserver)new ResizeObserver(resizeCanvas).observe(worldWrap);
     else window.addEventListener('resize',resizeCanvas);
   }
-  function renderAll(){renderTutorial();renderInspector();updateHud();drawLog();}
+  function renderAll(){renderTutorial();renderInspector();updateHud();drawLog();renderArrivals();renderCrisisSummary();}
   function frame(now){
     const dt=Math.min(.065,(now-last)/1000);last=now;
     tick(dt);drawScene(now);
     panelTime+=dt;saveTime+=dt;
     if(panelTime>.45){
       panelTime=0;updateHud();updateExpeditionProgressUi();
+      if(!$('securityModal').classList.contains('hidden'))renderSecurity();
       if(selection&&selection.kind==='project')renderInspector();
       if(selection&&selection.kind==='resident')renderInspector();
       const e=state.expedition;
