@@ -56,7 +56,7 @@ const TUTORIAL=[
  ["BUILD LIVING QUARTERS","Select BUILD, choose Living Quarters, then click the left tile of your supported two-tile chamber.","build"],
  ["SOMEONE IS KNOCKING","Open VISITORS and review your first arrival. You may admit or reject them.","visitors"],
  ["START REAL PRODUCTION","Scavenge, dig and reinforce more space, then construct Power, Food or Water rooms.","build"],
- ["PUT SOMEONE TO WORK","Select a resident, then assign them to a production room so it starts making resources.","roster"],
+ ["PUT SOMEONE TO WORK","Open PEOPLE. Drag a resident onto a production room, or use their profile to assign a job. Residents return home when off shift.","roster"],
  ["YOUR CIVILIZATION BEGINS","Balance power, food and water. Grow the vault, guard against raids and keep your residents loyal.","roster"]
 ];
 const blank=()=>({kind:"dirt",support:null,room:null});
