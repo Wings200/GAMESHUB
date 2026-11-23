@@ -144,3 +144,30 @@ test('multi-day simulation stress: inventories, health, logs and scheduled staff
  }
  assert.ok(s.day>initial,'day/night cycle continues across multiple days');
 });
+
+
+test('chosen living quarters persist across shifts and prevent overbooking',()=>{
+ const {D,s,p,beds,reactor}=setup();
+ assert.equal(D.bedFor(s,p)?.id,beds.id);
+ const reserved=D.assignHome(s,p.id,beds.id,true);
+ assert.equal(reserved.ok,true);
+ assert.equal(p.homeRoomId,beds.id);
+ assert.equal(p.job,null,'placing someone in housing must end current assignment');
+ assert.equal(reactor.workers.length,0);
+ const other={id:22,type:'quarters',cells:[0,1],workers:[],progress:0,ready:false,cycles:0,health:100};
+ s.grid[3]={kind:'open',support:null,room:null};
+ s.grid[2]={kind:'open',support:null,room:null};
+ s.grid[0]={kind:'room',support:'timber',room:other.id};
+ s.grid[1]={kind:'room',support:null,room:other.id};
+ s.rooms.push(other);
+ for(let i=0;i<4;i++){
+  const resident=D.actor('Extra '+i,s);resident.sick=false;s.people.push(resident);
+  if(i<3)assert.ok(D.assignHome(s,resident.id,beds.id).ok);
+ }
+ const fifth=s.people.at(-1);
+ assert.equal(D.assignHome(s,fifth.id,beds.id).ok,false,'only 4 beds in first quarters');
+ assert.equal(D.assignHome(s,fifth.id,other.id).ok,true);
+ assert.equal(D.bedFor(s,fifth)?.id,other.id);
+ s.clock=23*60;
+ assert.equal(D.routine(s,p).roomId,beds.id,'sleep location uses explicitly selected home');
+});
