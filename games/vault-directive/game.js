@@ -351,6 +351,7 @@
       toast('EXCAVATION COMPLETE');
     }
     if(selection && selection.kind==='project' && selection.id===p.id)selection=null;
+    chosenWorkers.clear();
     renderInspector();saveGame();
   }
   function updateProjectWorkers(dt){
