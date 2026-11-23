@@ -1,139 +1,105 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Vault Directive — Below the Surface | GAMESHUB</title>
-<meta name="theme-color" content="#111b20">
-<meta name="description" content="Build a living underground civilization. Dig and support tunnels, recruit survivors, operate production rooms, and defend your people.">
-<link rel="stylesheet" href="./style.css?v=homes-120">
-<script src="./core.js?v=homes-120" defer></script>
-<script src="./game.js?v=homes-120" defer></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0a1419">
+  <meta name="description" content="Vault Directive — a living underground settlement simulator. Build rooms, assign residents and survive the frontier.">
+  <title>Vault Directive: Reclamation | GAMESHUB</title>
+  <link rel="stylesheet" href="./style.css?v=reboot-200">
+  <script defer src="./core.js?v=reboot-200"></script>
+  <script defer src="./game.js?v=reboot-200"></script>
 </head>
 <body>
 <div id="app">
-  <header class="head">
-    <a class="home" href="/" title="Return to GAMESHUB">⬡ <span>GAMESHUB</span></a>
-    <div class="headbrand"><span class="headmark">V<span>◈</span>D</span><span class="headname">VAULT DIRECTIVE <small>BELOW THE SURFACE</small></span></div>
-    <div class="headright">
-      <span class="live-dot"></span><span id="hudTime" class="headtime">DAY 1 · 08:00</span>
-      <button id="pauseBtn" class="headerbtn" title="Pause or resume">Ⅱ</button>
-      <button id="speedBtn" class="headerbtn" title="Change speed">1×</button>
-      <button id="soundBtn" class="headerbtn" title="Toggle sounds">♪</button>
-      <button id="menuBtn" class="headerbtn" title="Settings">☷</button>
+  <header class="topbar">
+    <a class="brand-back" href="/" aria-label="Return to Gameshub"><span class="hex">⬡</span> GAMESHUB</a>
+    <div class="game-brand"><span class="emblem">V<span>◆</span>D</span><span><b>VAULT DIRECTIVE</b><small>RECLAMATION DIVISION / ARK-07</small></span></div>
+    <div class="top-controls">
+      <span id="clock" class="clock">DAY 01 · 08:00</span>
+      <button id="pause" class="icon-button" title="Pause simulation" aria-label="Pause simulation">Ⅱ</button>
+      <button id="speed" class="icon-button" title="Game speed" aria-label="Game speed">1×</button>
+      <button id="settings" class="icon-button" title="Settings" aria-label="Settings">⚙</button>
     </div>
   </header>
 
-  <section class="resources" aria-label="Vault resources">
-    <div class="stat" id="statPower"><span class="stat-icon power-icon">ϟ</span><span class="stat-txt"><b>POWER</b><strong id="powerCount">0</strong></span><div class="statbar"><i id="powerBar"></i></div></div>
-    <div class="stat" id="statFood"><span class="stat-icon food-icon">♨</span><span class="stat-txt"><b>FOOD</b><strong id="foodCount">0</strong></span><div class="statbar"><i id="foodBar"></i></div></div>
-    <div class="stat" id="statWater"><span class="stat-icon water-icon">◈</span><span class="stat-txt"><b>WATER</b><strong id="waterCount">0</strong></span><div class="statbar"><i id="waterBar"></i></div></div>
-    <div class="stat"><span class="stat-icon resident-icon">♟</span><span class="stat-txt"><b>PEOPLE</b><strong id="peopleCount">0 / 0</strong></span></div>
-    <div class="stat"><span class="stat-icon mood-icon">♥</span><span class="stat-txt"><b>MORALE</b><strong id="moraleCount">—</strong></span><div class="statbar"><i id="moraleBar"></i></div></div>
-    <button id="materialsBtn" class="materials-summary" type="button" title="View construction supplies and production">
-      <strong>▤ SUPPLIES</strong>
-      <span>SCRAP <b id="scrapCount">0</b></span>
-      <span>WOOD <b id="woodCount">0</b></span>
-      <span>STONE <b id="stoneCount">0</b></span>
-    </button>
+  <section class="hud" aria-label="Settlement resources">
+    <div class="resource power" id="hud-power"><span class="resource-symbol">ϟ</span><div class="resource-info"><small>POWER</small><strong id="power-value">0</strong><span class="meter"><i id="power-fill"></i></span></div></div>
+    <div class="resource food" id="hud-food"><span class="resource-symbol">◈</span><div class="resource-info"><small>FOOD</small><strong id="food-value">0</strong><span class="meter"><i id="food-fill"></i></span></div></div>
+    <div class="resource water" id="hud-water"><span class="resource-symbol">◉</span><div class="resource-info"><small>WATER</small><strong id="water-value">0</strong><span class="meter"><i id="water-fill"></i></span></div></div>
+    <div class="resource people"><span class="resource-symbol">♟</span><div class="resource-info"><small>RESIDENTS</small><strong id="people-value">0 / 0</strong><span class="resource-foot">VAULT POPULATION</span></div></div>
+    <div class="resource morale"><span class="resource-symbol">♥</span><div class="resource-info"><small>MORALE</small><strong id="morale-value">0%</strong><span class="meter"><i id="morale-fill"></i></span></div></div>
+    <div class="resource credits"><span class="resource-symbol">⬡</span><div class="resource-info"><small>CREDITS</small><strong id="credits-value">0</strong><span class="resource-foot">CONSTRUCTION FUNDS</span></div></div>
   </section>
 
-  <main class="play">
-    <div class="world-area">
-      <div class="world-head">
-        <div class="hud-label"><span class="live-dot"></span> <span id="mapStatus">VAULT ENTRANCE ONLINE</span></div>
-        <div class="world-utilities">
-          <button id="surfaceBtn" class="mini">☀ SCAVENGE</button>
-          <button id="visitorsBtn" class="mini">♟ ENTRANCE <span id="visitorBadge" class="bubble" hidden>0</span></button>
-          <button id="guideBtn" class="mini">? GUIDE</button>
-          <button id="centerBtn" class="mini" title="Center vault">⌖</button>
-          <button id="zoomOut" class="mini" title="Zoom out">−</button>
-          <span id="zoomLabel" class="zoomtext">100%</span>
-          <button id="zoomIn" class="mini" title="Zoom in">+</button>
+  <div class="workspace">
+    <section class="main-game">
+      <div class="map-toolbar">
+        <div><span class="beacon"></span><strong id="vault-title">ARK-07</strong><span class="section-muted" id="map-meta">SETTLEMENT ONLINE</span></div>
+        <div class="map-actions">
+          <button id="guide" class="micro-button">? GUIDE</button>
+          <button id="zoom-out" class="micro-button" aria-label="Zoom out">−</button>
+          <span id="zoom-text">100%</span>
+          <button id="zoom-in" class="micro-button" aria-label="Zoom in">+</button>
+          <button id="center" class="micro-button" aria-label="Center vault">⌖</button>
         </div>
       </div>
-      <div id="coach" class="coach" aria-label="Current tutorial objective">
-        <span id="coachProgress" class="coach-count">01 / 08</span>
-        <div class="coach-copy"><strong id="coachTitle">SCAVENGE YOUR FIRST SUPPLIES</strong><span id="coachText">Visit the Deadwood Grove to find materials.</span></div>
-        <button id="coachAction" class="coach-action" type="button">SHOW ME →</button>
-        <button id="coachHide" class="coach-hide" type="button" title="Hide guided tutorial">×</button>
+      <div class="coach" id="coach">
+        <span class="coach-step" id="coach-index">01 / 05</span>
+        <div class="coach-copy"><strong id="coach-title">WELCOME, DIRECTOR</strong><span id="coach-desc">Your settlement is already alive. Select a room to begin.</span></div>
+        <button id="coach-do" class="coach-do">SHOW ME</button><button id="coach-hide" class="coach-hide" aria-label="Dismiss guide">×</button>
       </div>
-      <div class="viewport" id="viewport" tabindex="0" aria-label="Scrollable underground vault with clickable terrain and rooms">
-        <div id="worldStage" class="world-stage">
-          <div class="surface-scene">
-            <div class="sky-glow"></div><div class="moon"></div><div class="dune dune-back"></div><div class="ruins">
-              <div class="ruin left-ruin"></div><div class="ruin right-ruin"></div><div class="antenna"></div></div>
-            <div class="dune dune-front"></div><div class="groundline"></div>
-            <div class="surface-sign">CIVILIAN SHELTER <b id="surfaceName">VD–01</b><small>YOUR FUTURE STARTS HERE</small></div>
-            <div id="hatch" class="hatch" role="button" tabindex="0" title="Vault hatch – review people waiting outside"><span class="hatch-lid"></span><span class="hatch-door">◈</span><span class="hatch-light"></span></div>
-            <div id="outsidePeople" class="outside-people"></div>
+      <div id="map-viewport" class="map-viewport" tabindex="0" aria-label="Underground settlement interactive view">
+        <div id="map-space" class="map-space">
+          <div id="world" class="world">
+            <div class="surface">
+              <div class="sky-haze"></div><div class="sun"></div><div class="far-ridge"></div><div class="near-ridge"></div>
+              <div class="radio-tower"><i></i><b></b></div>
+              <div class="entry-shed"><div class="entry-sign">ARK-07 <small>AUTHORIZED ACCESS</small></div><div class="entry-door">◆</div></div>
+              <div class="surface-label">WASTELAND PERIMETER <span>SECTOR 17 · LOW SIGNAL</span></div>
+            </div>
+            <div class="soil"></div>
+            <div class="shaft">
+              <div class="shaft-glow"></div><div class="shaft-track"></div>
+              <div class="shaft-car" id="shaft-car">⬡</div>
+            </div>
+            <div id="floors" class="floors"></div>
+            <div id="rooms" class="rooms"></div>
+            <div id="dwellers" class="dwellers" aria-label="Animated residents"></div>
           </div>
-          <div id="earth" class="earth" role="group" aria-label="Underground excavation map"></div>
-          <div id="roomLayer" class="room-layer"></div>
-          <div id="peopleLayer" class="people-layer" aria-label="Residents moving through the vault"></div>
-          <div id="miner" class="miner"><span class="miner-hat"></span><span class="miner-face"></span><span class="miner-torso"></span><span class="miner-shovel"></span></div>
-          <div id="terrainFx" class="terrain-fx"></div>
         </div>
       </div>
-      <div id="surfaceLayer" class="surface-layer hidden" aria-label="Interactive wasteland scavenging map">
-        <div class="surface-map-header"><div><span class="eyebrow">EXPLORATION / OVERWORLD</span><h2>BEYOND THE HATCH</h2></div><button id="returnVaultBtn" type="button" class="mini">◀ RETURN TO VAULT</button></div>
-        <div id="surfaceMap" class="surface-overworld" role="group" aria-label="Explore five wasteland locations">
-          <div class="surface-route route-one"></div><div class="surface-route route-two"></div><div class="surface-route route-three"></div>
-          <div class="map-home">⌂ <span>VAULT</span></div>
-          <div id="travelAvatar" class="travel-avatar" aria-label="Overseer traveling through the wasteland">♟</div>
-          <div id="surfaceSites" class="surface-sites"></div>
-          <div class="map-region">RUST BELT EXCLUSION ZONE // SECTOR 04</div>
-        </div>
-        <div id="travelBar" class="travel-bar"><span id="travelStage">CHOOSE A SCAVENGING SITE</span><div class="travel-progress"><i id="travelFill"></i></div><strong id="travelPercent">—</strong></div>
-        <div id="surfaceDetails" class="surface-details"></div>
+      <div class="bottom-bar"><span id="map-hint">CLICK A ROOM TO INSPECT · CLICK AN EMPTY BAY TO BUILD</span><span class="version">REBOOT / V2.0</span></div>
+      <div class="command-bar">
+        <button data-panel="build" class="command"><span>▦</span><b>BUILD</b><small>Expand vault</small></button>
+        <button data-panel="people" class="command"><span>♟</span><b>PEOPLE</b><small>Manage residents</small></button>
+        <button data-panel="explore" class="command"><span>◈</span><b>EXPLORE</b><small>Surface expeditions</small></button>
+        <button data-panel="reports" class="command"><span>▤</span><b>REPORTS</b><small>Vault status</small></button>
       </div>
-      <div class="viewport-bottom">
-        <span id="bottomHint">SELECT SHOVEL, THEN CLICK ADJACENT EARTH TO DIG.</span>
-        <span class="bottom-location">◈ VAULT DIRECTIVE / BUILD 1.2</span>
-      </div>
+    </section>
 
-      <div class="actions" aria-label="Construction and management actions">
-        <button class="action active" data-tool="dig"><span>⛏</span><b>DIG</b><small>Excavate earth</small></button>
-        <button class="action" data-tool="timber"><span>▥</span><b>SUPPORT</b><small>Reinforce tunnels</small></button>
-        <button class="action" data-tool="build"><span>▣</span><b>BUILD</b><small>Place a room</small></button>
-        <button class="action" data-tool="inspect"><span>⌖</span><b>INSPECT</b><small>People &amp; rooms</small></button>
-        <button class="action" data-tool="demolish"><span>⊖</span><b>REMOVE</b><small>Salvage structures</small></button>
-        <div class="action-spacer"></div>
-        <button id="rosterBtn" class="action accent"><span>♟</span><b>RESIDENTS</b><small>People &amp; assignments</small></button>
-        <button id="techBtn" class="action accent"><span>✣</span><b>RESEARCH</b><small>Build new designs</small></button>
-        <button id="journalBtn" class="action accent"><span>▤</span><b>JOURNAL</b><small>Recent events</small></button>
-      </div>
-    </div>
-    <aside id="sidebar" class="sidebar">
-      <div class="sidebar-top"><div><div class="eyebrow" id="sideEyebrow">OVERSEER TERMINAL</div><h2 id="sideTitle">FIRST STEPS</h2></div><button id="sideClose" class="side-close" title="Return to guide">?</button></div>
-      <nav id="panelNav" class="panel-nav" aria-label="Game management panels">
-        <button type="button" data-panel="tutorial" class="panel-tab active">⌖ GUIDE</button>
-        <button type="button" data-panel="build" class="panel-tab">▣ BUILD</button>
-        <button type="button" data-panel="roster" class="panel-tab">♟ PEOPLE</button>
-        <button type="button" data-panel="supplies" class="panel-tab">◈ SUPPLIES</button>
-        <button type="button" data-panel="explore" class="panel-tab">☀ EXPLORE</button>
-        <button type="button" data-panel="security" class="panel-tab">⌖ SECURITY</button>
-        <button type="button" data-panel="research" class="panel-tab">✣ RESEARCH</button>
-        <button type="button" data-panel="journal" class="panel-tab">▤ EVENTS</button>
+    <aside class="terminal" id="terminal">
+      <div class="terminal-head"><span class="eyebrow" id="panel-kicker">OVERSEER COMMAND</span><h2 id="panel-title">DIRECTOR'S DESK</h2><span class="terminal-code">VD-07 / ONLINE</span></div>
+      <nav class="tabs" id="tabs" aria-label="Management panels">
+        <button data-panel="overview" class="tab active">OVERVIEW</button>
+        <button data-panel="build" class="tab">BUILD</button>
+        <button data-panel="people" class="tab">PEOPLE</button>
+        <button data-panel="explore" class="tab">EXPLORE</button>
+        <button data-panel="reports" class="tab">LOG</button>
       </nav>
-      <div id="sideContent" class="sidebar-content"></div>
-      <div class="sidebar-base"><span>◉</span> FOUNDATION NETWORK <span class="tiny">1.2</span></div>
+      <div id="panel" class="panel-content" aria-live="polite"></div>
+      <div class="terminal-foot"><span class="beacon"></span> SETTLEMENT NETWORK <b id="foot-status">NOMINAL</b></div>
     </aside>
-  </main>
-
-  <div class="toast-stack" id="toasts" aria-live="polite"></div>
-  <div id="modal" class="modal-screen hidden" role="dialog" aria-modal="true" aria-label="Vault menu"><div id="modalContents" class="modal-box"></div></div>
-
-  <div id="welcome" class="welcome-screen">
-    <div class="welcome-art"><div class="welcome-ring ring1"></div><div class="welcome-ring ring2"></div><div class="welcome-emblem">VD</div><div class="art-bunker"></div></div>
-    <div class="welcome-card">
-      <span class="eyebrow">GAMESHUB ORIGINAL // CIVILIZATION SIMULATION</span>
-      <h1>BELOW THE<br><em>SURFACE.</em></h1>
-      <p>No citizens. No buildings. A single hatch above untouched earth. Scavenge, excavate, reinforce, and transform a forgotten shaft into a living settlement. A guided mission introduces each system while you build.</p>
-      <label for="vaultName">NAME YOUR SETTLEMENT</label>
-      <input id="vaultName" value="NEW HORIZON" maxlength="25" autocomplete="off">
-      <button id="newRun" class="primary">ESTABLISH YOUR VAULT <span>→</span></button>
-      <button id="continueRun" class="continue" hidden>CONTINUE YOUR VAULT <span>→</span></button>
-      <div class="welcome-foot">ORIGINAL ARTWORK &amp; SYSTEMS • AUTO-SAVED LOCALLY • NO REAL-MONEY PURCHASES</div>
+  </div>
+  <div id="notices" class="notices" aria-live="polite"></div>
+  <div class="overlay hidden" id="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title"><div class="dialog-box"><div id="dialog-body"></div></div></div>
+  <div class="intro" id="intro">
+    <div class="intro-display"><div class="intro-glow"></div><div class="intro-circle"></div><div class="intro-symbol">V<span>◆</span>D</div><div class="intro-rule"></div><span>ARK COLONY INITIATIVE</span></div>
+    <div class="intro-content"><span class="eyebrow">GAMESHUB ORIGINAL / UNDERGROUND SURVIVAL SIM</span><h1>A HOME<br>BELOW <em>EVERYTHING.</em></h1><p>Above, the frontier is broken. Below, a handful of people have a chance to build something lasting. Power the rooms. Feed the residents. Make the hard calls.</p>
+      <label for="name-input">YOUR SETTLEMENT NAME</label><input id="name-input" maxlength="26" value="NEW HORIZON" autocomplete="off">
+      <button id="new-game" class="primary-button">BEGIN RECLAMATION <span>↗</span></button>
+      <button id="continue-game" class="secondary-button" hidden>CONTINUE SAVED VAULT <span>→</span></button>
+      <small class="intro-foot">LOCAL AUTOSAVE · ORIGINAL ART · NO PURCHASES · V2 REBOOT</small>
     </div>
   </div>
 </div>
