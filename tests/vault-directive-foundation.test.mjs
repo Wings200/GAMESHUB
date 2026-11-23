@@ -141,7 +141,7 @@ test('generator actually burns fuel, room demand is counted, and staffing change
   const {app,systems}=harness();
   const room=digThenBuild(app);
   assert.equal(app.powerData().generation,3); // emergency idle output
-  assert.equal(app.powerData().demand,2);
+  assert.equal(app.powerData().demand,1); // only essential entrance circuit; generator itself burns fuel
   assert.equal(systems.assignment(app.state,1,room.id,{}).ok,true);
   assert.equal(app.powerData().generation,3); // worker must physically arrive
   runUntil(app,()=>app.state.survivors[0].state==='working',700);
