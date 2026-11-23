@@ -1,4 +1,4 @@
-# VAULT DIRECTIVE: BELOW THE SURFACE — Rebuilt 1.1
+# VAULT DIRECTIVE: BELOW THE SURFACE — Rebuilt 1.2
 
 A new, original, single-player underground settlement simulation for GAMESHUB. The two older prototypes were retired, not incorporated. The active game lives at /games/vault-directive/ and appears exclusively in the IN DEV filter.
 
@@ -22,6 +22,16 @@ This is an original underground cutaway game. It shares general simulation conve
 - A guided first-time tutorial, auto-save, pause, 1-3x speed, zoom, in-game dialogs and event journal.
 - New localStorage save key: gameshub-vault-directive-rebuild-v3. Previous saves are not automatically loaded.
 
+
+
+## Upgrade 1.2 — Physical resident assignments and housing
+
+- Drag a resident from the dedicated PEOPLE panel or from the vault map onto a working room to assign them. A room glows as an active drop target.
+- Dragging a resident to Living Quarters selects that room as their home and takes them off duty. Existing click/tap assignment controls remain available for mobile and accessibility.
+- Residents have individual, persistent home-quarter assignments. Bedrooms hold a maximum of four people and do not overbook.
+- At the end of a shift, residents navigate through actual corridors back to their chosen bed. Changing jobs does not erase their housing assignment.
+- If living quarters are dismantled, the home assignments are cleared. People with no beds rest poorly, recover energy slowly, and lose morale; the vault logs a housing shortage.
+- Version-3 local saves remain compatible. Residents from old saves without an explicit home are allocated automatically.
 
 ## Upgrade 1.1 — Routine, UI, exploration and tutorial repair pass
 
