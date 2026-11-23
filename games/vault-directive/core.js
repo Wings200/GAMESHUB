@@ -11,6 +11,7 @@ const ROOMS={
  water:{name:"Water Purifier",icon:"◈",desc:"Clean drinking water, essential to survival.",cost:{wood:2,scrap:6,stone:4},type:"water",output:18,cycle:14,skill:"engineering"},
  storage:{name:"Supply Depot",icon:"▤",desc:"Expand food, power and water storage.",cost:{wood:5,scrap:3},type:"storage"},
  recreation:{name:"Common Room",icon:"♫",desc:"Socializing increases morale.",cost:{wood:7,scrap:4,stone:1},type:"recreation"},
+ cafeteria:{name:"Community Cafeteria",icon:"♨",desc:"Shared dining tables where residents eat and socialize on timed breaks.",cost:{wood:5,scrap:3,stone:1},type:"cafeteria",skill:"farming"},
  medical:{name:"Medical Ward",icon:"✚",desc:"Staff with medics to cure sick residents.",cost:{wood:4,scrap:7,stone:3},type:"medical",skill:"medicine",unlock:"medical"},
  security:{name:"Security Post",icon:"⌖",desc:"Guards defend this post on their assigned shifts.",cost:{wood:3,scrap:8,stone:4},type:"security",skill:"combat",unlock:"security"}
 };
@@ -173,6 +174,7 @@ function routine(s,p){
  const bed=quarters.length?quarters[Math.max(0,s.people.findIndex(x=>x.id===p.id))%quarters.length]:null;
  const medical=s.rooms.find(r=>r.type==="medical");
  const lounge=s.rooms.find(r=>r.type==="recreation");
+ const dining=s.rooms.find(r=>r.type==="cafeteria");
  const needsSleep=night(s)?p.shift==="day":p.shift==="night";
  if(s.threat){
   if(p.weapon>0&&!p.rebel){
@@ -183,7 +185,8 @@ function routine(s,p){
  }
  if(p.sick||p.health<25)return {phase:"sick",roomId:medical?.id??bed?.id??null,label:medical?"In medical care":"Resting while ill"};
  if(needsSleep)return {phase:"sleep",roomId:bed?.id??null,label:"Sleeping — "+p.shift+" shift"};
- if((p.hunger<22&&s.res.food>.25)||(p.thirst<22&&s.res.water>.25))return {phase:"meal",roomId:lounge?.id??bed?.id??null,label:"Eating or drinking"};
+ const mealtime=dining&&s.res.food>.25&&((Math.floor(s.clock/60)+p.id)%7===0);
+ if((p.hunger<22&&s.res.food>.25)||(p.thirst<22&&s.res.water>.25)||mealtime)return {phase:"meal",roomId:dining?.id??lounge?.id??bed?.id??null,label:"Eating or drinking"};
  const workplace=s.rooms.find(r=>r.id===p.job);
  if(workplace&&workplace.workers.includes(p.id)){
   if(!access(s,workplace.cells[0]))return {phase:"stranded",roomId:workplace.id,label:"Passage blocked — cannot work"};
@@ -345,6 +348,7 @@ function simulate(s,seconds){
    }
   }
   if(r.type==="recreation")for(const p of s.people){if(routine(s,p).phase==="socializing"&&routine(s,p).roomId===r.id)p.mood=clamp(p.mood+dt*.12,0,100);}
+  if(r.type==="cafeteria"&&workersOnDuty(s,r).length&&s.res.food>.2)for(const p of s.people){const here=routine(s,p);if(here.phase==="meal"&&here.roomId===r.id)p.mood=clamp(p.mood+dt*.16,0,100);}
   if(r.type==="medical"&&workersOnDuty(s,r).length)for(const p of s.people){if(p.sick&&s.res.medicine>=dt*.02){p.health=clamp(p.health+dt*.4,0,100);s.res.medicine=Math.max(0,s.res.medicine-dt*.02);if(p.health>80)p.sick=false;}}
  }
  s.res.power=clamp(s.res.power-dt*s.rooms.filter(r=>!["power","quarters","storage"].includes(r.type)).length*.045,0,caps(s).power);
