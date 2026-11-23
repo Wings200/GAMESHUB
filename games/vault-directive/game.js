@@ -333,6 +333,8 @@
       state.rooms.push({id:nextId(),type:p.roomType,x:p.x,y:p.y,width:p.width,integrity:100,priority:p.roomType==='water'?1:2});
       flag('build');report(ROOM_TYPES[p.roomType].name+' construction complete. The room is now operational.');
       toast('ROOM CONSTRUCTED · '+ROOM_TYPES[p.roomType].name.toUpperCase());
+    }else if(p.kind==='rescue'){
+      report('Rubble cleared. Emergency rescue order completed.');
     }else{
       report('Excavation complete. '+p.cells.length+' terrain tiles cleared and ready for building.');
       toast('EXCAVATION COMPLETE');
@@ -350,7 +352,10 @@
       if(r.thirst<57 && state.resources.water>=.1){r.thirst=Math.min(100,r.thirst+39);report(r.name+' drank water.');}
       if((r.hunger<12||r.thirst<12)&&Math.random()<dt*.06){r.health=Math.max(0,r.health-1);r.morale=Math.max(0,r.morale-2);}
       if(r.energy<24 && r.state!=='resting'){r.state='resting';r.path=[];r.wait=0;report(r.name+' is taking an essential rest break.');}
-      if(r.state==='resting'){
+      if(r.dead){
+      ctx.fillStyle='#7f675e';ctx.fillRect(px-19,foot-13,30,9);
+      ctx.fillStyle=r.skin;ctx.beginPath();ctx.arc(px-22,foot-12,6,0,Math.PI*2);ctx.fill();
+    }else if(r.state==='resting'){
         const bunks=state.rooms.some(room=>room.type==='bunks');
         r.energy=Math.min(100,r.energy+dt*(bunks?2.7:1.1));
         if(r.energy>=80){r.state='idle';report(r.name+' is rested and returning to their assignment.');}
@@ -596,9 +601,54 @@
           const amount=state.digProgress[key(c.x,c.y)]||0;
           if(amount>0){ctx.fillStyle='#edbf78';ctx.fillRect(c.x*T+8,(c.y+1)*T-10,(T-16)*bound(amount/(4.5+c.y*.24),0,1),3);}
         }
+      }else if(p.kind==='rescue'){
+        for(const cell of p.cells){
+          ctx.strokeStyle='#f19e77';ctx.lineWidth=3;
+          ctx.setLineDash([6,4]);ctx.strokeRect(cell.x*T+2,cell.y*T+2,T-4,T-4);ctx.setLineDash([]);
+          ctx.fillStyle='#f5ad87';ctx.textAlign='center';ctx.font='bold 10px sans-serif';
+          ctx.fillText('RESCUE',cell.x*T+T/2,cell.y*T-9);
+        }
       }else drawBuildFrame(p);
     }
     for(const room of state.rooms)drawRoom(room,now);
+    for(const ladder of state.ladders){
+      const x=ladder.x*T,y=ladder.y*T;
+      ctx.fillStyle='rgba(53,72,76,.62)';ctx.fillRect(x+14,y+2,T-28,T-4);
+      ctx.strokeStyle='#b7ba9c';ctx.lineWidth=3;ctx.beginPath();
+      ctx.moveTo(x+18,y+3);ctx.lineTo(x+18,y+T-3);
+      ctx.moveTo(x+T-18,y+3);ctx.lineTo(x+T-18,y+T-3);
+      for(let i=10;i<T;i+=12){ctx.moveTo(x+18,y+i);ctx.lineTo(x+T-18,y+i);}ctx.stroke();
+    }
+    for(const door of state.doors){
+      const x=door.x*T,y=door.y*T;
+      ctx.fillStyle=door.closed?'#5b6d6d':'#34494e';
+      ctx.fillRect(x+3,y+3,T-6,T-6);
+      ctx.strokeStyle=door.closed?'#e5b16c':'#8eb8a6';ctx.lineWidth=3;
+      ctx.strokeRect(x+3,y+3,T-6,T-6);
+      for(let i=0;i<3;i++){ctx.strokeStyle=door.closed?'#a5a99a':'#6c9388';
+        ctx.beginPath();ctx.moveTo(x+8+i*15,y+8);ctx.lineTo(x+8+i*15,y+T-8);ctx.stroke();}
+      if(!door.closed){ctx.fillStyle='#14262b';ctx.fillRect(x+21,y+3,12,T-6);}
+      ctx.fillStyle=door.closed?'#e1b27a':'#b0d8c2';ctx.textAlign='center';ctx.font='bold 8px sans-serif';
+      ctx.fillText(door.closed?'SEALED':'OPEN',x+T/2,y-5);
+    }
+    for(const incident of state.incidents){
+      const rm=state.rooms.find(r=>r.id===incident.roomId);
+      if(!rm)continue;
+      const x=(rm.x+rm.width/2)*T,y=(rm.y+.8)*T;
+      ctx.save();ctx.fillStyle=incident.kind==='fire'?'#e79a61':'#a2bb84';
+      ctx.shadowBlur=14;ctx.shadowColor=ctx.fillStyle;ctx.font='bold 31px sans-serif';ctx.textAlign='center';
+      ctx.fillText(incident.kind==='fire'?'♨':'◉',x,y+Math.sin(now*.008)*4);ctx.restore();
+    }
+    if(state.threat){
+      const raid=state.threat;
+      const x=(raid.x+.5)*T,y=(raid.y+.94)*T;
+      ctx.fillStyle='#682f36';ctx.fillRect(x-14,y-35,27,33);
+      ctx.fillStyle='#c6a48c';ctx.beginPath();ctx.arc(x,y-45,11,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#c9534c';ctx.fillRect(x-14,y-57,28,6);
+      ctx.fillStyle='#f4c5b2';ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillText(
+        raid.kind==='ferals'?'FERALS':'RAIDERS',x,y-67);
+      ctx.fillStyle='#e68b72';ctx.fillRect(x-20,y-61,40*bound(raid.hp/(raid.kind==='ferals'?72:95),0,1),3);
+    }
     for(const r of state.survivors) {
       if(state.expedition && state.expedition.crew.includes(r.id))continue;
       drawSurvivor(r,now);
@@ -619,7 +669,16 @@
   }
   function drawTile(x,y) {
     const px=x*T,py=y*T,v=hash(x,y);
-    if(state.terrain[y][x]===1) {
+    if(state.terrain[y][x]===2){
+      ctx.fillStyle='#4d4942';ctx.fillRect(px,py,T,T);
+      ctx.fillStyle='#8c7061';
+      for(let i=0;i<7;i++){
+        const rx=px+4+hash(x*7+i,y)*42,ry=py+9+hash(x,y*8+i)*36;
+        ctx.beginPath();ctx.moveTo(rx,ry-8);ctx.lineTo(rx+8,ry-3);ctx.lineTo(rx+11,ry+6);
+        ctx.lineTo(rx-4,ry+7);ctx.closePath();ctx.fill();
+      }
+      ctx.strokeStyle='#d88f70';ctx.strokeRect(px+2,py+2,T-4,T-4);
+    }else if(state.terrain[y][x]===1) {
       const rocky=y>=11;
       ctx.fillStyle=rocky?(v>.5?'#3c4546':'#41413c'):(v>.50?'#5a493c':'#624e3e');
       ctx.globalAlpha=rocky?.43:.32;ctx.fillRect(px,py,T,T);ctx.globalAlpha=1;
@@ -683,7 +742,7 @@
     ctx.fillRect(x+13,y+14,w-26,h-31);
     ctx.fillStyle=online?'#e7d59a':'#667579';ctx.fillRect(x+w/2-14,y+10,28,3);
     if(online){ctx.shadowBlur=15;ctx.shadowColor='#e2bd78';ctx.fillRect(x+w/2-11,y+13,22,4);ctx.shadowBlur=0;}
-    ctx.fillStyle='#c8c5ab';ctx.font='bold 9px sans-serif';ctx.textAlign='left';ctx.fillText(def.name.toUpperCase(),x+13,y+22);
+    ctx.fillStyle=online?'#c8c5ab':'#80908b';ctx.font='bold 9px sans-serif';ctx.textAlign='left';ctx.fillText(def.name.toUpperCase(),x+13,y+22);
     if(room.type==='generator'){
       const cx=x+w/2,cy=y+h-36;
       ctx.fillStyle='#303f41';ctx.fillRect(cx-54,cy-21,108,40);ctx.strokeStyle='#998d77';ctx.lineWidth=3;ctx.strokeRect(cx-54,cy-21,108,40);
@@ -725,11 +784,30 @@
         }
       }
     }
+    if(['medbay','radio','security'].includes(room.type)){
+      const cx=x+w/2,cy=y+h-39;
+      ctx.fillStyle='#2f4242';ctx.fillRect(cx-32,cy-26,64,46);
+      ctx.strokeStyle=def.color;ctx.lineWidth=2;ctx.strokeRect(cx-32,cy-26,64,46);
+      ctx.fillStyle=online?def.color:'#52646a';ctx.font='bold 35px sans-serif';ctx.textAlign='center';
+      ctx.fillText(def.glyph,cx,cy+9);
+      if(room.type==='radio'){
+        ctx.strokeStyle='#b7c9b8';ctx.beginPath();ctx.moveTo(cx,cy-26);ctx.lineTo(cx,cy-52);ctx.stroke();
+        ctx.beginPath();ctx.arc(cx,cy-47,7,Math.PI*1.1,Math.PI*1.9);ctx.stroke();
+      }
+    }
+    if(room.captured){
+      const surveillance=state.rooms.some(r=>r.type==='security'&&roomActive(r));
+      ctx.fillStyle=surveillance?'rgba(65,19,24,.40)':'rgba(10,14,19,.80)';
+      ctx.fillRect(x+8,y+12,w-16,h-24);
+      ctx.fillStyle='#f1a18c';ctx.font='bold 11px sans-serif';ctx.textAlign='center';
+      ctx.fillText(surveillance?'HOSTILE CONTROL':'SIGNAL LOST · HOSTILE CONTROL',x+w/2,y+h/2);
+    }
     if(!online && room.type!=='generator'){
       ctx.fillStyle='rgba(3,7,11,.43)';ctx.fillRect(x+8,y+12,w-16,h-23);
       ctx.fillStyle='#e4a484';ctx.font='bold 10px sans-serif';ctx.fillText('NO POWER',x+15,y+h-19);
     }
-    ctx.strokeStyle=def.color;ctx.lineWidth=2;ctx.strokeRect(x+1,y+1,w-2,h-2);
+    ctx.strokeStyle=room.captured?'#dc876e':def.color;ctx.lineWidth=2;ctx.strokeRect(x+1,y+1,w-2,h-2);
+    if(room.integrity<99){ctx.fillStyle='#a65b4d';ctx.fillRect(x+10,y+h-11,(w-20)*bound(room.integrity/100,0,1),3);}
     if(selection&&selection.kind==='room'&&selection.id===room.id){ctx.lineWidth=3;ctx.strokeStyle='#f2d19b';ctx.strokeRect(x-3,y-3,w+6,h+6);}
   }
   function drawBuildFrame(p){
