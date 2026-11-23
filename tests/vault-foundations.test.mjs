@@ -105,6 +105,19 @@ test('rendering failure triggers interactive HTML fallback, and scavenging/diggi
  assert.equal(h.state().digs,1,'backup tile clicks dig real tunnels');
  assert.equal(h.state().cells[10].kind,'open');
 });
+test('SAFE MAP button manually turns backup map on or off with no Canvas failure',()=>{
+ const h=harness();
+ h.frames(3);h.el('startBtn').click();h.frames(3);
+ h.el('fallbackBtn').click();
+ assert.equal(h.el('worldFallback').hidden,false);
+ const map=h.el('worldFallback').children.find(x=>x.className==='fallback-map');
+ assert.ok(map,'manual SAFE MAP shows tile grid');
+ h.el('surfaceBtn').click();
+ assert.ok(h.el('worldFallback').children.some(x=>x.className==='fallback-site-grid'),'surface still visible in SAFE MAP');
+ h.el('fallbackBtn').click();
+ assert.equal(h.el('worldFallback').hidden,true,'return to Canvas view if supported');
+ h.frames(4);
+});
 test('the animation loop is alive before and after starting, and when entering the surface',()=>{
  const h=harness();
  h.frames(5); // Open start overlay: must draw background safely with no active game
