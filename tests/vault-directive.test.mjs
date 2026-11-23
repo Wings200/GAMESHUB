@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 const source=readFileSync(new URL('../games/vault-directive/game.js',import.meta.url),'utf8');
 class FakeElement{
- constructor(id){this.id=id;this.listeners={};this.children=[];this.style={};this.classList={add(){},remove(){},toggle(){}};this.textContent='';this.value='VAULT-TEST';this.hidden=false;this.disabled=false;}
+ constructor(id){this.id=id;this.listeners={};this.children=[];this.style={};this.classList={add(){},remove(){},toggle(){}};this.textContent='';this.value='VAULT-TEST';this.width=1200;this.height=720;this.hidden=false;this.disabled=false;}
  addEventListener(type,handler){this.listeners[type]=handler;}
  click(event){this.listeners.click?.(event||{clientX:0,clientY:0});}
  append(...children){this.children.push(...children);}
