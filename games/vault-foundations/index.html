@@ -5,8 +5,8 @@
 <meta name="theme-color" content="#111c1b">
 <meta name="description" content="Vault Directive Foundations — the click-to-dig experimental build of Vault Directive on GAMESHUB.">
 <title>Vault Directive: Foundations | GAMESHUB</title>
-<link rel="icon" href="/logo.png"><link rel="stylesheet" href="./style.css">
-<script src="./game.js" defer></script>
+<link rel="icon" href="/logo.png"><link rel="stylesheet" href="./style.css?v=foundations-012">
+<script src="./game.js?v=foundations-012" defer></script>
 </head>
 <body>
 <header class="mast">
@@ -40,7 +40,7 @@
     <div class="toggle" role="group" aria-label="View location"><button id="undergroundBtn" class="active" type="button">▤ UNDERGROUND</button><button id="surfaceBtn" type="button">☀ SURFACE</button></div>
     <div class="worldmessage"><span class="dot"></span><span id="worldStatus">AWAITING COMMAND</span></div>
    </div>
-   <div class="viewport"><canvas id="world" width="1130" height="700" aria-label="Interactive underground tunnel and surface map">Canvas 2D is required to play.</canvas><div id="floatingToast" class="toast" role="status" aria-live="polite"></div></div>
+   <div class="viewport"><canvas id="world" width="1130" height="700" aria-label="Interactive underground tunnel and surface map">Canvas 2D is required to play.</canvas><div id="worldFallback" class="world-fallback" aria-label="Interactive backup game map" hidden></div><div id="floatingToast" class="toast" role="status" aria-live="polite"></div></div>
    <div class="worldfoot"><span id="hoverInfo">CLICK EARTH TO DIG • USE TOOLS ON THE RIGHT</span><span>VAULT SYSTEMS // FOUNDATION 0.1</span></div>
   </div>
   <aside class="controls">
@@ -71,7 +71,7 @@
   </aside>
  </section>
  <section class="below"><div class="journal"><div class="journalhead"><div><span class="eyebrow">SETTLEMENT CHRONICLE</span><h2>EVENT LOG</h2></div><span id="journalStatus">● RECORDING</span></div><div id="events" class="events" role="log" aria-live="polite"></div></div><div class="brief"><span class="eyebrow">PHASE ONE OBJECTIVE</span><h2>BUILD THE FOUNDATION.</h2><p>This test is about <strong>your first shovel, first scavenging trip and first safe room</strong>. Residents, combat and production will be designed together in later phases. Your older Alpha 0.2 save is untouched.</p><button id="newBtn" type="button">START OVER</button></div></section>
- <footer>GAMESHUB ORIGINAL • FOUNDATION PROTOTYPE • <span id="buildVersion">0.1</span></footer>
+ <footer>GAMESHUB ORIGINAL • FOUNDATION PROTOTYPE • <span id="buildVersion">0.1.2</span></footer>
 </main>
 <div id="startOverlay" class="overlay" role="dialog" aria-modal="true" aria-labelledby="startHeading">
  <div class="start modal">
