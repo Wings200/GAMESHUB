@@ -68,8 +68,14 @@ function renderTerrain(){
   const c=s.grid[i],[x,y]=D.xy(i);
   const cls=c.kind==='dirt'?'dirt':c.kind==='rubble'?'rubble':c.kind==='room'?'roomtile':i===D.START?'entrance':'open';
   const near=s.tool==='dig'&&D.canDig(s,i)?' nearby':'';
-  const target=(s.task&&s.task.i===i&&s.task.type!=='scavenge')||(!s.skipTutorial&&s.tutorial===1&&[5,6].includes(i)&&s.grid[i].kind==='dirt')?' target':'';
-  parts.push('<button type="button" class="sector '+cls+near+target+'" data-index="'+i+'" title="Level '+(y+1)+' · Bay '+(x+1)+' · '+cls+'">'+
+  const tutorialTile=!s.skipTutorial&&(
+   (s.tutorial===1&&[5,6].includes(i)&&c.kind==='dirt')||
+   (s.tutorial===2&&[5,6].includes(i)&&c.kind==='open')||
+   (s.tutorial===3&&i===5&&c.kind==='open')
+  );
+  const target=(s.task&&s.task.i===i&&s.task.type!=='scavenge')||tutorialTile;
+  const targetClass=target?' target '+(s.tool==='timber'?'target-support':s.tool==='build'?'target-build':s.tool==='demolish'?'target-remove':'target-dig'):'';
+  parts.push('<button type="button" class="sector '+cls+near+targetClass+'" data-index="'+i+'" title="Level '+(y+1)+' · Bay '+(x+1)+' · '+cls+'">'+
   (x===0?'<span class="depth">L'+String(y+1).padStart(2,'0')+'</span>':'')+
   (c.support?'<span class="frame '+c.support+'"></span>':'')+
   (c.kind==='lift'?'<span class="location-mark">⇳ LIFT</span>':'')+
@@ -503,7 +509,7 @@ function setPanel(type,id){panel=type;panelId=id??null;showPanel();}
 
 function renderAll(){
  if(!s)return;
- renderTerrain();renderRooms();renderPeople();renderVisitors();updateHud();renderCoach();renderSurface();showPanel();save();
+ renderTerrain();renderRooms();renderPeople();renderVisitors();updateHud();renderCoach();renderSurface();showPanel();
  if(s.log[0]?.message&&s.log[0].message!==lastLog){
   const event=s.log[0];
   // Normal activities already give inline feedback. Avoid doubling every
