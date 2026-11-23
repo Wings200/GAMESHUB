@@ -181,6 +181,9 @@ function updateHud(){
  $('statWater').title='Purifiers generate clean water. Dehydrated residents drink more.';
  $('visitorBadge').hidden=!s.visitors.length;
  $('visitorBadge').textContent=s.visitors.length;
+ $('pauseBtn').classList.toggle('active',!s.speed);
+ $('pauseBtn').textContent=s.speed?'Ⅱ':'▶';
+ $('speedBtn').textContent=(s.speed||1)+'×';
  updateTask();updateSurfaceProgress();
  const c=s.rooms.filter(r=>r.ready).length;
  $('bottomHint').textContent=s.threat?'⚠ ALARM! ASSIGNED GUARDS ARE RESPONDING TO THE ATTACK.':
