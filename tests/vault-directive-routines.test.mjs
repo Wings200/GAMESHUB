@@ -95,6 +95,19 @@ test('collecting from full storage never consumes a ready production cycle',()=>
  assert.equal(reactor.progress,100);
  assert.equal(s.res.power,D.caps(s).power);
 });
+test('resident paths follow open corridors, and a collapsed passage isolates the workplace',()=>{
+ const {D,s,p,reactor}=setup();
+ s.clock=12*60;
+ const route=Array.from(D.path(s,D.START,reactor.cells[0]));
+ assert.deepEqual(route,[4,5,6,7], 'no diagonal travel through dirt');
+ assert.equal(D.workersOnDuty(s,reactor).length,1);
+ s.grid[6].kind='rubble';
+ assert.equal(D.path(s,D.START,reactor.cells[0]),null);
+ assert.equal(D.routine(s,p).phase,'stranded');
+ assert.equal(D.workersOnDuty(s,reactor).length,0,'power production must stop when the worksite is isolated');
+ assert.equal(D.assign(s,p.id,reactor.id).ok,false,'cannot assign to a cut-off worksite');
+});
+
 test('pause, resume and resource consumption leave state coherent',()=>{
  const {D,s,p}=setup();
  s.res.food=10;s.res.water=10;
