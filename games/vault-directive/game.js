@@ -223,16 +223,31 @@ function tutorialMarkup(){
  (!s.skipTutorial&&s.tutorial<7?button('skip','SKIP TRAINING','','','small'):'');
 }
 function buildMarkup(){
- let html='<p class="panel-intro">Rooms require <b>two neighboring dug-out bays</b> plus at least one physical support. Select a blueprint, then click the LEFT bay of the chamber.</p>';
- if(s.selectedPerson)html+='<div class="mission-card"><small>PERSON SELECTED</small><h3>'+safe(D.person(s,s.selectedPerson)?.name||'NONE')+'</h3><p>Click an existing room to assign this resident to it.</p></div>';
- for(const [key,d]of Object.entries(D.ROOMS)){
-  const locked=d.unlock&&!s.unlocked.includes(d.unlock);
-  html+='<div class="build-card"><span class="badge'+(locked?' warn':'')+'">'+(locked?'RESEARCH REQUIRED':s.buildType===key?'SELECTED':'AVAILABLE')+'</span>'+
-  '<h3>'+d.icon+' '+safe(d.name)+'</h3><p class="subtitle">'+safe(d.desc)+'</p>'+
-  '<div class="cost '+(D.afford(s,d.cost)?'':'bad')+'">'+D.cost(d.cost)+'</div>'+
-  button('selectRoom',locked?'UNLOCK RESEARCH →':s.buildType===key?'✓ ACTIVE BLUEPRINT':'SELECT BLUEPRINT','',key,locked?'':'primary')+'</div>';
+ const selected=D.ROOMS[s.buildType];
+ let html='<p class="panel-intro">Dig adjacent bays with the shovel, support at least one of them, then choose a blueprint and click the LEFT bay. Each new facility costs actual resources.</p>';
+ if(selected){
+  html+='<div class="mission-card"><small>ACTIVE CONSTRUCTION DESIGN</small><h3>'+selected.icon+' '+safe(selected.name.toUpperCase())+'</h3><p>'+safe(selected.desc)+'</p>'+
+  '<div class="cost">'+D.cost(selected.cost)+'</div>'+button('activateBuild','SELECT BUILD TOOL →','','','primary')+'</div>';
+ }else html+='<div class="mission-card"><small>ACTIVE DESIGN</small><h3>⇳ ELEVATOR SHAFT</h3><p>Enables access to deeper levels. Place on an open reachable tile.</p><div class="cost">2 wood · 4 scrap</div>'+button('activateBuild','SELECT ELEVATOR TOOL →','','','primary')+'</div>';
+ const categories=[
+  ['LIVING & STORAGE',['quarters','storage']],
+  ['ESSENTIAL PRODUCTION',['power','food','water']],
+  ['COMMUNITY & DEFENSE',['recreation','medical','security']]
+ ];
+ for(const [label,items] of categories){
+  html+='<div class="panel-section">'+label+'</div><div class="room-list">';
+  for(const key of items){
+   const d=D.ROOMS[key],locked=d.unlock&&!s.unlocked.includes(d.unlock);
+   const active=s.buildType===key;
+   html+='<button class="room-small'+(active?' selected':'')+'" data-command="selectRoom" data-value="'+key+'">'+
+    d.icon+' '+safe(d.name.toUpperCase())+' <span class="staff-label">'+(locked?'(RESEARCH FIRST)':D.cost(d.cost))+'</span>'+
+    (active?' ✓':'')+'</button>';
+  }
+  html+='</div>';
  }
- html+='<div class="panel-section">GO VERTICAL</div><div class="build-card"><h3>⇳ ELEVATOR SHAFT</h3><p class="subtitle">Build in an excavated tile to access the next level downward. Cost: 2 wood · 4 scrap.</p>'+button('liftTool','SELECT ELEVATOR TOOL')+'</div>';
+ html+='<div class="panel-section">EXCAVATION & SUPPORTS</div>'+
+ button('showSupport','▥ CHOOSE A TUNNEL FRAME')+
+ button('liftTool','⇳ BUILD AN ELEVATOR SHAFT');
  return html;
 }
 function supportMarkup(){
@@ -246,6 +261,157 @@ function supportMarkup(){
  }
  return html;
 }
+
+const SURFACE_POINTS=[
+ {x:28,y:56,icon:'♣'}, {x:45,y:34,icon:'▤'}, {x:62,y:65,icon:'⌂'},
+ {x:77,y:27,icon:'◈'}, {x:89,y:55,icon:'⌖'}
+];
+function setSurface(open){
+ if(!s)return;
+ surfaceOpen=!!open;$('surfaceLayer').classList.toggle('hidden',!surfaceOpen);
+ if(surfaceOpen){setPanel('explore');renderSurface();updateSurfaceProgress();}
+}
+function renderSurface(){
+ if(!s||!surfaceOpen)return;
+ let pins='';
+ for(const [i,site] of D.SITES.entries()){
+  const point=SURFACE_POINTS[i];
+  pins+='<button type="button" class="site-pin'+(selectedSite===site.id?' active':'')+'" data-command="siteSelect" data-value="'+site.id+'" style="left:'+point.x+'%;top:'+point.y+'%">'+
+  '<strong>'+point.icon+'</strong><span>'+safe(site.name.toUpperCase())+'</span><small>'+safe(site.distance)+'</small></button>';
+ }
+ const pinHost=$('surfaceSites');if(pinHost.innerHTML!==pins)pinHost.innerHTML=pins;
+ const target=D.SITES.find(x=>x.id===selectedSite)||D.SITES[0],busy=!!s.task;
+ const active=s.task?.type==='scavenge'?D.SITES.find(x=>x.id===s.task.meta):null;
+ let details;
+ if(active){
+  details='<div class="site-text"><h3>OVERSEER: '+safe(active.name.toUpperCase())+'</h3><p>Actually traveling through the wasteland. Watch the marker move to the destination, explore it and return with materials.</p></div>'+
+  '<button type="button" disabled>EXPEDITION IN PROGRESS…</button>';
+ }else{
+  const last=s.lastExpedition;
+  details='<div class="site-text"><h3>'+safe(target.name.toUpperCase())+'</h3><p>'+safe(target.desc)+' · '+safe(target.distance)+' away · '+Math.round(target.risk*100)+'% encounter risk</p>'+
+  (last?'<span class="explore-report">LAST RETURN: '+safe(last.site)+' · '+Object.entries(last.loot).filter(([,v])=>v>0).map(([k,v])=>'+'+v+' '+k).join(', ')+(last.hazard?' · HAZARD ENCOUNTER':'')+'</span>':'')+'</div>'+
+  '<button type="button" data-command="search" data-value="'+target.id+'" '+(busy?'disabled':'')+'>SEND OVERSEER →</button>';
+ }
+ const info=$('surfaceDetails');if(info.innerHTML!==details)info.innerHTML=details;
+ updateSurfaceProgress();
+}
+function updateSurfaceProgress(){
+ if(!s||!surfaceOpen)return;
+ const active=s.task?.type==='scavenge'?s.task:null;
+ const target=D.SITES.find(x=>x.id===(active?.meta||selectedSite))||D.SITES[0];
+ const point=SURFACE_POINTS[D.SITES.indexOf(target)]||SURFACE_POINTS[0];
+ let percent=0,x=10,y=76,label='CHOOSE A DESTINATION';
+ if(active){
+  percent=D.clamp((s.elapsed-active.start)/active.duration,0,1);
+  const stage=percent<.35?'TRAVELING OUTBOUND':percent<.76?'SEARCHING THE RUINS':'RETURNING TO THE VAULT';
+  label=stage+' · '+target.name.toUpperCase();
+  if(percent<.35){const t=percent/.35;x=10+(point.x-10)*t;y=76+(point.y-76)*t;}
+  else if(percent<.76){x=point.x;y=point.y+(Math.sin(s.elapsed*7)*1.4);}
+  else{const t=(percent-.76)/.24;x=point.x+(10-point.x)*t;y=point.y+(76-point.y)*t;}
+ }else if(s.task)label='OVERSEER BUSY WITH '+s.task.type.toUpperCase();
+ else if(s.lastExpedition)label='OVERSEER RETURNED · CARGO SECURED';
+ const avatar=$('travelAvatar');avatar.style.left=x+'%';avatar.style.top=y+'%';
+ avatar.classList.toggle('busy',!!active);
+ $('travelStage').textContent=label;$('travelPercent').textContent=active?Math.round(percent*100)+'%':'READY';
+ $('travelFill').style.width=Math.round(percent*100)+'%';
+}
+function renderCoach(){
+ if(!s)return;
+ const visible=!s.skipTutorial&&s.tutorial<7;
+ $('coach').classList.toggle('hidden',!visible);
+ if(!visible)return;
+ const step=D.TUTORIAL[Math.min(s.tutorial,7)];
+ $('coachProgress').textContent=String(s.tutorial+1).padStart(2,'0')+' / 08';
+ $('coachTitle').textContent=step[0];
+ $('coachText').textContent=step[1];
+}
+function suppliesMarkup(){
+ const cap=D.caps(s);
+ let html='<p class="panel-intro">Food, clean water and electricity are real stockpiles. Residents drink and eat automatically. Production requires workers on duty.</p>';
+ for(const k of ['power','food','water']){
+  const amount=s.res[k],capacity=cap[k];
+  html+='<div class="build-card"><h3>'+({power:'ϟ ELECTRICITY',food:'✿ FOOD',water:'◈ CLEAN WATER'}[k])+'</h3>'+
+  meter('Stored',Math.floor(amount)+' / '+capacity)+
+  '<div class="room-timer"><i style="width:'+Math.round(amount/capacity*100)+'%"></i></div>'+
+  meter('Production rooms',s.rooms.filter(r=>r.type===k).length)+
+  meter('Ready to collect',s.rooms.filter(r=>r.type===k&&r.ready).length)+
+  (k==='food'?meter('Resident consumption',(s.people.length*.032).toFixed(2)+' / sim second'):
+   k==='water'?meter('Resident consumption',(s.people.reduce((v,p)=>v+(p.thirst<30?.09:.042),0)).toFixed(2)+' / sim second'):
+   meter('Room usage',(s.rooms.filter(r=>!['power','quarters','storage'].includes(r.type)).length*.045).toFixed(2)+' / sim second'))+
+   '</div>';
+ }
+ html+='<div class="panel-section">CONSTRUCTION MATERIALS</div>'+
+ meter('Wood',fmt(s.res.wood))+meter('Scrap',fmt(s.res.scrap))+
+ meter('Stone',fmt(s.res.stone))+meter('Medicine',fmt(s.res.medicine))+
+ meter('Research points',s.research)+
+ '<div class="panel-section">PRODUCTION STATUS</div>';
+ const production=s.rooms.filter(r=>D.ROOMS[r.type].output);
+ html+=production.length?production.map(r=>'<div class="build-card"><h3>'+D.ROOMS[r.type].icon+' '+safe(D.ROOMS[r.type].name)+'</h3>'+
+ meter('On duty',D.workersOnDuty(s,r).length+' / '+r.workers.length+' assigned')+
+ meter('Progress',r.ready?'READY':Math.round(r.progress)+'%')+
+ button('inspectRoom',r.ready?'COLLECT / VIEW FACILITY →':'VIEW FACILITY →',r.id,'','small')+'</div>').join(''):'<div class="empty-msg">No production rooms built yet.</div>';
+ html+=button('openSurface','☀ SCAVENGE FOR SUPPLIES','','','primary');
+ return html;
+}
+function securityMarkup(){
+ const guards=s.people.filter(p=>p.weapon>0);
+ const posts=s.rooms.filter(r=>r.type==='security');
+ let html='<p class="panel-intro">Guards defend assigned positions automatically during alarms, including at night. Unarmed settlers retreat to safety. Assign a guard to a Security Post and equip their weapons and armor.</p>'+
+ '<div class="mission-card"><small>VAULT ALERT STATUS</small><h3>'+(s.threat?'⚠ '+safe(s.threat.name):'PERIMETER SECURE')+'</h3>'+
+ '<p>'+(s.threat?'Armed residents are responding to the alarm.':'No active attack. Maintain strong morale to prevent internal rebellion.')+'</p>'+
+ (s.threat?button('defend','RESOLVE CURRENT ATTACK','','','primary'):'')+'</div>'+
+ meter('Armed residents',guards.length)+meter('Security posts',posts.length)+
+ meter('Dissenting residents',s.people.filter(p=>p.rebel).length)+
+ '<div class="panel-section">GUARD ROSTER</div>';
+ html+=guards.length?guards.map(p=>'<div class="build-card"><h3>⌖ '+safe(p.name)+'</h3>'+
+ meter('Weapons',p.weapon+' · Armor '+p.armor)+
+ meter('Current routine',D.routine(s,p).label)+
+ button('person','MANAGE GUARD →',p.id,'','small')+'</div>').join(''):
+ '<div class="empty-msg">No armed residents yet. You can equip weapons in the People panel.</div>';
+ html+='<div class="panel-section">DEFENSE POSITIONS</div>'+
+ (posts.length?posts.map(r=>'<div class="build-card"><h3>⌖ SECURITY POST</h3>'+meter('Assigned',r.workers.length+' guards')+button('inspectRoom','MANAGE POST →',r.id,'','small')+'</div>').join(''):
+ '<div class="panel-help"><strong>No security posts built.</strong> Research Vault Defense and build one to assign permanent guard positions.</div>')+
+ button('researchPanel','✣ OPEN SECURITY RESEARCH')+
+ button('peoplePanel','♟ MANAGE EQUIPMENT & SHIFTS');
+ return html;
+}
+function exploreMarkup(){
+ const trip=s.task?.type==='scavenge'?s.task:null;
+ let html='<p class="panel-intro">Visit real locations outside the hatch. Your Overseer travels outward, searches, and returns with supplies. Risk increases with distance.</p>'+
+ button('openSurface',surfaceOpen?'VIEW CURRENT OVERWORLD →':'OPEN OVERWORLD MAP →','','','primary');
+ if(trip){
+  const site=D.SITES.find(x=>x.id===trip.meta);
+  html+='<div class="mission-card"><small>EXPEDITION UNDERWAY</small><h3>'+safe(site?.name||'OUTSIDE')+'</h3><p>'+safe(trip.phase||'outbound').toUpperCase()+' · '+Math.round(D.clamp((s.elapsed-trip.start)/trip.duration,0,1)*100)+'% complete. Watch your Overseer move on the map.</p></div>';
+ }
+ if(s.lastExpedition){
+  const x=s.lastExpedition;
+  html+='<div class="nav-report"><strong>LAST EXPEDITION: '+safe(x.site)+'</strong><p>'+Object.entries(x.loot).filter(([,n])=>n>0).map(([k,n])=>'+'+n+' '+k).join(' · ')+(x.hazard?'<br>⚠ A hazard reduced the salvage.':'')+'</p></div>';
+ }
+ html+='<div class="panel-section">SURFACE DESTINATIONS</div>';
+ for(const t of D.SITES){
+  html+='<button class="room-small'+(selectedSite===t.id?' selected':'')+'" data-command="siteSelect" data-value="'+t.id+'">'+
+  '⌖ '+safe(t.name.toUpperCase())+' <span class="staff-label">'+safe(t.distance)+' · '+Math.round(t.risk*100)+'% risk</span></button>';
+ }
+ return html;
+}
+function researchMarkup(){
+ let html='<p class="panel-intro">Earn research by digging, scavenging and construction. Unlocking a design lets you physically build it; existing rooms and supports are not automatically upgraded.</p>'+
+ meter('Available research',s.research+' points');
+ for(const t of D.TECH){
+  const owned=s.unlocked.includes(t.id),missing=t.req.some(req=>!s.unlocked.includes(req));
+  html+='<div class="research-card"><span class="badge'+(missing?' warn':'')+'">'+(owned?'UNLOCKED':missing?'PREREQUISITE':'COST '+t.cost+' RESEARCH')+'</span><h3>✣ '+safe(t.name.toUpperCase())+'</h3>'+
+  '<p>'+safe(t.desc)+'</p>'+
+  (missing?'<p class="cost">REQUIRES '+t.req.map(x=>safe(D.TECH.find(z=>z.id===x)?.name||x)).join(', ')+'</p>':'')+
+  '<button class="panel-button'+(owned?' selected':' primary')+'" data-command="research" data-value="'+t.id+'"'+(owned||missing||s.research<t.cost?' disabled':'')+'>'+
+  (owned?'✓ RESEARCHED':'UNLOCK NEW DESIGN →')+'</button></div>';
+ }
+ return html;
+}
+function journalMarkup(){
+ return '<p class="panel-intro">The event log records construction, expeditions, production, visitors, emergencies and new discoveries.</p>'+
+ s.log.slice(0,32).map(e=>'<div class="metric-row"><span>'+safe(e.when)+'<br>'+safe(e.message)+'</span><b style="color:'+(e.type==='danger'?'#efac92':'#dbcca6')+'">'+e.type.toUpperCase()+'</b></div>').join('');
+}
+
 function residentCard(p){
  const job=p.job?s.rooms.find(r=>r.id===p.job):null;
  return '<div class="resident-card"><div class="resident-portrait">'+personMarkup(p,'')+'</div><div class="bio"><h3>'+safe(p.name)+'</h3>'+
