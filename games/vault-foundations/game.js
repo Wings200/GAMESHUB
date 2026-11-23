@@ -367,6 +367,7 @@ function render(){
  $('surfaceBtn').classList.toggle('active',view==='surface');
  $('undergroundBtn').classList.toggle('active',view==='underground');
  renderTutorial();renderTech();renderEvents();
+ if(fallbackMode)renderFallback();
 }
 function setView(next){
  if(!g)return;
@@ -374,6 +375,7 @@ function setView(next){
  $('undergroundBtn').classList.toggle('active',view==='underground');
  $('hoverInfo').textContent=view==='surface'?'CLICK A SCAVENGE SITE TO WALK THERE AND COLLECT MATERIAL':'CLICK DIRT TO DIG • TUNNELS MUST CONNECT TO THE ENTRANCE';
  tutorialProgress();persist();render();status(view==='surface'?'SURFACE SCAVENGING READY':'UNDERGROUND EXCAVATION READY');
+ if(fallbackMode)renderFallback();
 }
 function begin(name){g=fresh(name);tool='dig';pending=null;hover=-1;view='underground';$('startOverlay').classList.add('hidden');log('Overseer arrived at the hatch with a shovel. Surface scavenging is necessary before construction.');persist();chooseTool('dig');render();}
 function resume(d){g=d;tool='dig';pending=null;hover=-1;view='underground';$('startOverlay').classList.add('hidden');chooseTool('dig');render();}
@@ -580,10 +582,94 @@ function advance(dt){
  if(a.route)a.routeIndex=Math.min(a.route.length-1,Math.ceil(a.elapsed/250));
  if(a.elapsed>=travel+a.duration)finish();
 }
+let fallbackMode=false,fallbackLast=0,renderError=null;
+function makeFallbackTag(kind,className,value){
+ const el=document.createElement(kind);
+ if(className)el.className=className;
+ if(value!==undefined)el.textContent=String(value);
+ return el;
+}
+function renderFallback(){
+ if(!fallbackMode)return;
+ const host=$('worldFallback');
+ host.hidden=false;
+ host.replaceChildren();
+ const heading=makeFallbackTag('div','fallback-heading',view==='surface'?'SURFACE // SCAVENGE FOR MATERIALS':'UNDERGROUND // DIG YOUR OWN VAULT');
+ const sub=makeFallbackTag('div','fallback-sub',view==='surface'?'Click any location to send your Overseer for supplies. The farther you travel, the more dangerous it gets.':'Click the highlighted dirt adjacent to an open corridor. Select tools in the Overseer Toolkit. You start at one hatch.');
+ host.append(heading,sub);
+ if(renderError){
+  const warn=makeFallbackTag('div','fallback-alert','BACKUP MAP ACTIVE — Canvas display failed ('+renderError+'). Digging, scavenging and room placement still work here.');
+  host.append(warn);
+ }
+ if(!g){
+  host.append(makeFallbackTag('div','fallback-meta','Press BEGIN FOUNDATION TEST to enter your vault.'));
+  return;
+ }
+ const meta=makeFallbackTag('div','fallback-meta');
+ for(const value of ['DAY '+String(timeDay()).padStart(2,'0')+' • '+clock(),'WOOD '+g.wood,'SCRAP '+g.scrap,'STONE '+g.stone,pending?'TASK IN PROGRESS…':'AWAITING COMMAND']){
+  meta.append(makeFallbackTag('span','',value));
+ }
+ host.append(meta);
+ if(view==='surface'){
+  const sites=makeFallbackTag('div','fallback-site-grid');
+  for(const site of SITES){
+   const button=makeFallbackTag('button','fallback-site');
+   button.type='button';button.disabled=!!pending;
+   button.append(
+    makeFallbackTag('b','',site.name),
+    makeFallbackTag('span','',site.distance+' • '+(site.risk===0?'SAFE':site.risk<.1?'LOW RISK':site.risk<.3?'MODERATE RISK':'HIGH RISK')),
+    makeFallbackTag('small','',site.desc),
+    makeFallbackTag('strong','',pending?.target===site.id?'SEARCHING…':'CLICK TO SCAVENGE →')
+   );
+   button.addEventListener('click',()=>{queue('scavenge',null,site);renderFallback();});
+   sites.append(button);
+  }
+  host.append(sites);
+ }else{
+  const wrap=makeFallbackTag('div','fallback-map');
+  const grid=makeFallbackTag('div','fallback-grid');
+  for(let i=0;i<g.cells.length;i++){
+   const tile=g.cells[i];
+   const room=g.rooms.find(r=>r.id===tile.roomId);
+   const symbol=tile.kind==='dirt'?'▒':tile.kind==='rubble'?'✖':tile.kind==='room'?(ROOMS[room?.type]?.icon||'⌂'):tile.support==='timber'?'▥':tile.support==='stone'?'▣':tile.support==='steel'?'▦':'·';
+   const button=makeFallbackTag('button','fallback-tile '+tile.kind,symbol);
+   button.type='button';
+   button.title=sector(i)+' • '+tile.kind+(tile.support?' • '+tile.support:'')+(room?' • '+ROOMS[room.type].name:'');
+   const tutorial=g.tutorial;
+   if(!tutorial.done&&!tutorial.skipped&&tutorial.step>=2&&tutorial.step<=4&&TARGET.includes(i))button.className+=' target';
+   if(g.actor===i&&tile.kind!=='dirt'){button.className+=' actor';button.textContent='♟';}
+   if(pending?.target===i)button.textContent='◌';
+   button.disabled=!!pending;
+   button.addEventListener('click',()=>{requestAt(i);renderFallback();});
+   grid.append(button);
+  }
+  wrap.append(grid);
+  host.append(wrap);
+  host.append(makeFallbackTag('div','fallback-sub','19 × 10 sectors. Select SHOVEL to dig, TIMBER FRAME to reinforce, or QUARTERS to build on the upper-left tile of a supported 2 × 2 chamber.'));
+ }
+}
+function activateFallback(err){
+ if(fallbackMode)return;
+ renderError=String(err?.message||err||'unknown error').slice(0,150);
+ fallbackMode=true;
+ $('worldFallback').hidden=false;
+ $('worldStatus').textContent='HTML MAP READY • CANVAS COMPATIBILITY MODE';
+ renderFallback();
+ try{console.error('[Vault Foundations] Canvas renderer failed. HTML map activated.',err);}catch(_){}
+}
 function frameLoop(now){
  const dt=Math.min(100,Math.max(0,now-lastFrame));lastFrame=now;
- frame++;if(g)advance(dt);
- drawing(now);
+ try{
+  frame++;
+  if(g)advance(dt);
+  if(fallbackMode){
+   if(now-fallbackLast>260){renderFallback();fallbackLast=now;}
+  }else{
+   drawing(now);
+  }
+ }catch(err){
+  activateFallback(err);
+ }
  if(toastUntil&&now>toastUntil){$('floatingToast').classList.remove('show');toastUntil=0;}
  requestAnimationFrame(frameLoop);
 }
