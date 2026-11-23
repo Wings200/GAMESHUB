@@ -77,7 +77,7 @@ test('overthrow triggers exile in Standard, and permanent defeat in Hardcore',()
   const reloaded=harness(store,mode);reloaded.el('continueBtn').click();reloaded.frames(16);
   const s=reloaded.get();assert.equal(s.phase,mode==='hardcore'?'gameover':'exile');
   if(mode==='standard'){
-   const rebuild=reloaded.visit(reloaded.el('exileActions'),e=>typeof e.textContent==='string'&&e.textContent==='FOUND A NEW VAULT');
+   const rebuild=reloaded.visit(reloaded.el('exileActions'),e=>e.id==='button'&&e.children[0]?.textContent==='FOUND A NEW VAULT');
    assert.ok(rebuild);rebuild.click();const next=reloaded.get();
    assert.equal(next.phase,'vault');assert.equal(next.number,2);assert.ok(next.history.length>=1);
   }
