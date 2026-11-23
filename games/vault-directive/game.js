@@ -137,7 +137,8 @@ function renderPeople(){
   node.dataset.state=arrived?activity.label:'Walking to '+activity.label.toLowerCase();
   const [x,y]=D.xy(movement.cell);
   const columns=4,offset=Math.min(spot,7);
-  node.style.left=(x*CW+(arrived&&room?31+(offset%columns)*54:49+(p.id%3)*5))+'px';
+  const restingPose=arrived&&room&&(phase==='sleep'||phase==='sick');
+  node.style.left=(x*CW+(restingPose?58+(offset%columns)*45:arrived&&room?31+(offset%columns)*54:49+(p.id%3)*5))+'px';
   node.style.top=(y*CH+(arrived&&room?46+(offset>=4?-3:0):40))+'px';
   found.add(p.id);
  }
