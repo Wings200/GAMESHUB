@@ -654,7 +654,47 @@ function onCommand(node){
  if(command==='confirmNew'){closeModal();$('welcome').classList.remove('hidden');$('continueRun').hidden=true;return;}
  if(command==='defend'){tell(D.resolveThreat(s));closeModal();return;}
 }
+function clearDrag(){
+ if(dragHighlight)dragHighlight.classList.remove('drop-target');
+ dragHighlight=null;
+ draggingResidentId=null;
+}
 function bind(){
+ // Standard desktop drag/drop plus the existing click-to-assign panel fallback
+ // for mobile, keyboard and screen reader users.
+ document.addEventListener('dragstart',e=>{
+  if(!s)return;
+  const node=e.target.closest('[data-drag-person]');
+  if(!node)return;
+  const pid=Number(node.dataset.dragPerson);
+  if(!D.person(s,pid))return;
+  draggingResidentId=pid;
+  if(e.dataTransfer){e.dataTransfer.setData('text/plain',String(pid));e.dataTransfer.effectAllowed='move';}
+ });
+ document.addEventListener('dragover',e=>{
+  if(!s||draggingResidentId===null)return;
+  const room=e.target.closest('.room[data-room]');
+  if(!room)return;
+  e.preventDefault();
+  if(dragHighlight&&dragHighlight!==room)dragHighlight.classList.remove('drop-target');
+  dragHighlight=room;room.classList.add('drop-target');
+  if(e.dataTransfer)e.dataTransfer.dropEffect='move';
+ });
+ document.addEventListener('drop',e=>{
+  if(!s)return;
+  const roomNode=e.target.closest('.room[data-room]');
+  if(!roomNode){clearDrag();return;}
+  const pid=draggingResidentId??Number(e.dataTransfer?.getData('text/plain'));
+  if(!Number.isFinite(pid)||!D.person(s,pid)){clearDrag();return;}
+  e.preventDefault();
+  const room=s.rooms.find(x=>x.id===Number(roomNode.dataset.room));
+  clearDrag();
+  if(!room)return;
+  const result=room.type==='quarters'?D.assignHome(s,pid,room.id,true):D.assign(s,pid,room.id);
+  tell(result);
+  if(result.ok){s.selectedPerson=pid;if(panel!=='roster'&&panel!=='person')setPanel('room',room.id);}
+ });
+ document.addEventListener('dragend',clearDrag);
  document.addEventListener('click',e=>{
   const nav=e.target.closest('[data-panel]');
   if(nav&&s){setPanel(nav.dataset.panel);return;}
