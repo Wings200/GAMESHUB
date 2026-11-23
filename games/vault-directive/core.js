@@ -219,7 +219,7 @@ function routine(s,p){
   return {phase:"shelter",roomId:bed?.id??null,label:"Taking shelter"};
  }
  if(p.sick||p.health<25)return {phase:"sick",roomId:medical?.id??bed?.id??null,label:medical?"In medical care":"Resting while ill"};
- if(needsSleep)return {phase:"sleep",roomId:bed?.id??null,label:"Sleeping — "+p.shift+" shift"};
+ if(needsSleep)return bed?{phase:"sleep",roomId:bed.id,label:"Sleeping — "+p.shift+" shift"}:{phase:"homeless",roomId:null,label:"No bed — resting at the hatch"};
  const mealtime=dining&&s.res.food>.25&&((Math.floor(s.clock/60)+p.id)%7===0);
  if((p.hunger<22&&s.res.food>.25)||(p.thirst<22&&s.res.water>.25)||mealtime)return {phase:"meal",roomId:dining?.id??lounge?.id??bed?.id??null,label:"Eating or drinking"};
  const workplace=s.rooms.find(r=>r.id===p.job);
@@ -316,6 +316,7 @@ function finish(s){
   if(r){r.workers.forEach(id=>{const p=person(s,id);if(p)p.job=null;});
    if(r.type==="quarters")for(const p of s.people){if(p.homeRoomId===r.id)p.homeRoomId=null;}
    r.cells.forEach(j=>{s.grid[j].kind="open";s.grid[j].room=null;});s.rooms=s.rooms.filter(x=>x.id!==r.id);
+   if(r.type==="quarters"&&s.people.length>capacity(s))note(s,"HOUSING SHORTAGE: Some residents have no beds and will become fatigued.","warn");
    const d=ROOMS[r.type];for(const [k,v]of Object.entries(d.cost))s.res[k]+=Math.floor(v/2);note(s,d.name+" dismantled. Some materials recovered.");}
   else if(s.grid[i].kind==="lift"){s.grid[i].kind="open";s.grid[i].support=null;s.res.scrap++;note(s,"Elevator dismantled.");}
   else if(s.grid[i].support){const d=SUPPORTS[s.grid[i].support];s.grid[i].support=null;if(d)for(const [k,v]of Object.entries(d.cost))s.res[k]+=Math.floor(v/2);note(s,"Support removed.");}
@@ -366,7 +367,9 @@ function simulate(s,seconds){
   if(s.res.water>=needWater){s.res.water-=needWater;p.thirst=clamp(p.thirst+dt*.44,0,100);}else p.thirst=clamp(p.thirst-dt*.27,0,100);
   if(s.res.food>=needFood){s.res.food-=needFood;p.hunger=clamp(p.hunger+dt*.30,0,100);}else p.hunger=clamp(p.hunger-dt*.20,0,100);
   const resting=night(s)?p.shift==="day":p.shift==="night";
-  p.energy=clamp(p.energy+dt*(resting?1.7:-.4),0,100);
+  const hasBed=!!bedFor(s,p);
+  p.energy=clamp(p.energy+dt*(resting?(hasBed?1.7:.12):-.4),0,100);
+  if(resting&&!hasBed)p.mood=clamp(p.mood-dt*.17,0,100);
   const bad=p.hunger<35||p.thirst<35||p.energy<20;
   p.mood=clamp(p.mood+dt*(bad?-.19:p.job?.04:-.06),0,100);
   p.loyalty=clamp(p.loyalty+dt*(p.mood<25?-.08:p.mood>80?.014:0),0,100);
