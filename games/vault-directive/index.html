@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a1117">
+  <meta name="description" content="Vault Directive: Below the Surface — a GAMESHUB original 2D underground civilization strategy game.">
+  <link rel="icon" href="/logo.png">
+  <link rel="stylesheet" href="./style.css">
+  <script src="./game.js" defer></script>
+  <title>VAULT DIRECTIVE: BELOW THE SURFACE | GAMESHUB</title>
+</head>
+<body>
+<header class="masthead">
+  <a class="hub-link" href="/" aria-label="Back to GAMESHUB"><span class="hub-symbol">⬡</span> GAMESHUB</a>
+  <div class="game-mark"><span class="brand-symbol">V<span>∕</span>D</span><div><strong>VAULT DIRECTIVE</strong><small>BELOW THE SURFACE <span class="point">•</span> ALPHA 0.1</small></div></div>
+  <div class="mast-right"><span class="status-chip" id="statusChip">AWAITING DIRECTIVE</span><button class="subtle-btn" id="helpBtn" type="button">? HOW TO PLAY</button></div>
+</header>
+<main class="app">
+  <section class="statusbar" aria-label="Vault status">
+    <div class="status-id"><span class="eyebrow">CIVILIZATION CONTROL</span><div class="status-name" id="vaultName">VAULT // UNASSIGNED</div></div>
+    <div class="status-metrics">
+      <div><span>DAY</span><strong id="day">—</strong></div>
+      <div><span>RESIDENTS</span><strong id="population">—</strong></div>
+      <div><span>LOYALTY</span><strong id="loyalty">—</strong></div>
+      <div><span>CONTROL</span><strong id="control">—</strong></div>
+    </div>
+    <div class="sim-controls" role="group" aria-label="Simulation speed">
+      <button id="pauseBtn" type="button" title="Pause or resume simulation">Ⅱ</button>
+      <button id="speedBtn" type="button" title="Change simulation speed">1×</button>
+      <button id="saveBtn" type="button" title="Save game">SAVE</button>
+    </div>
+  </section>
+  <section class="resources" aria-label="Vault resources">
+    <div class="resource"><div class="resource-label"><span>⚡</span> POWER</div><strong id="r-power">—</strong><small id="d-power">per day</small></div>
+    <div class="resource"><div class="resource-label"><span>◆</span> FOOD</div><strong id="r-food">—</strong><small id="d-food">per day</small></div>
+    <div class="resource"><div class="resource-label"><span>◈</span> WATER</div><strong id="r-water">—</strong><small id="d-water">per day</small></div>
+    <div class="resource"><div class="resource-label"><span>✚</span> MEDICINE</div><strong id="r-meds">—</strong><small id="d-meds">in storage</small></div>
+    <div class="resource"><div class="resource-label"><span>⬡</span> SCRAP</div><strong id="r-scrap">—</strong><small>construction</small></div>
+    <div class="resource"><div class="resource-label"><span>¤</span> CREDITS</div><strong id="r-credits">—</strong><small>vault treasury</small></div>
+  </section>
+  <section class="operations">
+    <div class="view-panel">
+      <div class="panel-header"><div><span class="eyebrow">UNDERGROUND // LIVE OVERVIEW</span><h1>YOUR VAULT <span id="roomCount">00 SECTORS</span></h1></div><div class="legend"><span><i class="friendly"></i> CONTROLLED</span><span><i class="enemy"></i> OCCUPIED</span><span><i class="locked"></i> SEALED</span></div></div>
+      <div class="canvas-wrap"><canvas id="vaultCanvas" width="1200" height="720" aria-label="Interactive side-view of underground vault rooms">Your browser does not support the game canvas.</canvas><div class="canvas-corner">SCROLL / CLICK TO INSPECT ROOMS</div></div>
+      <div class="viewport-footer"><span><span class="pulse-dot"></span> <span id="worldMessage">SYSTEMS STANDBY</span></span><span>VD•CONTROL SYSTEM / 0.1</span></div>
+    </div>
+    <aside class="inspector" aria-live="polite">
+      <div class="inspector-top"><span class="eyebrow">OVERSEER OPERATIONS</span><h2 id="inspectorTitle">SELECT A SECTOR</h2><p id="inspectorDescription">Choose an existing room or an adjacent empty compartment to manage your vault.</p></div>
+      <div id="inspectorBody" class="inspector-body"><p class="placeholder">Awaiting your command.</p></div>
+      <div class="inspector-bottom"><div class="minor-title">SIMULATION CONTROLS <span class="alpha-flag">ALPHA TEST</span></div><p>Trigger scenarios to try the siege, outbreak, and faction systems.</p><div class="threat-buttons"><button id="revoltBtn" type="button">UPRISING</button><button id="raidBtn" type="button">RAIDERS</button><button id="outbreakBtn" type="button">OUTBREAK</button></div></div>
+    </aside>
+  </section>
+  <section class="lower">
+    <div class="event-panel"><div class="panel-header compact"><div><span class="eyebrow">CHRONICLE</span><h2>EVENT LOG</h2></div><span class="live-chip">● LIVE</span></div><div class="event-list" id="events" role="log" aria-live="polite"></div></div>
+    <div class="roster-panel"><div class="panel-header compact"><div><span class="eyebrow">POPULATION RECORDS</span><h2>RESIDENTS <span id="rosterCount"></span></h2></div></div><div class="roster-help">Select a resident, then select a friendly sector to reassign them.</div><div id="roster" class="roster"></div></div>
+  </section>
+  <footer>GAMESHUB ORIGINAL • All simulation data stays in your browser. <button class="text-button" id="newBtn" type="button">START A NEW VAULT</button></footer>
+</main>
+<div class="modal-layer" id="startOverlay" role="dialog" aria-modal="true" aria-labelledby="startTitle">
+  <div class="modal">
+    <div class="modal-overline">GAMESHUB ORIGINAL / OPERATIONS</div>
+    <div class="modal-emblem">V<span>∕</span>D</div>
+    <h2 id="startTitle">BELOW THE<br><em>SURFACE.</em></h2>
+    <p>Build a civilization beneath the ruins. Every resident has a story. Every room is worth defending. Your command is never guaranteed.</p>
+    <label for="vaultInput">VAULT DESIGNATION</label><input id="vaultInput" maxlength="28" value="VAULT-01" autocomplete="off">
+    <div class="difficulty-options" role="group" aria-label="Game mode">
+      <label><input type="radio" name="mode" value="standard" checked><span><strong>STANDARD</strong><small>Exile and recovery enabled</small></span></label>
+      <label><input type="radio" name="mode" value="hardcore"><span><strong>HARDCORE</strong><small>Overthrow ends the run</small></span></label>
+      <label><input type="radio" name="mode" value="sandbox"><span><strong>SANDBOX</strong><small>More starting resources</small></span></label>
+    </div>
+    <div class="modal-actions"><button id="startBtn" type="button">BEGIN DIRECTIVE →</button><button id="continueBtn" class="outline" type="button" hidden>CONTINUE SAVED VAULT</button></div>
+  </div>
+</div>
+<div class="modal-layer hidden" id="exileOverlay" role="dialog" aria-modal="true" aria-labelledby="exileTitle">
+  <div class="modal exile-modal"><div class="modal-overline alarm">EMERGENCY BROADCAST // COMMAND LOST</div><h2 id="exileTitle">OVERSEER<br><em>OVERTHROWN.</em></h2><p id="exileText">Your command has fallen.</p><div class="exile-stats" id="exileStats"></div><div id="exileActions" class="exile-actions"></div></div>
+</div>
+<div class="modal-layer hidden" id="helpOverlay" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+ <div class="modal help-modal"><button class="close" id="closeHelpBtn" type="button" aria-label="Close">×</button><div class="modal-overline">OVERSEER TRAINING</div><h2 id="helpTitle">FIELD MANUAL</h2><p>Select rooms in the cross-section to staff, upgrade, seal, or defend them. Select excavatable dirt next to your rooms to construct more rooms. Assign residents by selecting them in the roster, then clicking a friendly room.</p><p>Power, food, and water keep your people alive. Shortages erode loyalty. Low loyalty can trigger a rebellion. Captured sectors remain hostile territory and can spread unless sealed off. Rebels with food, water, and medical facilities can endure a siege much longer.</p><p>If your command falls in Standard mode, you can resist from exile, negotiate, or found another vault. Hardcore ends on overthrow. Progress saves locally in this browser.</p><button class="outline" id="dismissHelpBtn" type="button">RETURN TO COMMAND</button></div>
+</div>
+</body></html>
