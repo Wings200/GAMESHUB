@@ -163,7 +163,8 @@
     const skills={...DEFAULT_SKILLS};
     const specialize=['S','P','E','C','I','A','L'][Math.floor(nextRand(state)*7)];
     skills[specialize]=5+Math.floor(nextRand(state)*4);
-    const seed={name,role:'Survivor',skills,source,health:76+Math.floor(nextRand(state)*24),
+    const seed={name,role:'Survivor',skills,source,age:21+Math.floor(nextRand(state)*24),child:false,
+      growthRemaining:0,health:76+Math.floor(nextRand(state)*24),
       strength:skills.S,energy:73,hunger:65,thirst:70,morale:65,loyalty:68,
       skin:['#bd9274','#d1ad8c','#966b59','#ddbf9f'][index%4],
       hair:['#282828','#4d3529','#302621','#726455'][index%4],
