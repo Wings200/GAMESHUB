@@ -144,9 +144,9 @@
     return cellFree(x,y) && (!isSurface(x,y));
   }
   function isSurface(x,y){return y < 3;}
-  function movementAllowed(a,b) {
+  function movementAllowed(a,b,ignoreClosedDoors=false) {
     if (!cellFree(b.x,b.y)) return false;
-    if (state.doors.some(d=>d.closed && d.hp>0 && (d.x===b.x&&d.y===b.y || d.x===a.x&&d.y===a.y))) return false;
+    if (!ignoreClosedDoors && state.doors.some(d=>d.closed && d.hp>0 && (d.x===b.x&&d.y===b.y || d.x===a.x&&d.y===a.y))) return false;
     if (a.y === b.y) return true;
     const verticalLadder = v => state.ladders.some(l=>l.x===v.x && l.y===v.y) ||
       (v.x===8 && v.y>=3 && v.y<=7);
@@ -155,7 +155,7 @@
     // More player-built vertical transport arrives in a later systems milestone.
     return a.x === 8 && b.x === 8 && a.y >= 3 && a.y <= 7 && b.y >= 3 && b.y <= 7;
   }
-  function bfs(from, to) {
+  function bfs(from, to, ignoreClosedDoors=false) {
     const sx = Math.round(from.x), sy = Math.round(from.y);
     if (!valid(sx,sy) || !cellFree(sx,sy) || !cellFree(to.x,to.y)) return null;
     const q=[{x:sx,y:sy}], seen=new Set([key(sx,sy)]), parent={};
@@ -167,7 +167,7 @@
       }
       for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
         const n={x:c.x+dx,y:c.y+dy}, nk=key(n.x,n.y);
-        if(!seen.has(nk)&&movementAllowed(c,n)){seen.add(nk);parent[nk]=key(c.x,c.y);q.push(n);}
+        if(!seen.has(nk)&&movementAllowed(c,n,ignoreClosedDoors)){seen.add(nk);parent[nk]=key(c.x,c.y);q.push(n);}
       }
     }
     return null;
