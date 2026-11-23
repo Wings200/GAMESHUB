@@ -106,7 +106,7 @@
     const generation=state.rooms.filter(r=>r.type==='generator'&&r.integrity>0&&!r.captured).reduce((sum,r)=>{
       if(state.resources.fuel<=0)return sum;
       const crew=getRoomWorkers(state,r.id).length;
-      return sum+(crew?ROOMS.generator.supply + min(3,crew-1)*2+(r.level-1)*3:3+(r.level-1));
+      return sum+(crew?ROOMS.generator.supply + min(3,crew-1)*2+((r.level||1)-1)*3:3+((r.level||1)-1));
     },0);
     // The entrance requires a unit for lights and the basic air pump.
     const demand=1+state.rooms.reduce((sum,r)=>sum+(ROOMS[r.type]?.draw??1)+(r.type==='generator'?0:Math.max(0,(r.level||1)-1)),0);
@@ -362,9 +362,9 @@
       const crew=getRoomWorkers(state,r.id);
       const skill=ROOMS[r.type]?.skill;
       const effectiveness=crew.reduce((v,c)=>v+(c.skills?.[skill]??4),0);
-      if(r.type==='water'&&crew.length)waterIn+=dt*(.010+.004*effectiveness)*(1+(r.level-1)*.35);
-      if(r.type==='garden'&&crew.length)foodIn+=dt*(.009+.004*effectiveness)*(1+(r.level-1)*.35);
-      if(r.type==='medbay'&&crew.length)medIn+=dt*(.0018+.0004*effectiveness)*(1+(r.level-1)*.35);
+      if(r.type==='water'&&crew.length)waterIn+=dt*(.010+.004*effectiveness)*(1+((r.level||1)-1)*.35);
+      if(r.type==='garden'&&crew.length)foodIn+=dt*(.009+.004*effectiveness)*(1+((r.level||1)-1)*.35);
+      if(r.type==='medbay'&&crew.length)medIn+=dt*(.0018+.0004*effectiveness)*(1+((r.level||1)-1)*.35);
       if(r.type==='ventilation')ventilation+=dt*(crew.length?.13:.05);
       if(r.type==='training'&&crew.length){
         for(const person of crew){
