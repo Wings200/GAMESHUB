@@ -341,7 +341,7 @@
     p.status='done';
     for(const r of state.survivors)if(r.taskId===p.id){r.taskId=null;r.state='idle';r.path=[];r.wait=0;}
     if(p.kind==='build'){
-      state.rooms.push({id:nextId(),type:p.roomType,x:p.x,y:p.y,width:p.width,integrity:100,priority:p.roomType==='water'?1:2});
+      state.rooms.push({id:nextId(),type:p.roomType,x:p.x,y:p.y,width:p.width,integrity:100,priority:p.roomType==='water'?1:2,air:95,focus:'S',captured:false});
       flag('build');report(ROOM_TYPES[p.roomType].name+' construction complete. The room is now operational.');
       toast('ROOM CONSTRUCTED · '+ROOM_TYPES[p.roomType].name.toUpperCase());
     }else if(p.kind==='rescue'){
