@@ -189,7 +189,7 @@ test('simulated time advances resources and research XP without hiring settlers'
 test('overthrow triggers exile in Standard, permanent defeat in Hardcore',()=>{
   for(const mode of ['standard','hardcore']){
     const h=harness({},mode);h.el('startBtn').click();
-    const previous=h.get();previous.rooms.forEach(r=>{if(r)r.owner='raiders';});
+    const previous=h.get();previous.rooms.forEach(r=>{if(r){r.owner='raiders';r.resistance=70;}});
     h.store['gameshub-vault-directive-v1']=JSON.stringify(previous);
     const reloaded=harness(h.store,mode);reloaded.el('continueBtn').click();reloaded.frames(16);
     const s=reloaded.get();
