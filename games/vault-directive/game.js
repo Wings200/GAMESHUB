@@ -1365,8 +1365,16 @@
       '<div class="security-item '+(traps.length?'warning':'')+'"><h3>Excavation rescue</h3>'+
       (traps.length?traps.map(t=>'<p>Collapse at '+t.x+','+t.y+' · Oxygen '+Math.ceil(t.air)+'% · Survivor(s) '+
         t.people.map(id=>systems.get(state,id)?.name||'Unknown').join(', ')+
-        '</p><button data-security="rescue" data-id="'+t.id+'">PLAN MANUAL RESCUE</button>').join(''):
+        '</p><button data-security="rescue" data-id="'+t.id+'">PLAN MANUAL RESCUE</button>'+
+        '<button data-security="trap-conserve" data-id="'+t.id+'">CONSERVE AIR</button>'+
+        '<button data-security="trap-clear" data-id="'+t.id+'">ATTEMPT SELF-RESCUE</button>').join(''):
         '<p>No trapped residents. Deep excavations are more dangerous; keep a spare digger ready.</p>')+'</div>'+
+      '<div class="security-item"><h3>Overseer policies</h3>'+
+      '<p>Policies affect every resident. Rationing saves supplies but reduces morale; overtime keeps production moving at the cost of energy and trust.</p>'+
+      '<label class="policy-toggle"><input data-policy="rationing" type="checkbox" '+
+        (state.policy.rationing?'checked':'')+'> Emergency rationing</label>'+
+      '<label class="policy-toggle"><input data-policy="overtime" type="checkbox" '+
+        (state.policy.overtime?'checked':'')+'> Overtime shifts</label></div>'+
       '<div class="security-item"><h3>Settlement conditions</h3>'+
       '<p>'+state.rooms.filter(r=>r.captured).length+' rooms occupied · '+
         state.survivors.filter(r=>r.infection>0&&!r.dead).length+' residents infected · '+
@@ -1397,6 +1405,8 @@
     else if(action==='contain')result=systems.contain(state,id,{report});
     else if(action==='door')result=systems.toggleDoor(state,id,{report});
     else if(action==='repair')result=systems.repair(state,id,{report});
+    else if(action==='trap-conserve')result=systems.trappedOrder(state,id,'conserve',{report});
+    else if(action==='trap-clear')result=systems.trappedOrder(state,id,'clear',{report});
     else if(action==='rescue'){
       result=systems.rescue(state,id,{report});
       if(result.ok){
@@ -1537,6 +1547,9 @@
     $('securityContent').addEventListener('change',ev=>{
       if(ev.target.id==='autoLockdown'){
         state.autoLockdown=ev.target.checked;report('Automatic security lockdown '+(state.autoLockdown?'enabled':'disabled')+'.');saveGame();
+      }
+      if(ev.target.dataset.policy){
+        applySystem(window.VDSystems.setPolicy(state,ev.target.dataset.policy,ev.target.checked,{report}));
       }
     });
     $('lossClose').addEventListener('click',()=>{$('lossModal').classList.add('hidden');});
