@@ -95,6 +95,7 @@
     for(const room of state.rooms){
       room.integrity=room.integrity??100;room.captured=!!room.captured;room.priority=room.priority??2;
       room.stock=room.stock??0;room.air=room.air??95;room.focus=room.focus||'S';
+      room.level=room.level||1;room.rushAttempts=room.rushAttempts||0;
     }
     return state;
   }
@@ -105,10 +106,10 @@
     const generation=state.rooms.filter(r=>r.type==='generator'&&r.integrity>0&&!r.captured).reduce((sum,r)=>{
       if(state.resources.fuel<=0)return sum;
       const crew=getRoomWorkers(state,r.id).length;
-      return sum+(crew?ROOMS.generator.supply + min(3,crew-1)*2:3);
+      return sum+(crew?ROOMS.generator.supply + min(3,crew-1)*2+(r.level-1)*3:3+(r.level-1));
     },0);
     // The entrance requires a unit for lights and the basic air pump.
-    const demand=1+state.rooms.reduce((sum,r)=>sum+(ROOMS[r.type]?.draw||1),0);
+    const demand=1+state.rooms.reduce((sum,r)=>sum+(ROOMS[r.type]?.draw??1)+(r.type==='generator'?0:Math.max(0,(r.level||1)-1)),0);
     let remaining=generation;
     const prioritized=state.rooms.slice().sort((a,b)=>(a.priority??2)-(b.priority??2) ||
       Number(b.type==='water')-Number(a.type==='water') || a.id-b.id);
@@ -116,7 +117,7 @@
     if(remaining>=1)remaining-=1;
     for(const r of prioritized) {
       if(r.integrity<=0||r.captured||r.type==='generator')continue;
-      const draw=ROOMS[r.type]?.draw??1;
+      const draw=(ROOMS[r.type]?.draw??1)+Math.max(0,(r.level||1)-1);
       if(remaining>=draw){online.add(r.id);remaining-=draw;}
     }
     return {generation,demand,online,spare:generation-demand,lit:generation>0};
@@ -259,6 +260,33 @@
     state.policy[key]=!!value;emit(hooks,(key==='rationing'?'Emergency rationing':'Overtime shifts')+
       (value?' enabled. People will notice.':' disabled.'));return {ok:true};
   }
+  function upgradeCost(r){return {scrap:6+(r.level||1)*4,parts:(r.level||1)};}
+  function rushRisk(state,id){
+    const target=room(state,id);if(!target)return 1;
+    const crew=getRoomWorkers(state,id);
+    const luck=crew.length?crew.reduce((a,r)=>a+(r.skills?.L||4),0)/crew.length:0;
+    return clamp(.30+(target.rushAttempts||0)*.10-luck*.024,.09,.79);
+  }
+  function rush(state,id,hooks){
+    const target=room(state,id);if(!target)return {ok:false,error:'Room not found.'};
+    if(!['garden','water','medbay'].includes(target.type))
+      return {ok:false,error:'Only supply-producing rooms may be rushed.'};
+    if(!active(state,target))return {ok:false,error:'The room is offline.'};
+    if(!getRoomWorkers(state,id).length)return {ok:false,error:'Assign workers before rushing production.'};
+    const risk=rushRisk(state,id),roll=nextRand(state);
+    target.rushAttempts=(target.rushAttempts||0)+1;
+    if(roll<risk){
+      if(!state.incidents.some(e=>e.roomId===id))
+        state.incidents.push({id:++state.threatId,kind:'fire',roomId:id,severity:24,seconds:0});
+      emit(hooks,'RUSH FAILED! Equipment overheated and caused a fire in '+ROOMS[target.type].label+'.',true);
+      return {ok:true,success:false,risk};
+    }
+    const amount=2+(target.level||1)*2;
+    const type=target.type==='garden'?'food':target.type==='water'?'water':'meds';
+    state.resources[type]+=amount;
+    emit(hooks,'RUSH SUCCESS: '+amount+' '+type+' collected immediately.');
+    return {ok:true,success:true,risk};
+  }
   function craft(state,kind,hooks){
     const workshop=state.rooms.find(r=>r.type==='workshop'&&active(state,r));
     if(!workshop)return {ok:false,error:'Build and power a workshop before crafting.'};
@@ -334,9 +362,9 @@
       const crew=getRoomWorkers(state,r.id);
       const skill=ROOMS[r.type]?.skill;
       const effectiveness=crew.reduce((v,c)=>v+(c.skills?.[skill]??4),0);
-      if(r.type==='water'&&crew.length)waterIn+=dt*(.010+.004*effectiveness);
-      if(r.type==='garden'&&crew.length)foodIn+=dt*(.009+.004*effectiveness);
-      if(r.type==='medbay'&&crew.length)medIn+=dt*(.0018+.0004*effectiveness);
+      if(r.type==='water'&&crew.length)waterIn+=dt*(.010+.004*effectiveness)*(1+(r.level-1)*.35);
+      if(r.type==='garden'&&crew.length)foodIn+=dt*(.009+.004*effectiveness)*(1+(r.level-1)*.35);
+      if(r.type==='medbay'&&crew.length)medIn+=dt*(.0018+.0004*effectiveness)*(1+(r.level-1)*.35);
       if(r.type==='ventilation')ventilation+=dt*(crew.length?.13:.05);
       if(r.type==='training'&&crew.length){
         for(const person of crew){
@@ -350,6 +378,7 @@
         }
       }
       if(r.type==='radio'&&crew.length)state.nextArrival-=dt*(.12+effectiveness*.028);
+      if(r.rushAttempts>0)r.rushAttempts=Math.max(0,r.rushAttempts-dt/220);
       if(crew.length && ['generator','water','garden','medbay','radio','security','ventilation','training','workshop'].includes(r.type)){
         for(const c of crew){c.xp=(c.xp||0)+dt*.10;
           if(c.xp>=80+c.level*20){c.xp=0;c.level++;c.health=min(100,c.health+12);emit(hooks,c.name+' advanced to level '+c.level+'.');}
@@ -614,6 +643,6 @@
   window.VDSystems={
     ROOMS,normalize,capacity,power,active,getRoomWorkers,assignment,unassign,shift,
     createArrival,admit,reject,heal,revive,equip,door,toggleDoor,repair,
-    createRaid,defend,standDown,triggerFire,contain,tick,tickRaid,trap,rescue,finishRescue,negotiate,setPolicy,craft,alive,get,room
+    createRaid,defend,standDown,triggerFire,contain,tick,tickRaid,trap,rescue,finishRescue,negotiate,setPolicy,craft,upgradeCost,rushRisk,rush,alive,get,room
   };
 })();
