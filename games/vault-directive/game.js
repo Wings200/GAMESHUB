@@ -25,22 +25,29 @@
       rooms: [
         { name: 'Reception', icon: '▣', kind: 'Search', loot: { food: 2, water: 1, scrap: 1 }, danger: 0 },
         { name: 'Pharmacy', icon: '✚', kind: 'Search', loot: { food: 1, water: 3, meds: 2, parts: 1 }, danger: 0 },
-        { name: 'Treatment', icon: '◇', kind: 'Search', loot: { water: 2, scrap: 3 }, danger: 6 },
+        { name: 'Treatment', icon: '◇', kind: 'Search', loot: { water: 2, scrap: 3 }, danger: 6, hazard: 'infection' },
         { name: 'Backup plant', icon: 'ϟ', kind: 'Salvage', loot: { scrap: 6, parts: 2 }, danger: 0 }
       ] },
     { id: 'station', name: 'Roadside station', icon: '⌁', subtitle: 'Rations and usable hardware', threat: 'LOW · EXPOSED STRUCTURE',
       rooms: [
         { name: 'Shop front', icon: '▤', kind: 'Search', loot: { food: 4, water: 1 }, danger: 0 },
         { name: 'Stockroom', icon: '◫', kind: 'Search', loot: { food: 3, water: 2, scrap: 1 }, danger: 0 },
-        { name: 'Garage', icon: '⚙', kind: 'Salvage', loot: { scrap: 6, parts: 1, fuel: 3 }, danger: 4 },
+        { name: 'Garage', icon: '⚙', kind: 'Salvage', loot: { scrap: 6, parts: 1, fuel: 3 }, danger: 4, enemy: 'raiders' },
         { name: 'Workshop', icon: '⚒', kind: 'Salvage', loot: { scrap: 5, parts: 2 }, danger: 0 }
       ] },
     { id: 'depot', name: 'Freight depot', icon: '▥', subtitle: 'Metal and industrial components', threat: 'ELEVATED · FALLING DEBRIS',
       rooms: [
         { name: 'Gatehouse', icon: '⌑', kind: 'Search', loot: { water: 2, food: 1 }, danger: 0 },
-        { name: 'Warehouse', icon: '▥', kind: 'Salvage', loot: { scrap: 8 }, danger: 7 },
+        { name: 'Warehouse', icon: '▥', kind: 'Salvage', loot: { scrap: 8 }, danger: 7, enemy: 'raiders' },
         { name: 'Maintenance', icon: '⚙', kind: 'Salvage', loot: { scrap: 6, parts: 3, fuel: 2 }, danger: 0 },
         { name: 'Loading bay', icon: '◈', kind: 'Salvage', loot: { scrap: 7, parts: 1 }, danger: 9 }
+      ] },
+    { id: 'relay', name: 'Broken relay station', icon: '⌁', subtitle: 'Rescue a stranded survivor and recover communications gear', threat: 'ELEVATED · HOSTILE PRESENCE',
+      rooms: [
+        { name: 'Receiving hall', icon: '▣', kind: 'Search', loot: { food: 2, water: 1 }, danger: 0 },
+        { name: 'Security desk', icon: '◇', kind: 'Search', loot: { scrap: 3, parts: 1 }, danger: 7, enemy: 'raiders' },
+        { name: 'Control room', icon: '⌁', kind: 'Salvage', loot: { parts: 3, fuel: 2, scrap: 3 }, danger: 0 },
+        { name: 'Locked shelter', icon: '♡', kind: 'Rescue', loot: { meds: 1 }, danger: 0, rescue:true }
       ] }
   ];
 
@@ -463,6 +470,7 @@
             if(r){r.state='idle';r.x=8;r.y=7;r.taskId=null;r.path=[];}
           }
           const site=siteById(e.site);
+          if(e.rescued){for(let k=0;k<e.rescued;k++)window.VDSystems.createArrival(state,'rescue');}
           state.expedition=null;expeditionRepaintKey='';
           flag('scavenge');report('Scavengers returned from '+site.name+' with '+lootString(e.loot)+'.');
           toast('EXPEDITION RETURNED · SUPPLIES DELIVERED');saveGame();
@@ -475,7 +483,29 @@
       const target=e.action.index+.5;
       if(e.action.phase==='walking'){
         e.position+=(Math.sign(target-e.position))*Math.min(Math.abs(target-e.position),dt*1.13);
-        if(Math.abs(target-e.position)<.012){e.position=target;e.action.phase='searching';}
+        if(Math.abs(target-e.position)<.012){
+          e.position=target;e.action.phase=e.action.enemy?'combat':'searching';
+          if(e.action.enemy){
+            e.message='HOSTILES: '+(e.action.enemy==='ferals'?'Feral infected':'Raiders')+
+              ' block access to this room. Choose FIGHT or RETREAT.';
+            renderExpedition();
+          }
+        }
+      }else if(e.action.phase==='combat'){
+        return;
+      }else if(e.action.phase==='fighting'){
+        const team=e.crew.map(id=>state.survivors.find(r=>r.id===id)).filter(r=>r&&!r.dead);
+        const damage=team.reduce((v,r)=>v+(r.weapon||1)*1.4+(r.skills?.S||4)*.12,0);
+        e.action.enemyHp=Math.max(0,e.action.enemyHp-damage*dt);
+        for(const r of team){r.health=Math.max(1,r.health-dt*(e.action.enemy==='ferals'?.46:.36)/Math.max(1,team.length));}
+        if(e.action.enemyHp<=0){
+          e.message='Threat neutralized. The scavengers are clearing the room.';
+          if(e.action.enemy==='ferals'&&team.length){
+            team[0].infection=Math.min(100,(team[0].infection||0)+12);
+            report(team[0].name+' was exposed to infection during the encounter.',true);
+          }
+          e.action.phase='searching';e.action.progress=0;renderExpedition();
+        }
       }else{
         e.action.progress+=dt;
         if(e.action.progress>=e.action.duration){
@@ -483,11 +513,16 @@
           const progress=state.sites.find(s=>s.id===e.site);
           progress.rooms[e.action.index].searched=true;
           for(const k of Object.keys(room.loot)){e.loot[k]=(e.loot[k]||0)+room.loot[k];}
+          if(room.rescue){e.rescued=(e.rescued||0)+1;}
           if(room.danger){
             const r=state.survivors.find(s=>s.id===e.crew[0]);
-            if(r){r.health=Math.max(1,r.health-room.danger);}
+            if(r){
+              r.health=Math.max(1,r.health-room.danger);
+              if(room.hazard==='infection'){r.infection=Math.min(100,(r.infection||0)+23);}
+            }
             e.message=room.name+' cleared. Loose debris injured '+(r?r.name:'a survivor')+' (−'+room.danger+' health). Found '+lootString(room.loot)+'.';
-          }else e.message=room.name+' searched. Found '+lootString(room.loot)+'.';
+          }else e.message=room.name+(room.rescue?' cleared. A stranded survivor has joined your return party!':
+            ' searched. Found '+lootString(room.loot)+'.');
           e.action=null;report(e.message,!!room.danger);saveGame();renderExpedition();
         }
       }
@@ -513,7 +548,7 @@
     if(state.expedition){toast('A scavenging team is already deployed.');return;}
     const crew=Array.from(chosenCrew);
     if(!crew.length){toast('Choose at least one available survivor.');return;}
-    if(crew.some(id=>{const r=state.survivors.find(s=>s.id===id);return !r||r.taskId;})){toast('Assigned workers must finish or leave their current job first.');return;}
+    if(crew.some(id=>{const r=state.survivors.find(s=>s.id===id);return !r||r.taskId||r.dead||r.trapped;})){toast('Assigned workers must finish or leave their current job first.');return;}
     state.expedition={site:viewedSite,crew,phase:'outbound',travel:0,position:0.16,action:null,loot:{food:0,water:0,scrap:0,parts:0,fuel:0,meds:0},message:'Traveling to the site. Arrival in approximately six seconds.'};
     for(const id of crew){const r=state.survivors.find(s=>s.id===id);r.state='expedition';r.path=[];}
     chosenCrew.clear();report('Scavenging team departed for '+siteById(viewedSite).name+'.');renderExpedition();saveGame();
@@ -523,9 +558,24 @@
     const siteState=state.sites.find(s=>s.id===e.site);
     if(!siteState||siteState.rooms[index].searched){toast('That section has already been searched.');return;}
     const room=siteById(e.site).rooms[index];
-    e.action={index,phase:'walking',progress:0,duration:room.kind==='Salvage'?5:3};
+    e.action={index,phase:'walking',progress:0,duration:room.kind==='Salvage'?5:3,
+      enemy:room.enemy||null,enemyHp:room.enemy?(room.enemy==='ferals'?24:35):0};
     e.message='Moving to '+room.name+' to '+room.kind.toLowerCase()+' the area.';
     renderExpedition();
+  }
+  function fightExpedition(){
+    const e=state.expedition;
+    if(!e||!e.action||e.action.phase!=='combat')return;
+    e.action.phase='fighting';
+    e.message='Combat underway. Your equipped scavengers are engaging the enemy.';
+    report(e.message,true);renderExpedition();
+  }
+  function retreatExpedition(){
+    const e=state.expedition;
+    if(!e||!e.action||e.action.phase!=='combat')return;
+    e.phase='returning';e.travel=0;e.action=null;
+    e.message='Your team disengaged and is returning with collected supplies.';
+    report(e.message,true);renderExpedition();
   }
   function recallExpedition() {
     const e=state.expedition;if(!e||e.phase!=='exploring'||e.action)return;
@@ -1277,8 +1327,8 @@
         '<p class="helper">'+(4-progress.rooms.filter(r=>r.searched).length)+' unexplored sectors remain. Your team will physically search each accessible room. Salvaging machinery takes longer than searching cabinets.</p>'+
         '<p class="small-head">CHOOSE SCAVENGERS (UP TO 2)</p>'+
         state.survivors.map(r=>{
-          const active=chosenCrew.has(r.id),busy=!!r.taskId;
-          return '<label class="expedition-avatar '+(active?'active':'')+'"><span>'+r.name+' · '+r.role+(busy?' · ON DUTY':'')+'</span>'+
+          const active=chosenCrew.has(r.id),busy=!!r.taskId||!!r.dead||!!r.trapped;
+          return '<label class="expedition-avatar '+(active?'active':'')+'"><span>'+r.name+' · '+r.role+(busy?' · UNAVAILABLE':'')+'</span>'+
             '<input type="checkbox" data-crew="'+r.id+'" '+(active?'checked ':'')+(busy?'disabled':'')+'></label>';
         }).join('')+
         '<button class="primary-btn" id="launchExpedition" type="button">DEPLOY SCAVENGING TEAM →</button></div>';
@@ -1383,6 +1433,8 @@
       if(explore){exploreRoom(Number(explore.dataset.explore));return;}
       if(ev.target.closest('#launchExpedition'))launchExpedition();
       if(ev.target.closest('#returnExpedition'))recallExpedition();
+      if(ev.target.closest('#fightExpedition'))fightExpedition();
+      if(ev.target.closest('#retreatExpedition'))retreatExpedition();
     });
     $('expeditionContent').addEventListener('change',ev=>{
       const c=ev.target.closest('[data-crew]');if(!c)return;
@@ -1535,6 +1587,10 @@
   }
 
   state=window.VDSystems.normalize(loadGame());
+  for(const site of SITES){
+    if(!state.sites.find(p=>p.id===site.id))
+      state.sites.push({id:site.id,rooms:site.rooms.map(()=>({searched:false}))});
+  }
   attachEvents();resizeCanvas();renderAll();showIntro();
   requestAnimationFrame(frame);
 })();
