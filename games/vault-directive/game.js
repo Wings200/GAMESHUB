@@ -357,6 +357,7 @@
   }
   function updateProjectWorkers(dt){
     for(const r of state.survivors){
+      if(r.dead){r.state='dead';r.path=[];continue;}
       if((state.expedition && state.expedition.crew.includes(r.id)) || (state.discovery && state.discovery.crewId===r.id))continue;
       r.hunger=Math.max(0,r.hunger-dt*.047);
       r.thirst=Math.max(0,r.thirst-dt*.063);
@@ -365,10 +366,7 @@
       if(r.thirst<57 && state.resources.water>=.1){r.thirst=Math.min(100,r.thirst+39);report(r.name+' drank water.');}
       if((r.hunger<12||r.thirst<12)&&Math.random()<dt*.06){r.health=Math.max(0,r.health-1);r.morale=Math.max(0,r.morale-2);}
       if(r.energy<24 && r.state!=='resting'){r.state='resting';r.path=[];r.wait=0;report(r.name+' is taking an essential rest break.');}
-      if(r.dead){
-      ctx.fillStyle='#7f675e';ctx.fillRect(px-19,foot-13,30,9);
-      ctx.fillStyle=r.skin;ctx.beginPath();ctx.arc(px-22,foot-12,6,0,Math.PI*2);ctx.fill();
-    }else if(r.state==='resting'){
+      if(r.state==='resting'){
         const bunks=state.rooms.some(room=>room.type==='bunks');
         r.energy=Math.min(100,r.energy+dt*(bunks?2.7:1.1));
         if(r.energy>=80){r.state='idle';report(r.name+' is rested and returning to their assignment.');}
@@ -933,7 +931,10 @@
     const selected=selection&&selection.kind==='resident'&&selection.id===r.id;
     if(selected){ctx.strokeStyle='#f7d194';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(px,foot-2,20,7,0,0,7);ctx.stroke();}
     ctx.fillStyle='rgba(0,0,0,.34)';ctx.beginPath();ctx.ellipse(px,foot,12,4,0,0,7);ctx.fill();
-    if(r.state==='resting'){
+    if(r.dead){
+      ctx.fillStyle='#7f675e';ctx.fillRect(px-19,foot-13,30,9);
+      ctx.fillStyle=r.skin;ctx.beginPath();ctx.arc(px-22,foot-12,6,0,Math.PI*2);ctx.fill();
+    }else if(r.state==='resting'){
       ctx.fillStyle=r.coat;ctx.fillRect(px-17,foot-15,29,12);
       ctx.fillStyle=r.skin;ctx.beginPath();ctx.arc(px-19,foot-12,7,0,7);ctx.fill();
     }else{
