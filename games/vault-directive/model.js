@@ -188,7 +188,7 @@
     p.roomId=null;p.taskId=null;p.path=[];p.state='idle';message(s,p.name+' returned to general duties.');
   }
   function selectWorkerFor(s,job){
-    const available=live(s).filter(p=>inWorld(p)&&!p.child&&!p.trapped&&!p.away&&!p.taskId);
+    const available=live(s).filter(p=>inWorld(p)&&!p.child&&!p.trapped&&!p.away&&!p.taskId&&p.state!=='striking');
     const specialists=available.sort((a,b)=>(b.skills.S||0)-(a.skills.S||0));
     if(!specialists.length)return null;
     const p=specialists[0];
@@ -561,7 +561,7 @@
       p.thirst=clamp(p.thirst-dt*(s.res.water>0?.006:.18),0,100);
       const hard=['digging','building','working','defending','rescuing'].includes(p.state);
       p.energy=clamp(p.energy+dt*(hard?-(s.policies.overtime?.065:.042):.025),0,100);
-      if(p.energy<12&&p.state!=='resting'&&!p.trapped){p.state='resting';p.taskId=null;p.roomId=null;}
+      if(p.energy<12&&p.state!=='resting'&&!p.trapped){p.state='resting';p.path=[];}
       if(p.state==='resting'){
         const bunks=s.rooms.some(r=>r.type==='bunks'&&powered(s,r));
         p.energy=clamp(p.energy+dt*(bunks?.45:.25),0,100);
@@ -589,7 +589,10 @@
         if(p.loyalty<15&&p.state!=='striking'){p.state='striking';p.roomId=null;p.taskId=null;message(s,p.name+' is refusing to work. Morale has collapsed.',true);}
         if(p.loyalty===0){p.left=true;message(s,p.name+' deserted the shelter.',true);}
       }
-      if(p.hp<=0){p.roomId=null;p.taskId=null;p.state='dead';}
+      if(p.hp<=0){
+        if(p.taskId){const job=s.jobs.find(j=>j.id===p.taskId);if(job)job.workers=job.workers.filter(id=>id!==p.id);}
+        p.roomId=null;p.taskId=null;p.state='dead';
+      }
       if(p.child){
         p.growth=Math.max(0,p.growth-dt);
         if(p.growth===0){p.child=false;p.age=18;p.role='Resident';message(s,p.name+' reached adulthood and can take a job.');}
@@ -636,6 +639,7 @@
   function tickJobs(s,dt){
     for(const p of s.people){
       if(!inWorld(p)||p.trapped||p.child||p.state==='striking')continue;
+      if(p.state==='resting')continue;
       if(p.taskId){work(s,p,dt);continue;}
       if(p.state==='defending'){
         if(s.threat){
@@ -657,7 +661,6 @@
         if(r){move(s,p,{x:r.x+Math.floor(r.w/2),y:r.y+2},dt);continue;}
         p.state='idle';
       }
-      if(p.state==='resting')continue;
       if(p.roomId){
         const r=getRoom(s,p.roomId);if(!r){p.roomId=null;p.state='idle';continue;}
         const day=s.time%1440>=420&&s.time%1440<1200;
