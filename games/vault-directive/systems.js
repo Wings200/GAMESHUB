@@ -172,7 +172,7 @@
     if(alive(state).length>=capacity(state))return {ok:false,error:'No available sleeping capacity. Build quarters first.'};
     const s={...item.candidate,id:state.survivors.reduce((v,r)=>max(v,r.id),0)+1,
       x:8,y:7,level:1,xp:0,weapon:1,jobRoom:null,taskId:null,shift:'flex',state:'idle',path:[],wait:0,
-      infection:0,dead:false,trapped:false,defending:false,recoverable:true};
+      infection:0,dead:false,trapped:false,defending:false,recoverable:true,trainingProgress:{},striking:false};
     state.survivors.push(s);
     state.arrivals=state.arrivals.filter(a=>a.id!==id);
     state.tutorialFlags.recruit=true;
