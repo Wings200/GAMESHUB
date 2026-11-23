@@ -517,27 +517,40 @@
       }
       const next=room(state,raid.targetRoom);
       if(next) {
-        const blockers=state.doors.filter(d=>d.closed && d.hp>0 &&
-          d.y===7 && d.x>=min(raid.x,next.x) && d.x<=max(raid.x,next.x+next.width));
-        if(blockers.length) {
-          raid.phase='blocked';const barrier=blockers[0];barrier.hp=max(0,barrier.hp-dt*1.1);
-          if(barrier.hp===0){barrier.closed=false;emit(hooks,'A blast door was breached!',true);}
+        const origin={x:Math.round(raid.x),y:Math.round(raid.y)};
+        const goal={x:next.x+Math.floor(next.width/2),y:next.y+1};
+        const ideal=pathToRoom?pathToRoom(origin,goal,true):null;
+        const barrierStep=ideal?.find(pt=>state.doors.some(d=>d.closed&&d.hp>0&&d.x===pt.x&&d.y===pt.y));
+        const barrier=barrierStep?state.doors.find(d=>d.closed&&d.hp>0&&d.x===barrierStep.x&&d.y===barrierStep.y):null;
+        if(barrier){
+          raid.phase='blocked';
+          const near=Math.abs(barrier.x-raid.x)+Math.abs(barrier.y-raid.y)<=1.15;
+          if(near){
+            barrier.hp=max(0,barrier.hp-dt*1.1);
+            if(barrier.hp===0){barrier.closed=false;emit(hooks,'A blast door was breached!',true);}
+          }else{
+            const p=ideal?.[0];
+            if(p&&!(p.x===barrier.x&&p.y===barrier.y)){
+              const dx=p.x-raid.x,dy=p.y-raid.y,dist=Math.hypot(dx,dy),step=min(dist,dt*.56);
+              if(dist>.002){raid.x+=dx/dist*step;raid.y+=dy/dist*step;}
+            }
+          }
         }else{
           raid.phase='inside';
-          const goal={x:next.x+Math.floor(next.width/2),y:next.y+1};
-          const path=pathToRoom?pathToRoom({x:Math.round(raid.x),y:Math.round(raid.y)},goal):null;
+          const path=pathToRoom?pathToRoom(origin,goal):null;
           if(path?.length){
             const p=path[0],dx=p.x-raid.x,dy=p.y-raid.y,dist=Math.hypot(dx,dy),step=min(dist,dt*.56);
             if(dist>.002){raid.x+=dx/dist*step;raid.y+=dy/dist*step;}
           }else{
-            // An unreachable sector does not allow attackers to pass through solid earth.
+            // Solid ground and unconnected floors cannot be crossed by invaders.
             raid.phase='seeking-access';
           }
-          const defenders=alive(state).filter(r=>r.defending||r.jobRoom===next.id && r.weapon>1)
-            .filter(r=>Math.abs(r.x-raid.x)<5 || r.jobRoom===next.id);
-          const defense=defenders.reduce((n,r)=>n+(r.weapon+(.07*(r.skills?.S||4)))*dt*2.6,0);
-          raid.hp-=defense;
-          if(Math.abs(raid.x-goal.x)<1.8 && Math.abs(raid.y-goal.y)<1.5) {
+        }
+        const defenders=alive(state).filter(r=>r.defending||r.jobRoom===next.id && r.weapon>1)
+          .filter(r=>Math.abs(r.x-raid.x)<5 || r.jobRoom===next.id);
+        const defense=defenders.reduce((n,r)=>n+(r.weapon+(.07*(r.skills?.S||4)))*dt*2.6,0);
+        raid.hp-=defense;
+        if(!barrier && Math.abs(raid.x-goal.x)<1.8 && Math.abs(raid.y-goal.y)<1.5) {
             next.integrity=max(0,next.integrity-dt*(defenders.length?.25:1.4));
             for(const defender of defenders){defender.health=max(0,defender.health-dt*.34);}
             raid.attackClock+=dt;
@@ -553,7 +566,6 @@
               raid.taken+=1;
             }
           }
-        }
       }
     }
     if(raid.hp<=0){
