@@ -171,3 +171,18 @@ test('chosen living quarters persist across shifts and prevent overbooking',()=>
  s.clock=23*60;
  assert.equal(D.routine(s,p).roomId,beds.id,'sleep location uses explicitly selected home');
 });
+
+
+test('demolished housing causes visible homelessness, fatigue and lower morale',()=>{
+ const {D,s,p,beds}=setup();
+ s.clock=23*60;p.energy=40;p.mood=80;
+ const removed=D.start(s,'remove',beds.cells[0]);assert.ok(removed.ok);
+ D.simulate(s,1);
+ assert.equal(D.bedFor(s,p),null);
+ assert.equal(D.routine(s,p).phase,'homeless');
+ const energy=p.energy,mood=p.mood;
+ for(let i=0;i<8;i++)D.simulate(s,1);
+ assert.ok(p.energy-energy<3,'resting without a bed should not recover like proper sleep');
+ assert.ok(p.mood<mood,'loss of housing must reduce morale');
+ assert.ok(s.log.some(x=>x.message.includes('HOUSING SHORTAGE')));
+});
