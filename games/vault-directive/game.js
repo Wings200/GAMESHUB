@@ -138,7 +138,7 @@ function renderPeople(){
   const arrived=movement.cell===targetCell;
   const phase=activity.phase;
   const spriteState=!arrived?'walk':phase==='sleep'?'sleep':phase==='sick'?'sick':phase==='working'||phase==='socializing'||phase==='meal'?'walk':phase==='guarding'?'guarding':'';
-  node.className='dweller'+(spriteState?' '+spriteState:'')+(p.weapon?' guard':'');
+  node.className='dweller'+(spriteState?' '+spriteState:'')+(phase==='meal'&&arrived?' meal':'')+(p.weapon?' guard':'');
   node.title=p.name+' — '+(arrived?activity.label:'Walking to '+activity.label.toLowerCase());
   node.dataset.state=arrived?activity.label:'Walking to '+activity.label.toLowerCase();
   const [x,y]=D.xy(movement.cell);
