@@ -57,3 +57,25 @@
 .security-item.warning{border-color:#a77c62}
 @media(max-width:1250px){.resourcebar{grid-template-columns:repeat(5,1fr)}.resource{min-height:37px}.resource:nth-child(5){border:0}.resource:nth-child(6),.resource:nth-child(7),.resource:nth-child(8),.resource:nth-child(9){border-top:1px solid var(--line);padding-top:7px}.tutorial-tasks{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:660px){.resourcebar{grid-template-columns:repeat(3,1fr)}.resource:nth-child(3n){border-right:0}.resource:nth-child(n+4){border-top:1px solid var(--line)}.economy-strip{flex-wrap:wrap;gap:5px;padding:8px 12px;font-size:8px}.tutorial-tasks{grid-template-columns:repeat(3,1fr)}.objective-focus strong{font-size:18px}}
+
+/* Readability and progression polish */
+.advanced-facilities{margin-top:7px;padding:5px;border:1px solid var(--line);border-radius:6px;background:#172227}
+.advanced-facilities summary{cursor:pointer;list-style:none;padding:10px 9px;color:#d3bc94;font:800 11px 'Barlow Condensed',sans-serif;letter-spacing:.09em}
+.advanced-facilities summary::-webkit-details-marker{display:none}
+.advanced-facilities summary:before{content:"▸ ";color:#d7ba8c}
+.advanced-facilities[open] summary:before{content:"▾ "}
+.advanced-facilities .build-choice{margin:5px 0}
+.visitor{border-top:1px solid rgba(197,223,208,.19);margin-top:9px;padding-top:9px;font-size:11px;font-weight:700;color:#ebedde}
+.warning-message{color:#e7a98c!important}
+.survey-strip{margin:16px 0 5px}
+.survey-strip button{width:100%;text-align:center;display:block}
+.site-grid{max-height:340px;overflow:auto;padding:2px}
+.attribute-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin:12px 0}
+.attribute-grid>div{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:#293c3b;border:1px solid #49605b;border-radius:4px;padding:7px 0}
+.attribute-grid span{font:800 9px Inter,sans-serif;color:#c6b28d}
+.attribute-grid strong{font:800 17px 'Barlow Condensed',sans-serif;color:#f2ebd9}
+.policy-toggle{display:flex;align-items:center;gap:12px;padding:10px;border:1px solid #53685e;border-radius:5px;font-size:11px;color:#d7e4db;margin:8px 0;cursor:pointer}
+.policy-toggle input{accent-color:#d0ae7b}
+.survivor-card.dead{opacity:.62;border-color:#6d4542}
+.world-wrap.tool-door,.world-wrap.tool-ladder{cursor:crosshair}
+@media(max-width:660px){.site-grid{max-height:300px}.attribute-grid{gap:2px}}
