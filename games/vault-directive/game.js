@@ -9,7 +9,7 @@ const safe=v=>String(v??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'
 const fmt=n=>Math.max(0,Math.floor(Number(n)||0)).toLocaleString();
 let s=null,panel='tutorial',panelId=null,modalType=null,zoom=1,last=performance.now(),lastPaint=0,lastSave=0,lastLog='',alerted=false;
 let selectedSite='grove',surfaceOpen=false,sideScroll=0;
-const residentNodes=new Map();
+const residentNodes=new Map(),residentMotion=new Map();
 let lastTerrainHtml='',lastRoomsHtml='',lastVisitorsHtml='',lastPinsHtml='',lastDetailsHtml='',lastSideContent='',lastSidePanel='';
 if(!D){$('mapStatus').textContent='ERROR: GAME ENGINE DID NOT LOAD';$('bottomHint').textContent='Try refreshing. The data engine is missing.';return;}
 function load(){try{const a=JSON.parse(localStorage.getItem(KEY));return D.valid(a)?a:null;}catch{return null;}}
@@ -28,7 +28,7 @@ function showIntro(){
 }
 function start(newVault){
  s=newVault;s.task=null;s.speed=1;panel='tutorial';panelId=null;modalType=null;last=performance.now();
- surfaceOpen=false;selectedSite='grove';residentNodes.forEach(n=>n.remove());residentNodes.clear();
+ surfaceOpen=false;selectedSite='grove';residentNodes.forEach(n=>n.remove());residentNodes.clear();residentMotion.clear();
  lastTerrainHtml='';lastRoomsHtml='';lastVisitorsHtml='';lastPinsHtml='';lastDetailsHtml='';lastSideContent='';lastSidePanel='';
  if(!Array.isArray(s.expeditionHistory))s.expeditionHistory=[];
  if(!s.lastExpedition)s.lastExpedition=null;
@@ -106,6 +106,7 @@ function renderPeople(){
  for(const p of s.people){
   const activity=D.routine(s,p);
   const room=s.rooms.find(r=>r.id===activity.roomId);
+  const targetCell=room?room.cells[0]:D.START;
   const key=String(activity.roomId??'hatch');
   const spot=slots[key]||0;slots[key]=spot+1;
   let node=residentNodes.get(p.id);
@@ -117,24 +118,32 @@ function renderPeople(){
    node.innerHTML='<span class="hair"></span><span class="face"></span><span class="body"></span><span class="arm left"></span><span class="arm right"></span><span class="leg left"></span><span class="leg right"></span><span class="dweller-name">'+safe(p.name)+'</span>';
    layer.appendChild(node);residentNodes.set(p.id,node);
   }
-  const phase=activity.phase;
-  node.className='dweller'+(phase==='sleep'?' sleep':phase==='sick'?' sick':phase==='working'||phase==='socializing'||phase==='meal'?' walk':phase==='guarding'?' guarding':'')+(p.weapon?' guard':'');
-  node.title=p.name+' — '+activity.label;
-  node.dataset.state=activity.label;
-  if(room){
-   const [x,y]=D.xy(room.cells[0]);
-   const columns=4,offset=Math.min(spot,7);
-   node.style.left=(x*CW+31+(offset%columns)*54)+'px';
-   node.style.top=(y*CH+46+(offset>=4?-3:0))+'px';
-  }else{
-   node.style.left=((D.START%9)*CW+56+(spot%3)*24)+'px';
-   node.style.top=(Math.floor(D.START/9)*CH+40)+'px';
+  let movement=residentMotion.get(p.id);
+  if(!movement){
+   movement={cell:D.START,lastMove:s.elapsed};
+   residentMotion.set(p.id,movement);
   }
+  if(movement.cell!==targetCell&&s.elapsed-movement.lastMove>=.9){
+   const route=D.path(s,movement.cell,targetCell);
+   if(route&&route.length>1){
+    movement.cell=route[1];movement.lastMove=s.elapsed;
+   }
+  }
+  const arrived=movement.cell===targetCell;
+  const phase=activity.phase;
+  const spriteState=!arrived?'walk':phase==='sleep'?'sleep':phase==='sick'?'sick':phase==='working'||phase==='socializing'||phase==='meal'?'walk':phase==='guarding'?'guarding':'';
+  node.className='dweller'+(spriteState?' '+spriteState:'')+(p.weapon?' guard':'');
+  node.title=p.name+' — '+(arrived?activity.label:'Walking to '+activity.label.toLowerCase());
+  node.dataset.state=arrived?activity.label:'Walking to '+activity.label.toLowerCase();
+  const [x,y]=D.xy(movement.cell);
+  const columns=4,offset=Math.min(spot,7);
+  node.style.left=(x*CW+(arrived&&room?31+(offset%columns)*54:49+(p.id%3)*5))+'px';
+  node.style.top=(y*CH+(arrived&&room?46+(offset>=4?-3:0):40))+'px';
   found.add(p.id);
  }
  for(const [id,node] of residentNodes){
   if(found.has(id))continue;
-  node.remove();residentNodes.delete(id);
+  node.remove();residentNodes.delete(id);residentMotion.delete(id);
  }
 }
 function updateTask(){
