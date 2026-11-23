@@ -1064,7 +1064,108 @@
     if(!result?.ok){toast(result?.error||'This action is unavailable.');return false;}
     updateHud();renderInspector();renderArrivals();renderSecurity();saveGame();return true;
   }
-  function showIntro() {$('introModal').classList.toggle('hidden',state.introSeen);}
+  function renderArrivals(){
+    const dock=$('arrivalDock');
+    if(!state.arrivals.length){dock.innerHTML='';return;}
+    const room=window.VDSystems.capacity(state),pop=window.VDSystems.alive(state).length;
+    dock.innerHTML='<strong>♙ '+state.arrivals.length+' PERSON'+(state.arrivals.length===1?'':'S')+' WAITING AT THE HATCH</strong>'+
+      '<p>New survivors do not join automatically. Review them and choose what happens next. Beds: '+pop+' / '+room+'.</p>'+
+      state.arrivals.map(a=>'<div class="visitor">'+a.candidate.name+' · '+a.candidate.role+
+        ' · Skilled in '+Object.entries(a.candidate.skills).sort((a,b)=>b[1]-a[1])[0][0]+
+        '<div class="arrival-actions"><button data-visitor="admit" data-id="'+a.id+'" '+(pop>=room?'disabled':'')+'>WELCOME SURVIVOR</button>'+
+        '<button data-visitor="reject" data-id="'+a.id+'">TURN AWAY</button></div></div>').join('')+
+      (pop>=room?'<p class="warning-message">No free beds. Build sleeping quarters before admitting anyone else.</p>':'');
+  }
+  function renderCrisisSummary(){
+    const root=$('crisisSummary'),threat=state.threat,events=state.incidents,traps=state.traps.filter(t=>!t.rescued);
+    if(!threat&&!events.length&&!traps.length){root.innerHTML='';return;}
+    root.innerHTML='<strong>⚠ ACTIVE EMERGENCY</strong>'+
+      '<p>'+(threat?(threat.kind==='ferals'?'FERAL OUTBREAK':'RAIDERS AT THE GATE')+' · '+
+        Math.ceil(threat.hp)+' attacker strength · ':'')+
+        (events.length?events.length+' interior incident(s) · ':'')+
+        (traps.length?traps.length+' trapped area(s)':'')+'</p>'+
+      '<button id="openCrisis" type="button">OPEN RESPONSE CENTER →</button>';
+  }
+  function renderSecurity(){
+    if($('securityModal').classList.contains('hidden'))return;
+    const dom=$('securityContent'),systems=window.VDSystems;
+    const raid=state.threat,incidents=state.incidents,traps=state.traps.filter(t=>!t.rescued);
+    const responders=systems.alive(state);
+    dom.innerHTML='<div class="security-list">'+
+      '<div class="security-item '+(raid?'warning':'')+'"><h3>External threats</h3>'+
+      (raid?'<p>'+raid.kind.toUpperCase()+' · HP '+Math.ceil(raid.hp)+' · '+raid.phase+
+        ' · '+raid.controlled.length+' rooms captured.</p>':
+        '<p>No raiders currently inside the shelter. Security remains your responsibility.</p>')+
+      '<p>Defenders with upgraded gear provide stronger resistance. They can be ordered to stand down after the alarm.</p>'+
+      (raid?responders.map(r=>'<button data-security="defend" data-id="'+r.id+'">'+
+        (r.defending?'✓ ':'◇ ')+r.name+'</button>').join(''):'')+
+      '<label style="display:flex;align-items:center;gap:10px;font-size:11px;margin-top:10px"><input id="autoLockdown" type="checkbox" '+
+        (state.autoLockdown?'checked':'')+'>Automatically close all installed doors during raids</label></div>'+
+      '<div class="security-item"><h3>Blast-door chambers · '+state.doors.length+'</h3>'+
+      (state.doors.length?state.doors.map(d=>
+        '<p>Checkpoint '+d.x+','+d.y+' · '+(d.closed?'SEALED':'OPEN')+' · '+Math.ceil(d.hp)+'% integrity'+
+        ' <button data-security="door" data-id="'+d.id+'">'+(d.closed?'OPEN':'SEAL')+'</button>'+
+        ' <button data-security="repair" data-id="'+d.id+'">REPAIR</button></p>').join(''):
+        '<p>None installed. Use the BLAST DOOR tool to build a chamber inside a two-sided corridor. It costs 7 salvage and 2 components.</p>')+'</div>'+
+      '<div class="security-item '+(incidents.length?'warning':'')+'"><h3>Internal emergencies</h3>'+
+      (incidents.length?incidents.map(e=>{
+        const r=systems.room(state,e.roomId);
+        return '<p>'+e.kind.toUpperCase()+' in '+(r?ROOM_TYPES[r.type].name:'Unknown room')+
+          ' · Severity '+Math.ceil(e.severity)+'. Assign someone to the affected room to contain it.</p>'+
+          responders.map(p=>'<button data-security="contain" data-id="'+p.id+'">'+p.name+'</button>').join('');
+      }).join(''):'<p>All rooms clear of fire and vermin.</p>')+'</div>'+
+      '<div class="security-item '+(traps.length?'warning':'')+'"><h3>Excavation rescue</h3>'+
+      (traps.length?traps.map(t=>'<p>Collapse at '+t.x+','+t.y+' · Oxygen '+Math.ceil(t.air)+'% · Survivor(s) '+
+        t.people.map(id=>systems.get(state,id)?.name||'Unknown').join(', ')+
+        '</p><button data-security="rescue" data-id="'+t.id+'">PLAN MANUAL RESCUE</button>').join(''):
+        '<p>No trapped residents. Deep excavations are more dangerous; keep a spare digger ready.</p>')+'</div>'+
+      '<div class="security-item"><h3>Settlement conditions</h3>'+
+      '<p>'+state.rooms.filter(r=>r.captured).length+' rooms occupied · '+
+        state.survivors.filter(r=>r.infection>0&&!r.dead).length+' residents infected · '+
+        state.survivors.filter(r=>r.dead).length+' dead · '+
+        state.rooms.filter(r=>r.integrity<100).length+' damaged rooms.</p></div></div>';
+  }
+  function guideDoor(x,y){
+    const action=window.VDSystems.door(state,x,y,{report});
+    if(action.ok){selection={kind:'door',id:action.door.id};setToolKeepSelection('inspect');renderInspector();}
+    applySystem(action);
+  }
+  function guideLadder(x,y){
+    if(!valid(x,y) || !cellFree(x,y) || y<7 || y>=ROWS-1 || state.ladders.some(l=>l.x===x&&l.y===y)){
+      toast('Use a cleared shaft tile below the entrance, without an existing ladder.');return;
+    }
+    if(state.resources.scrap<2){toast('You need 2 salvage to build a ladder extension.');return;}
+    const vertical=neighbours(x,y).some(n=>n.x===x && (state.ladders.some(l=>l.x===n.x&&l.y===n.y) ||
+      (n.x===8&&n.y>=3&&n.y<=7)));
+    if(!vertical){toast('Ladder segments must connect vertically to an existing ladder.');return;}
+    state.resources.scrap-=2;state.ladders.push({x,y});
+    report('Ladder segment installed. The new vertical route is accessible.');
+    toast('LADDER CONNECTED');updateHud();saveGame();
+  }
+  function useSecurityCommand(action,id){
+    const systems=window.VDSystems;
+    let result;
+    if(action==='defend'){const r=systems.get(state,id);result=r?.defending?systems.standDown(state,id,{report}):systems.defend(state,id,{report});}
+    else if(action==='contain')result=systems.contain(state,id,{report});
+    else if(action==='door')result=systems.toggleDoor(state,id,{report});
+    else if(action==='repair')result=systems.repair(state,id,{report});
+    else if(action==='rescue'){
+      result=systems.rescue(state,id,{report});
+      if(result.ok){
+        selection={kind:'project',id:result.job.id};
+        chosenWorkers.clear();renderInspector();$('securityModal').classList.add('hidden');
+        toast('Rescue planned. Select your rescuers in the right panel.');
+      }
+    }
+    if(result)applySystem(result);
+  }
+  function showLoss(){
+    if(!state.loss)return;
+    if(!$('lossModal').classList.contains('hidden'))return;
+    $('lossReason').textContent=state.loss.reason+' You can inspect the remains, or start a new settlement.';
+    $('lossModal').classList.remove('hidden');
+  }
+    function showIntro() {$('introModal').classList.toggle('hidden',state.introSeen);}
   function openExpedition(){
     $('expeditionModal').classList.remove('hidden');
     viewedSite=state.expedition?state.expedition.site:viewedSite;
