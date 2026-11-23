@@ -124,7 +124,7 @@
     return {generation,demand,online:generation>0 && generation>=demand};
   }
   function roomActive(room) {
-    return room.type === 'generator' || powerData().online;
+    return room.type === 'generator' || room.type === 'bunks' || powerData().online;
   }
   function cellFree(x,y) {return valid(x,y) && state.terrain[y][x] === 0;}
   function walkable(x,y) {
@@ -178,7 +178,7 @@
     worldWrap.classList.toggle('tool-dig',tool==='dig');
     worldWrap.classList.toggle('tool-build',tool==='build');
     $('toolHint').textContent=tool==='dig'?'Click and drag across solid earth beside the existing passage. Confirm workers in the right panel.':
-      tool==='build'?'Drag across a cleared floor to lay out a '+ROOM_TYPES[buildType].name+'. Rooms are two tiles high.':
+      tool==='build'?'Drag sideways across cleared space to place '+ROOM_TYPES[buildType].name+'. The preview snaps to a standard floor.':
       'Click a survivor, project or room to inspect. Drag empty space to pan the camera.';
     selection = null;chosenWorkers.clear();renderInspector();updateHud();
   }
@@ -211,7 +211,7 @@
   }
   function placeRoom(a,b) {
     const type=buildType, def=ROOM_TYPES[type];if(!def)return;
-    const x=Math.min(a.x,b.x),w=Math.abs(a.x-b.x)+1,y=a.y;
+    const x=Math.min(a.x,b.x),w=Math.abs(a.x-b.x)+1,y=a.y>=6?6+Math.floor((a.y-6)/3)*3:a.y;
     if(y<6 || (y-6)%3!==0){toast('Room floors begin on levels 06, 09, 12 and 15. Choose the upper room row.');return;}
     if(w<3||w>8){toast('Rooms must be 3–8 tiles wide. Drag sideways over cleared terrain.');return;}
     if(x<0||x+w>COLS||y+1>=ROWS){toast('That room does not fit inside the world.');return;}
@@ -483,7 +483,7 @@
     const dpr=Math.min(2,window.devicePixelRatio||1);
     canvas.width=Math.round(screenWidth*dpr);canvas.height=Math.round(screenHeight*dpr);
     if(!cameraInitialized){
-      camera.x=9*T-screenWidth/(2*camera.zoom);
+      camera.x=10.5*T-screenWidth/(2*camera.zoom);
       camera.y=5*T-screenHeight/(2*camera.zoom);
       cameraInitialized=true;
     }
@@ -724,7 +724,7 @@
   function drawDragHighlight(a,b){
     if(!a||!b)return;
     let rect=rectangle(a,b);
-    if(drag.kind==='build')rect={x:rect.x,y:a.y,width:rect.width,height:2};
+    if(drag.kind==='build')rect={x:rect.x,y:a.y>=6?6+Math.floor((a.y-6)/3)*3:a.y,width:rect.width,height:2};
     if(rect.width>COLS||rect.height>ROWS)return;
     const x=rect.x*T,y=rect.y*T,w=rect.width*T,h=rect.height*T;
     ctx.fillStyle=drag.kind==='dig'?'rgba(232,186,106,.22)':'rgba(135,194,168,.19)';ctx.fillRect(x,y,w,h);
