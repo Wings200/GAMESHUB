@@ -28,7 +28,7 @@ function showIntro(){
 }
 function start(newVault){
  s=newVault;s.task=null;s.speed=1;panel='tutorial';panelId=null;modalType=null;last=performance.now();
- surfaceOpen=false;selectedSite='grove';residentNodes.forEach(n=>n.remove());residentNodes.clear();residentMotion.clear();
+ surfaceOpen=false;selectedSite='grove';lastLog='';residentNodes.forEach(n=>n.remove());residentNodes.clear();residentMotion.clear();
  lastTerrainHtml='';lastRoomsHtml='';lastVisitorsHtml='';lastPinsHtml='';lastDetailsHtml='';lastSideContent='';lastSidePanel='';
  if(!Array.isArray(s.expeditionHistory))s.expeditionHistory=[];
  if(!s.lastExpedition)s.lastExpedition=null;
@@ -317,6 +317,7 @@ function renderCoach(){
  if(!s)return;
  const visible=!s.skipTutorial&&s.tutorial<7;
  $('coach').classList.toggle('hidden',!visible);
+ $('surfaceLayer').classList.toggle('no-coach',!visible);
  if(!visible)return;
  const step=D.TUTORIAL[Math.min(s.tutorial,7)];
  $('coachProgress').textContent=String(s.tutorial+1).padStart(2,'0')+' / 08';
