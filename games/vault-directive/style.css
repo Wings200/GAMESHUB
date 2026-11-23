@@ -122,3 +122,9 @@
 .travel-avatar::before{content:'';position:absolute;top:0px;left:10px;width:11px;height:12px;border-radius:50% 50% 35% 35%;background:#d8ae89;border-top:5px solid #caa56a}
 .travel-avatar::after{content:'';position:absolute;bottom:0;left:7px;width:18px;height:15px;background:linear-gradient(90deg,#628c7b 0 70%,#c09b6c 71%);border:2px solid #d8c497;border-radius:3px}
 @media(max-width:780px){.surface-layer.no-coach{top:72px}.surface-overworld{flex:1 0 270px}.surface-layer{overflow-y:auto}.site-pin{box-shadow:0 4px 8px #07191988}}
+
+/* Construction overlays express the active tool, not a shovel for every task. */
+.sector.target-support::before{content:'▥';color:#eac68a}
+.sector.target-build::before{content:'▣';color:#eac68a}
+.sector.target-remove::before{content:'⊖';color:#ef9887}
+.sector.target-dig::before{content:'⛏';color:#f0d79e}
