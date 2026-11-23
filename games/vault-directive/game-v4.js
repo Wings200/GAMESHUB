@@ -362,7 +362,7 @@
       const fires=s.incidents.map(i=>{
         const r=M.getRoom(s,i.roomId);return '<div class="modal-tile"><strong>⚠ '+ehtml(i.kind.toUpperCase())+'</strong>'+
           '<p>'+ehtml(M.ROOM[r?.type]?.name||'Unknown room')+' · severity '+num(i.severity)+'. Send responders to contain the problem.</p>'+
-          M.live(s).filter(p=>!p.away).map(p=>'<button class="dialog-button" data-act="respond" data-id="'+p.id+'">'+
+          M.live(s).filter(p=>!p.away).map(p=>'<button class="dialog-button" data-act="respond" data-event="'+i.id+'" data-id="'+p.id+'">'+
             ehtml(p.name.split(' ')[0])+' RESPOND</button>').join('')+'</div>';
       }).join('');
       const trapped=s.events.filter(e=>!e.cleared).map(event=>'<div class="modal-tile"><strong>⚠ CAVE-IN</strong>'+
@@ -450,7 +450,7 @@
     if(!modalType)return;
     const e=s.expedition,phase=e?.phase||'none',act=e?.action?.phase||'none',n=s.visitors.length;
     const signature=modalType+'|'+phase+'|'+act+'|'+(e?.action?.index??'')+'|'+s.sites.reduce((z,a)=>z+a.searched.filter(Boolean).length,0)+'|'+n+
-      '|'+Math.round(s.survey?.timer||0)/5;
+      '|'+Math.ceil((s.survey?.timer||0)/5);
     if(signature!==modalSignature){modalSignature=signature;
       if(modalType==='expedition'||modalType==='visitors'||modalType==='crisis'||modalType==='map')renderModal();
     }
@@ -484,7 +484,7 @@
     if(action==='return'){if(result(M.returnExpedition(s)))renderModal();return;}
     if(action==='selectperson'){closeModal();openSelectPerson(id);return;}
     if(action==='defend'){result(M.dispatch(s,id));renderModal();return;}
-    if(action==='respond'){result(M.respond(s,id));renderModal();return;}
+    if(action==='respond'){result(M.respond(s,id,Number(el.dataset.event)));renderModal();return;}
     if(action==='rescue'){result(M.rescue(s,id));renderModal();return;}
     if(action==='conserve'){result(M.rescuerOrder(s,id,'conserve'));renderModal();return;}
     if(action==='self'){result(M.rescuerOrder(s,id,'self'));renderModal();return;}
