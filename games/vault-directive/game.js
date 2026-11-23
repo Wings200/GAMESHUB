@@ -86,7 +86,10 @@ function applyProduction(){
  game.people.forEach(p=>{
   const sheltered=owned(game.rooms[p.job])&&!game.rooms[p.job].sealed;
   const risk=(shortages.length?2.8*shortages.length:0)+(crowd?1.1:0)+(sheltered?0:1.3)+(p.health<35?.5:0);
-  p.loyalty=clamp(p.loyalty+(risk?-risk:.28),0,98);
+  const friend=game.people.find(other=>other.id===p.bond);
+  const social=friend?clamp((friend.loyalty-p.loyalty)*.014,-.38,.38)+(owned(game.rooms[friend.job])?0:-.2):0;
+  const traitEffect=p.trait==='Skeptical'&&shortages.length?-.65:p.trait==='Optimistic'?.17:p.trait==='Protective'&&sheltered&&game.rooms[p.job]?.type==='security'?.22:p.trait==='Compassionate'&&sheltered&&game.rooms[p.job]?.type==='medbay'?.18:p.trait==='Ambitious'&&game.rooms[p.job]?.type==='quarters'?-.10:0;
+  p.loyalty=clamp(p.loyalty+(risk?-risk:.28)+social+traitEffect,0,98);
   if(shortages.length)p.health=clamp(p.health-1.2*shortages.length,0,100);
   else if(game.resources.meds>1&&has('medbay'))p.health=clamp(p.health+.55,0,100);
  });
@@ -116,7 +119,12 @@ function beginHostile(type,forced=false){
   const leader=[...game.people].sort((a,b)=>a.loyalty-b.loyalty)[0];
   game.factions.rebels={morale:72,leader:leader?leader.name:'Disaffected Workers'};
   transfer(i,'rebels');
-  if(leader)leader.loyalty=clamp(leader.loyalty-10,0,100);
+  if(leader){
+   leader.loyalty=clamp(leader.loyalty-10,0,100);
+   const sympathizers=game.people.filter(p=>p.bond===leader.id&&p.loyalty<76);
+   sympathizers.forEach(p=>{p.loyalty=clamp(p.loyalty-8,0,100);});
+   if(sympathizers.length)pushLog(sympathizers.map(p=>p.name).join(', ')+' sympathized with the rebel leader.',true);
+  }
   pushLog(game.factions.rebels.leader+' has led an internal uprising. '+TYPES[game.rooms[i].type].name+' is rebel territory!',true);
  }else{
   if(hostileSectorIndices('raiders').length){pushLog('Outside raiders are already occupying a sector.',true);return;}
