@@ -13,7 +13,11 @@
     garden: { name: 'Hydroponics', cost: { scrap: 8, parts: 1 }, power: 0, use: 2, color: '#8ac69b', glyph: '❈' },
     medbay: { name: 'Medical bay', cost: { scrap: 10, parts: 2 }, power: 0, use: 2, color: '#91c8b3', glyph: '✚' },
     radio: { name: 'Radio beacon', cost: { scrap: 12, parts: 2 }, power: 0, use: 2, color: '#b5a4d1', glyph: '⌁' },
-    security: { name: 'Security post', cost: { scrap: 10, parts: 2 }, power: 0, use: 2, color: '#ccaa86', glyph: '◇' }
+    security: { name: 'Security post', cost: { scrap: 10, parts: 2 }, power: 0, use: 2, color: '#ccaa86', glyph: '◇' },
+    storage: { name: 'Storage depot', cost: { scrap: 8, parts: 0 }, power: 0, use: 1, color: '#9ba7b6', glyph: '▤' },
+    ventilation: { name: 'Air-handling plant', cost: { scrap: 9, parts: 2 }, power: 0, use: 2, color: '#80c5bb', glyph: '≋' },
+    training: { name: 'Training center', cost: { scrap: 10, parts: 2 }, power: 0, use: 2, color: '#b6a1c7', glyph: '⌘' },
+    workshop: { name: 'Workshop', cost: { scrap: 11, parts: 2 }, power: 0, use: 3, color: '#d9a679', glyph: '⚒' }
   };
   const SURVIVORS = [
     { id: 1, name: 'Mara Voss', role: 'Mechanic', strength: 7, skin: '#b68b6c', hair: '#312720', coat: '#779c8e', x: 8.2, y: 7, energy: 87, hunger: 88, thirst: 89, health: 100, morale: 74 },
@@ -369,12 +373,19 @@
         continue;
       }
       if(r.dead){r.state='dead';r.path=[];continue;}
+      if(r.striking){r.state='strike';r.path=[];continue;}
       if(r.trapped){r.state='trapped';r.path=[];continue;}
       if(r.defending){r.state='defending';continue;}
       const p=projectFor(r.taskId);
       if(!p||p.status!=='active'){
         r.taskId=null;
         if(r.jobRoom){
+          const clock=state.minutes%1440;
+          const onDayShift=clock>=480&&clock<1200;
+          const offDuty=(r.shift==='day'&&!onDayShift)||(r.shift==='night'&&onDayShift);
+          if(offDuty){
+            r.state='off-duty';r.path=[];r.energy=Math.min(100,r.energy+dt*.55);continue;
+          }
           const rm=state.rooms.find(q=>q.id===r.jobRoom);
           if(rm){
             const target={x:Math.min(rm.x+rm.width-1,Math.max(rm.x,rm.x+Math.floor(rm.width/2))),y:rm.y+1};
@@ -534,7 +545,7 @@
     state.minutes+=step*2.3;
     updateProjectWorkers(step);
     updateExpedition(step);
-    window.VDSystems.tick(state,step,{report});
+    window.VDSystems.tick(state,step,{report,accessible:reachableFromEntrance});
     window.VDSystems.tickRaid(state,step,{report},bfs);
   }
   function siteById(id){return SITES.find(s=>s.id===id);}
@@ -834,7 +845,7 @@
         }
       }
     }
-    if(['medbay','radio','security'].includes(room.type)){
+    if(['medbay','radio','security','storage','ventilation','training','workshop'].includes(room.type)){
       const cx=x+w/2,cy=y+h-39;
       ctx.fillStyle='#2f4242';ctx.fillRect(cx-32,cy-26,64,46);
       ctx.strokeStyle=def.color;ctx.lineWidth=2;ctx.strokeRect(cx-32,cy-26,64,46);
@@ -990,8 +1001,8 @@
     const show=(v)=>((v>=0?'+':'')+Number(v).toFixed(1));
     $('ratesValue').textContent='Food '+show(rate.food)+'/min · Water '+show(rate.water)+
       '/min · Fuel '+show(rate.fuel)+'/min';
-    $('powerDetails').textContent=p.lit?(p.spare>=0?'GRID STABLE · '+p.spare+' SPARE':'POWER DEFICIT · '+Math.abs(p.spare)+' SHORT'):
-      'NO GRID POWER · INSTALL A GENERATOR';
+    $('powerDetails').textContent=(p.lit?(p.spare>=0?'GRID STABLE · '+p.spare+' SPARE':'POWER DEFICIT · '+Math.abs(p.spare)+' SHORT'):
+      'NO GRID POWER · INSTALL A GENERATOR')+' · AIR '+Math.round(state.airQuality)+'%';
     $('powerDetails').style.color=p.spare<0?'#f0ab82':'#bed0c5';
     renderArrivals();renderCrisisSummary();
     showLoss();
@@ -1118,6 +1129,7 @@
         '<select class="management-select" id="residentShift" data-resident="'+r.id+'" '+(r.dead?'disabled':'')+'>'+
         ['flex','day','night'].map(v=>'<option value="'+v+'" '+(r.shift===v?'selected':'')+'>'+({flex:'Flexible / any time',day:'Day shift',night:'Night shift'}[v])+'</option>').join('')+'</select>'+
         '<button class="management-control" data-action="equip" data-id="'+r.id+'" '+(r.dead?'disabled':'')+'>⚒ Upgrade defensive gear · 3 salvage, 1 component</button>'+
+        '<button class="management-control" data-action="negotiate" data-id="'+r.id+'" '+(r.dead?'disabled':'')+'>♡ Negotiate / improve morale · 1 ration, 1 water</button>'+
         '<button class="management-control" data-action="heal" data-id="'+r.id+'" '+(r.dead?'disabled':'')+'>✚ Medical treatment · 1 medicine</button>'+
         (r.dead?'<button class="management-control" data-action="revive" data-id="'+r.id+'">✚ Revive in medical bay · 3 medicine</button>':
           '<button class="management-control" data-action="'+(r.defending?'stand-down':'defend')+'" data-id="'+r.id+'">'+
@@ -1138,18 +1150,31 @@
         garden:'Staff with high-Agility residents to grow steady food supplies.',
         medbay:'Staff with high-Intelligence residents to produce medical supplies and treat injuries.',
         radio:'Staff with high-Charisma residents to attract more surface refugees.',
-        security:'Equip defenders and monitor the settlement. Powered security posts enable surveillance in hostile sectors.'
+        security:'Equip defenders and monitor the settlement. Powered security posts enable surveillance in hostile sectors.',
+        storage:'Expands storage limits for salvaged metal, food, medicine, components and fuel. Uses lighting power.',
+        ventilation:'Circulates clean air. Staff with capable residents to improve deep shelter oxygen recovery.',
+        training:'Residents practice a chosen attribute here and steadily develop that skill. Requires electricity.',
+        workshop:'Staff a powered workshop to craft medicine, fuel and components from salvage.'
       };
       body.innerHTML='<div class="detail-card"><p class="small-head">ROOM OPERATIONS</p>'+
         '<span class="pill '+(!roomActive(rm)?'warn':'')+'">'+
         (rm.captured?'OCCUPIED BY HOSTILES':roomActive(rm)?'POWERED':'OFFLINE / SHED FROM GRID')+'</span>'+
         '<p class="helper">'+descriptions[rm.type]+'</p>'+bar(rm.integrity,'Structural integrity')+
-        '<p class="small-econ">Consumes '+(systems.ROOMS[rm.type].draw||'fuel')+' power · Grid '+data.generation+'/'+data.demand+
-        ' · '+crew.length+' assigned</p>'+
+        '<p class="small-econ">'+(rm.type==='generator'?'Burns fuel to provide power':'Consumes '+systems.ROOMS[rm.type].draw+' power')+' · Grid '+data.generation+'/'+data.demand+
+        ' · '+crew.length+' assigned · Room air '+Math.round(rm.air||95)+'%</p>'+
         '<p class="small-head">ASSIGN A RESIDENT</p>'+
         state.survivors.filter(r=>!r.dead).map(r=>
           '<button class="worker-choice" data-action="assign-room" data-id="'+r.id+'" data-room="'+rm.id+'">'+
           '<span>'+(r.jobRoom===rm.id?'✓ ':'○ ')+r.name+'</span><small>'+systems.ROOMS[rm.type].skill+' '+r.skills[systems.ROOMS[rm.type].skill]+'</small></button>').join('')+
+        (rm.type==='training'?
+          '<label class="management-label">TRAINING FOCUS</label><select class="management-select" id="trainingFocus" data-room="'+rm.id+'">'+
+          ['S','P','E','C','I','A','L'].map(v=>'<option value="'+v+'" '+((rm.focus||'S')===v?'selected':'')+'>'+v+' · '+({S:'Strength',P:'Perception',E:'Endurance',C:'Charisma',I:'Intelligence',A:'Agility',L:'Luck'}[v])+'</option>').join('')+
+          '</select>':'')+
+        (rm.type==='workshop'?
+          '<p class="small-head">CRAFT SUPPLIES</p>'+
+          '<button class="management-control" data-action="craft" data-kind="medicine">✚ Medicine · 3 salvage, 1 component → 2 meds</button>'+
+          '<button class="management-control" data-action="craft" data-kind="fuel">♨ Fuel · 4 salvage, 1 component → 3 fuel</button>'+
+          '<button class="management-control" data-action="craft" data-kind="components">⬡ Components · 7 salvage → 2 parts</button>':'')+
         '<label class="management-label">POWER PRIORITY</label>'+
         '<select class="management-select" id="roomPriority" data-room="'+rm.id+'">'+
         [1,2,3].map(v=>'<option value="'+v+'" '+((rm.priority||2)===v?'selected':'')+'>'+({1:'Critical',2:'Normal',3:'Low'}[v])+'</option>').join('')+'</select>'+
@@ -1456,6 +1481,8 @@
       else if(action==='choose-worker')chooseWorker(id);
       else if(action==='start-project')startProject(id);
       else if(action==='cancel-project')cancelProject(id);
+      else if(action==='craft')applySystem(window.VDSystems.craft(state,el.dataset.kind,{report}));
+      else if(action==='negotiate')applySystem(window.VDSystems.negotiate(state,id,{report}));
       else if(action==='assign-room'){
         applySystem(window.VDSystems.assignment(state,id,Number(el.dataset.room),{report}));
         flag('staff');renderTutorial();
@@ -1482,6 +1509,10 @@
         if(applySystem(result)&&roomId){flag('staff');renderTutorial();}
       }
       if(el.id==='residentShift')applySystem(window.VDSystems.shift(state,Number(el.dataset.resident),el.value,{report}));
+      if(el.id==='trainingFocus'){
+        const rm=state.rooms.find(r=>r.id===Number(el.dataset.room));
+        if(rm){rm.focus=el.value;report('Training center focus updated to '+el.value+'.');saveGame();}
+      }
       if(el.id==='roomPriority'){
         const room=state.rooms.find(r=>r.id===Number(el.dataset.room));
         if(room){room.priority=Number(el.value);report('Power priority updated.');updateHud();saveGame();}
