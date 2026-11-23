@@ -56,7 +56,7 @@ const TUTORIAL=[
  ["BUILD LIVING QUARTERS","Select BUILD, choose Living Quarters, then click the left tile of your supported two-tile chamber.","build"],
  ["SOMEONE IS KNOCKING","Open VISITORS and review your first arrival. You may admit or reject them.","visitors"],
  ["START REAL PRODUCTION","Scavenge, dig and reinforce more space, then construct Power, Food or Water rooms.","build"],
- ["PUT SOMEONE TO WORK","Select a resident, then assign them to a production room so it starts making resources.","roster"],
+ ["PUT SOMEONE TO WORK","Open PEOPLE. Drag a resident onto a production room, or use their profile to assign a job. Residents return home when off shift.","roster"],
  ["YOUR CIVILIZATION BEGINS","Balance power, food and water. Grow the vault, guard against raids and keep your residents loyal.","roster"]
 ];
 const blank=()=>({kind:"dirt",support:null,room:null});
@@ -147,7 +147,7 @@ function actor(name,s){
  return {id:s.nextId++,name:name||pick(FIRST)+" "+pick(LAST),age:rand(19,55),trait,skills,loyalty:clamp(rand(60,86)+def.loyal,5,100),
  mood:rand(63,82),health:rand(77,100),hunger:rand(60,95),thirst:rand(50,93),energy:rand(55,100),
  sick:Math.random()<.08,shirt:pick(SHIRTS),skin:pick(SKINS),hair:pick(HAIRS),job:null,shift:"day",weapon:0,armor:0,
- background:pick(["Former mechanic","Field researcher","Wandering courier","Rural farmer","Traveling merchant","Former medic","Shelter refugee","Factory worker","Guard for hire"]),
+ background:pick(["Former mechanic","Field researcher","Wandering courier","Rural farmer","Traveling merchant","Former medic","Shelter refugee","Factory worker","Guard for hire"]),homeRoomId:null,
  covert:Math.random()<.14,rebel:false,checked:null,checks:0,waited:0,served:0};
 }
 function visitor(s){if(s.visitors.length>=3||s.people.length>=40)return;const p=actor(null,s);s.visitors.push(p);note(s,p.name+" is knocking at the vault hatch.","visitor");}
@@ -168,10 +168,45 @@ function reject(s,id){const p=s.visitors.find(p=>p.id===id);if(!p)return {ok:fal
 function person(s,id){return s.people.find(p=>p.id===id);}
 // One authoritative placement and routine for each resident. A sleeper never works.
 // Rendering and resource production both read this function, preventing duplicated sprites.
+// Assign real beds without overbooking. Explicit home choices are honored first;
+// residents without a chosen home automatically use the least crowded quarters.
+function bedFor(s,p){
+ if(!p)return null;
+ const rooms=s.rooms.filter(r=>r.type==="quarters");
+ if(!rooms.length)return null;
+ const occupied=new Map(rooms.map(r=>[r.id,0]));
+ const placements=new Map();
+ for(const r of s.people){
+  if(!occupied.has(r.homeRoomId)||occupied.get(r.homeRoomId)>=4)continue;
+  placements.set(r.id,r.homeRoomId);
+  occupied.set(r.homeRoomId,occupied.get(r.homeRoomId)+1);
+ }
+ for(const r of s.people){
+  if(placements.has(r.id))continue;
+  const available=rooms.filter(room=>occupied.get(room.id)<4).sort((a,b)=>occupied.get(a.id)-occupied.get(b.id));
+  const chosen=available[0];if(!chosen)continue;
+  placements.set(r.id,chosen.id);
+  occupied.set(chosen.id,occupied.get(chosen.id)+1);
+ }
+ return rooms.find(room=>room.id===placements.get(p.id))||null;
+}
+function assignHome(s,pid,rid,offDuty=false){
+ const p=person(s,pid),room=s.rooms.find(r=>r.id===rid);
+ if(!p||!room||room.type!=="quarters")return {ok:false,message:"Choose a resident and a living quarters room."};
+ if(!access(s,room.cells[0]))return {ok:false,message:"This bedroom is cut off from the entrance."};
+ const others=s.people.filter(x=>x.id!==pid&&bedFor(s,x)?.id===rid);
+ if(others.length>=4&&bedFor(s,p)?.id!==rid)return {ok:false,message:"Those quarters have no free beds."};
+ p.homeRoomId=rid;
+ if(offDuty){
+  for(const r of s.rooms)r.workers=r.workers.filter(id=>id!==p.id);
+  p.job=null;
+ }
+ note(s,p.name+" assigned a home in "+ROOMS.quarters.name+(offDuty?" and taken off duty.":"."));
+ return {ok:true,message:p.name+" now has a permanent bed in these quarters."};
+}
 function routine(s,p){
  if(!p||p.health<=0)return {phase:"absent",roomId:null,label:"Unavailable"};
- const quarters=s.rooms.filter(r=>r.type==="quarters");
- const bed=quarters.length?quarters[Math.max(0,s.people.findIndex(x=>x.id===p.id))%quarters.length]:null;
+ const bed=bedFor(s,p);
  const medical=s.rooms.find(r=>r.type==="medical");
  const lounge=s.rooms.find(r=>r.type==="recreation");
  const dining=s.rooms.find(r=>r.type==="cafeteria");
@@ -184,7 +219,7 @@ function routine(s,p){
   return {phase:"shelter",roomId:bed?.id??null,label:"Taking shelter"};
  }
  if(p.sick||p.health<25)return {phase:"sick",roomId:medical?.id??bed?.id??null,label:medical?"In medical care":"Resting while ill"};
- if(needsSleep)return {phase:"sleep",roomId:bed?.id??null,label:"Sleeping — "+p.shift+" shift"};
+ if(needsSleep)return bed?{phase:"sleep",roomId:bed.id,label:"Sleeping — "+p.shift+" shift"}:{phase:"homeless",roomId:null,label:"No bed — resting at the hatch"};
  const mealtime=dining&&s.res.food>.25&&((Math.floor(s.clock/60)+p.id)%7===0);
  if((p.hunger<22&&s.res.food>.25)||(p.thirst<22&&s.res.water>.25)||mealtime)return {phase:"meal",roomId:dining?.id??lounge?.id??bed?.id??null,label:"Eating or drinking"};
  const workplace=s.rooms.find(r=>r.id===p.job);
@@ -278,7 +313,10 @@ function finish(s){
   if(meta==="outpost"&&!hazard&&s.people.length){pick(s.people).weapon=1;note(s,"A salvaged firearm was assigned to one resident.");}
  }else if(type==="remove"){
   const r=roomAt(s,i);
-  if(r){r.workers.forEach(id=>{const p=person(s,id);if(p)p.job=null;});r.cells.forEach(j=>{s.grid[j].kind="open";s.grid[j].room=null;});s.rooms=s.rooms.filter(x=>x.id!==r.id);
+  if(r){r.workers.forEach(id=>{const p=person(s,id);if(p)p.job=null;});
+   if(r.type==="quarters")for(const p of s.people){if(p.homeRoomId===r.id)p.homeRoomId=null;}
+   r.cells.forEach(j=>{s.grid[j].kind="open";s.grid[j].room=null;});s.rooms=s.rooms.filter(x=>x.id!==r.id);
+   if(r.type==="quarters"&&s.people.length>capacity(s))note(s,"HOUSING SHORTAGE: Some residents have no beds and will become fatigued.","warn");
    const d=ROOMS[r.type];for(const [k,v]of Object.entries(d.cost))s.res[k]+=Math.floor(v/2);note(s,d.name+" dismantled. Some materials recovered.");}
   else if(s.grid[i].kind==="lift"){s.grid[i].kind="open";s.grid[i].support=null;s.res.scrap++;note(s,"Elevator dismantled.");}
   else if(s.grid[i].support){const d=SUPPORTS[s.grid[i].support];s.grid[i].support=null;if(d)for(const [k,v]of Object.entries(d.cost))s.res[k]+=Math.floor(v/2);note(s,"Support removed.");}
@@ -329,7 +367,9 @@ function simulate(s,seconds){
   if(s.res.water>=needWater){s.res.water-=needWater;p.thirst=clamp(p.thirst+dt*.44,0,100);}else p.thirst=clamp(p.thirst-dt*.27,0,100);
   if(s.res.food>=needFood){s.res.food-=needFood;p.hunger=clamp(p.hunger+dt*.30,0,100);}else p.hunger=clamp(p.hunger-dt*.20,0,100);
   const resting=night(s)?p.shift==="day":p.shift==="night";
-  p.energy=clamp(p.energy+dt*(resting?1.7:-.4),0,100);
+  const hasBed=!!bedFor(s,p);
+  p.energy=clamp(p.energy+dt*(resting?(hasBed?1.7:.12):-.4),0,100);
+  if(resting&&!hasBed)p.mood=clamp(p.mood-dt*.17,0,100);
   const bad=p.hunger<35||p.thirst<35||p.energy<20;
   p.mood=clamp(p.mood+dt*(bad?-.19:p.job?.04:-.06),0,100);
   p.loyalty=clamp(p.loyalty+dt*(p.mood<25?-.08:p.mood>80?.014:0),0,100);
@@ -356,5 +396,5 @@ function simulate(s,seconds){
  if(s.people.length>=3&&s.elapsed>=s.nextRaid&&!s.threat){s.threat={name:s.people.some(p=>p.rebel)&&Math.random()<.3?"ARMED REBELLION":"SURFACE RAIDERS",force:10+s.people.length*3,created:s.elapsed};note(s,"ALARM! "+s.threat.name+" are attacking the entrance.","danger");}
  tutorial(s);
 }
-root.VDCore={W,H,N,START,ROOMS,SUPPORTS,TECH,SITES,TRAITS,TUTORIAL,clamp,rand,ix,xy,adjacent,create,valid,time,night,note,capacity,caps,morale,afford,spend,cost,access,path,canDig,canFrame,canLift,roomCells,canRoom,roomAt,risk,actor,visitor,check,accept,reject,person,routine,workersOnDuty,residentsIn,assign,unassign,shift,equip,research,collect,start,finish,tutorial,resolveThreat,simulate};
+root.VDCore={W,H,N,START,ROOMS,SUPPORTS,TECH,SITES,TRAITS,TUTORIAL,clamp,rand,ix,xy,adjacent,create,valid,time,night,note,capacity,caps,morale,afford,spend,cost,access,path,canDig,canFrame,canLift,roomCells,canRoom,roomAt,risk,actor,visitor,check,accept,reject,person,bedFor,assignHome,routine,workersOnDuty,residentsIn,assign,unassign,shift,equip,research,collect,start,finish,tutorial,resolveThreat,simulate};
 })(window);
