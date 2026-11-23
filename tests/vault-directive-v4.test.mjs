@@ -6,7 +6,7 @@ const base=new URL('../games/vault-directive/',import.meta.url);
 const modelSource=readFileSync(new URL('model.js',base),'utf8');
 const artSource=readFileSync(new URL('art.js',base),'utf8');
 const controllerSource=readFileSync(new URL('game-v4.js',base),'utf8');
-const html=readFileSync(new URL('v4-index.html',base),'utf8');
+const html=readFileSync(new URL('index.html',base),'utf8');
 const css=readFileSync(new URL('v4.css',base),'utf8');
 
 function env() {
