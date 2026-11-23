@@ -237,7 +237,8 @@
     const cells=[];
     for(let dy=0;dy<2;dy++)for(let dx=0;dx<w;dx++){
       const cx=x+dx,cy=y+dy;
-      if(!cellFree(cx,cy)||isProtected(cx,cy)||roomAt(cx,cy)||jobAt(cx,cy)){
+      if(!cellFree(cx,cy)||isProtected(cx,cy)||roomAt(cx,cy)||jobAt(cx,cy)||
+        state.doors.some(d=>d.x===cx&&d.y===cy)||state.ladders.some(l=>l.x===cx&&l.y===cy)){
         toast('This room requires two rows of clear, unused, excavated space.');return;
       }
       cells.push({x:cx,y:cy});
@@ -547,7 +548,10 @@
     updateSurvey(step);
     updateProjectWorkers(step);
     updateExpedition(step);
-    window.VDSystems.tick(state,step,{report,accessible:reachableFromEntrance});
+    window.VDSystems.tick(state,step,{
+      report,accessible:reachableFromEntrance,
+      roomRoute:(a,b)=>!!bfs({x:a.x,y:a.y+1},{x:b.x,y:b.y+1})
+    });
     window.VDSystems.tickRaid(state,step,{report},bfs);
   }
   function allSites(){return SITES.concat(state.discoveredSites||[]);}
