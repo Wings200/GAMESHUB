@@ -502,6 +502,14 @@ function drawJobs(ctx,s,t){
           paint(ctx,x+9,y+T-9,T-18,3,'#382a23');paint(ctx,x+9,y+T-9,(T-18)*Math.min(1,c.progress/2.3),3,'#e5c081');
         }
       }
+    }else if(j.kind==='door'||j.kind==='repair'){
+      const x=j.x*T,y=(j.isDoor||j.kind==='door'?j.y:j.y+2)*T;
+      paint(ctx,x+4,y+5,T-8,T-10,'#a4cab042');
+      ctx.strokeStyle='#ecc28f';ctx.lineWidth=3;ctx.setLineDash([7,5]);
+      ctx.strokeRect(x+5,y+6,T-10,T-13);ctx.setLineDash([]);
+      txt(ctx,j.kind==='door'?'GATE':'REPAIR',x+T/2,y+T/2,16,'#f8dbaf','center');
+      paint(ctx,x+7,y+T-10,T-14,4,'#273633');
+      paint(ctx,x+7,y+T-10,(T-14)*Math.min(1,j.progress/j.required),4,'#e9c38d');
     }else{
       const x=j.x*T,y=j.y*T,w=j.w*T,h=3*T;
       paint(ctx,x+3,y+3,w-6,h-8,'#8db2a22c');
