@@ -89,6 +89,24 @@ function access(s,i){
  }
  return false;
 }
+// Shortest traversable route through excavations, room floors and elevators.
+// People should walk via existing rooms, not glide diagonally through solid earth.
+function path(s,from,to){
+ if(from===to)return [from];
+ if(![from,to].every(i=>i>=0&&i<N&&["open","room","lift"].includes(s.grid[i]?.kind)))return null;
+ const previous=new Map([[from,from]]),queue=[from];
+ for(let n=0;n<queue.length;n++){
+  const current=queue[n];if(current===to)break;
+  for(const next of adjacent(current)){
+   if(previous.has(next)||!["open","room","lift"].includes(s.grid[next].kind))continue;
+   previous.set(next,current);queue.push(next);
+  }
+ }
+ if(!previous.has(to))return null;
+ const result=[to];let current=to;
+ while(current!==from){current=previous.get(current);result.push(current);}
+ return result.reverse();
+}
 function canDig(s,i){
  if(i<0||i>=N||!["dirt","rubble"].includes(s.grid[i].kind))return false;
  const [x,y]=xy(i);
@@ -168,6 +186,7 @@ function routine(s,p){
  if((p.hunger<22&&s.res.food>.25)||(p.thirst<22&&s.res.water>.25))return {phase:"meal",roomId:lounge?.id??bed?.id??null,label:"Eating or drinking"};
  const workplace=s.rooms.find(r=>r.id===p.job);
  if(workplace&&workplace.workers.includes(p.id)){
+  if(!access(s,workplace.cells[0]))return {phase:"stranded",roomId:workplace.id,label:"Passage blocked — cannot work"};
   return {phase:workplace.type==="security"?"guarding":"working",roomId:workplace.id,label:"On duty: "+ROOMS[workplace.type].name};
  }
  return {phase:lounge?"socializing":"idle",roomId:lounge?.id??bed?.id??null,label:lounge?"Socializing":"Off duty"};
@@ -186,6 +205,7 @@ function assign(s,pid,rid){
  const p=person(s,pid),r=s.rooms.find(r=>r.id===rid);
  if(!p||!r)return {ok:false,message:"Select a valid resident and room."};
  if(["quarters","storage"].includes(r.type))return {ok:false,message:"This room needs no workers."};
+ if(!access(s,r.cells[0]))return {ok:false,message:"The room has no safe tunnel route to the entrance."};
  if(r.workers.length>= (r.type==="security"?3:2)&&!r.workers.includes(pid))return {ok:false,message:"This room is already fully staffed."};
  s.rooms.forEach(x=>x.workers=x.workers.filter(id=>id!==pid));r.workers.push(pid);p.job=rid;p.served++;
  note(s,p.name+" assigned to "+ROOMS[r.type].name+".");tutorial(s);
@@ -332,5 +352,5 @@ function simulate(s,seconds){
  if(s.people.length>=3&&s.elapsed>=s.nextRaid&&!s.threat){s.threat={name:s.people.some(p=>p.rebel)&&Math.random()<.3?"ARMED REBELLION":"SURFACE RAIDERS",force:10+s.people.length*3,created:s.elapsed};note(s,"ALARM! "+s.threat.name+" are attacking the entrance.","danger");}
  tutorial(s);
 }
-root.VDCore={W,H,N,START,ROOMS,SUPPORTS,TECH,SITES,TRAITS,TUTORIAL,clamp,rand,ix,xy,adjacent,create,valid,time,night,note,capacity,caps,morale,afford,spend,cost,access,canDig,canFrame,canLift,roomCells,canRoom,roomAt,risk,actor,visitor,check,accept,reject,person,routine,workersOnDuty,residentsIn,assign,unassign,shift,equip,research,collect,start,finish,tutorial,resolveThreat,simulate};
+root.VDCore={W,H,N,START,ROOMS,SUPPORTS,TECH,SITES,TRAITS,TUTORIAL,clamp,rand,ix,xy,adjacent,create,valid,time,night,note,capacity,caps,morale,afford,spend,cost,access,path,canDig,canFrame,canLift,roomCells,canRoom,roomAt,risk,actor,visitor,check,accept,reject,person,routine,workersOnDuty,residentsIn,assign,unassign,shift,equip,research,collect,start,finish,tutorial,resolveThreat,simulate};
 })(window);
