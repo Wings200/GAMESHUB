@@ -28,7 +28,7 @@ const TECH=[
  {id:"efficiency",name:"Industrial Planning",cost:16,desc:"Improve production efficiency.",req:[]}
 ];
 const SITES=[
- {id:"grove",name:"Deadwood Grove",risk:0,duration:2.4,distance:"0.3 km",desc:"Timber, loose stone and old tools.",loot:{wood:[6,9],scrap:[1,3],stone:[1,2],food:[0,1],water:[0,1]}},
+ {id:"grove",name:"Deadwood Grove",risk:0,duration:2.4,distance:"0.3 km",desc:"Timber, loose stone and old tools.",loot:{wood:[8,11],scrap:[2,4],stone:[1,2],food:[0,1],water:[0,1]}},
  {id:"road",name:"Abandoned Highway",risk:.1,duration:3.1,distance:"1.2 km",desc:"Vehicle parts, scrap metal and emergency rations.",loot:{wood:[1,3],scrap:[5,9],stone:[1,3],food:[1,3],water:[1,3]}},
  {id:"market",name:"Derelict Market",risk:.23,duration:4.2,distance:"2.7 km",desc:"Shelves of rations, medicine and discarded equipment.",loot:{wood:[2,4],scrap:[3,6],stone:[0,2],food:[6,10],water:[3,6],medicine:[0,2]}},
  {id:"reservoir",name:"Old Reservoir",risk:.33,duration:5.4,distance:"4.1 km",desc:"Lost infrastructure and water filtration parts.",loot:{wood:[0,2],scrap:[4,7],stone:[3,5],food:[0,1],water:[8,12]}},
@@ -277,6 +277,7 @@ function simulate(s,seconds){
   if(r.type==="medical")r.workers.forEach(()=>s.people.forEach(p=>{if(p.sick&&s.res.medicine>=.001){p.health=clamp(p.health+dt*.4,0,100);s.res.medicine=Math.max(0,s.res.medicine-dt*.02);if(p.health>80)p.sick=false;}}));
  }
  s.res.power=clamp(s.res.power-dt*s.rooms.filter(r=>!["power","quarters","storage"].includes(r.type)).length*.045,0,caps(s).power);
+ if(s.threat&&s.elapsed-s.threat.created>7)resolveThreat(s);
  if(s.people.length>=3&&s.elapsed>=s.nextRaid&&!s.threat){s.threat={name:s.people.some(p=>p.rebel)&&Math.random()<.3?"ARMED REBELLION":"SURFACE RAIDERS",force:10+s.people.length*3,created:s.elapsed};note(s,"ALARM! "+s.threat.name+" are attacking the entrance.","danger");}
  tutorial(s);
 }
