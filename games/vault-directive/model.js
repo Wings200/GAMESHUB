@@ -378,7 +378,7 @@
       if(s.terrain[c.y][c.x]===0)continue;
       for(let xx=c.x-1;xx<=c.x+1;xx++){
         for(let yy=Math.max(4,c.y-2);yy<=Math.min(H-1,c.y+2);yy++){
-          if(!isFloor(yy)||!reach.has(cell(xx,yy)))continue;
+          if(!(isFloor(yy)||ladderAt(s,xx,yy))||!reach.has(cell(xx,yy)))continue;
           const path=route(s,{x:p.x,y:p.y},{x:xx,y:yy});if(!path)continue;
           const v=path.length*3+Math.hypot(c.x-xx,c.y-yy)+c.y*.07;
           if(v<score){score=v;best={tile:c,stand:{x:xx,y:yy}};}
@@ -637,7 +637,21 @@
     for(const p of s.people){
       if(!inWorld(p)||p.trapped||p.child||p.state==='striking')continue;
       if(p.taskId){work(s,p,dt);continue;}
-      if(p.state==='defending'){p.state='defending';continue;}
+      if(p.state==='defending'){
+        if(s.threat){
+          const hostile={x:Math.round(s.threat.x),y:Math.round(s.threat.y)};
+          let destination=hostile;
+          if(!walkable(s,destination.x,destination.y)){
+            const alternatives=[[1,0],[-1,0],[0,1],[0,-1]]
+              .map(([dx,dy])=>({x:hostile.x+dx,y:hostile.y+dy}))
+              .filter(c=>walkable(s,c.x,c.y)&&route(s,p,c));
+            destination=alternatives.sort((a,b)=>
+              Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0]||null;
+          }
+          if(destination && Math.hypot(p.x-s.threat.x,p.y-s.threat.y)>1.4)move(s,p,destination,dt);
+        }
+        continue;
+      }
       if(p.state==='responding'){
         const i=s.incidents[0],r=getRoom(s,i?.roomId);
         if(r){move(s,p,{x:r.x+Math.floor(r.w/2),y:r.y+2},dt);continue;}
