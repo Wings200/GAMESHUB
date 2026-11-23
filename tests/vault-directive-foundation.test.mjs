@@ -59,7 +59,7 @@ function harness(){
     .replace(/\}\)\(\);\s*$/, 'return {get state(){return state}, markZone, placeRoom, chooseWorker, startProject,'+
       'tick, powerData, drawScene, openExpedition, launchExpedition, exploreRoom, recallExpedition,'+
       'saveGame, renderInspector, renderSecurity, setTool, guideDoor, guideLadder, guideNext,'+
-      'startSurvey, fightExpedition, retreatExpedition, bfs };})();');
+      'startSurvey, fightExpedition, retreatExpedition, requestUpgrade, bfs };})();');
   function boot(){return new Function('document','window','localStorage','requestAnimationFrame','performance',
     'clearTimeout','setTimeout',instrument)(document,window,localStorage,()=>{},{now:()=>100},()=>{},()=>4);}
   const app=boot();
@@ -314,7 +314,74 @@ test('render surfaces and permanent UI bindings do not reference missing element
   const {app}=harness();
   assert.doesNotThrow(()=>app.drawScene(1000));
   const permanentIDs=[...new Set([...gameSource.matchAll(/\$\('([^']+)'\)/g)].map(m=>m[1]))];
-  const dynamic=new Set(['expeditionScene','travelProgress','expeditionMessage']);
+  const dynamic=new Set(['expeditionScene','travelProgress','expeditionMessage','familyParentA','familyParentB']);
   const missing=permanentIDs.filter(id=>!dynamic.has(id)&&!htmlSource.includes('id="'+id+'"'));
   assert.deepEqual(missing,[]);
+});
+
+
+test('constructed rooms can be upgraded by real builders and improve their output',()=>{
+  const {app}=harness();
+  const gen=digThenBuild(app);
+  const before=app.powerData().generation;
+  app.state.resources.scrap+=25;app.state.resources.parts+=5;
+  app.requestUpgrade(gen.id);
+  const order=app.state.projects.at(-1);
+  assert.equal(order.kind,'upgrade');
+  assert.equal(order.status,'planned');
+  app.chooseWorker(1);app.startProject(order.id);
+  runUntil(app,()=>order.status==='done',800);
+  assert.equal(gen.level,2);
+  assert.ok(app.powerData().generation>before);
+  assert.equal(gen.integrity,100);
+});
+test('powered residential quarters enable voluntary family growth and dependent maturation',()=>{
+  const {app,systems}=harness();
+  app.state.rooms.push({id:101,type:'generator',x:13,y:6,width:4,integrity:100,level:1,air:95});
+  app.state.rooms.push({id:102,type:'bunks',x:18,y:6,width:4,integrity:100,level:1,air:95});
+  app.state.nextIncident=Infinity;app.state.nextRaid=Infinity;app.state.nextArrival=Infinity;
+  const result=systems.startFamily(app.state,1,2,{});
+  assert.equal(result.ok,true);
+  assert.equal(app.state.familyPlans.length,1);
+  runUntil(app,()=>app.state.familyPlans.length===0,2700);
+  const baby=app.state.survivors.find(r=>r.child);
+  assert.ok(baby,'family planning should create a dependent');
+  assert.equal(systems.assignment(app.state,baby.id,101,{}).ok,false);
+  assert.equal(systems.defend(app.state,baby.id,{}).ok,false);
+  assert.doesNotThrow(()=>app.drawScene(800));
+  runUntil(app,()=>!baby.child,4800);
+  assert.equal(baby.age,18);
+  assert.equal(baby.role,'Resident');
+});
+test('a closed blast door can starve an isolated sector of breathable air',()=>{
+  const {app,systems}=harness();
+  const gen=digThenBuild(app);
+  const barrier=systems.door(app.state,10,7,{});
+  assert.equal(barrier.ok,true);
+  systems.toggleDoor(app.state,barrier.door.id,{});
+  const air=gen.air;
+  advance(app,22);
+  assert.ok(gen.air<air,'isolation should actually reduce room air');
+  assert.equal(app.bfs({x:8,y:7},{x:15,y:7}),null);
+});
+test('death and complete settlement loss render without mutating canvas from needs code',()=>{
+  const {app}=harness();
+  app.state.survivors.forEach(r=>{r.health=0;});
+  assert.doesNotThrow(()=>app.tick(.05));
+  assert.ok(app.state.survivors.every(r=>r.dead));
+  assert.ok(app.state.loss);
+  assert.doesNotThrow(()=>app.drawScene(1200));
+  assert.doesNotThrow(()=>app.tick(.05));
+});
+test('rush production has explicit risk and triggers either rewards or a contained emergency',()=>{
+  const {app,systems}=harness();
+  app.state.rooms.push({id:201,type:'generator',x:13,y:6,width:4,integrity:100,level:1,air:95});
+  app.state.rooms.push({id:202,type:'garden',x:18,y:6,width:4,integrity:100,level:1,air:95});
+  const gardener=app.state.survivors[0];
+  gardener.jobRoom=202;gardener.state='working';gardener.x=19;gardener.y=7;
+  const attempted=systems.rush(app.state,202,{});
+  assert.equal(attempted.ok,true);
+  assert.ok(typeof attempted.success==='boolean');
+  assert.ok(app.state.rooms[1].rushAttempts>0);
+  assert.ok(attempted.success?app.state.resources.food>12:app.state.incidents.length>0);
 });
