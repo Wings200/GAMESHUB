@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1218">
+  <title>VAULT DIRECTIVE — GAMESHUB</title>
+  <link rel="stylesheet" href="./style.css">
+  <script src="./game.js" defer></script>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <a class="backlink" href="/" aria-label="Return to GAMESHUB">← <span>GAMESHUB</span></a>
+        <span class="brand-divider"></span>
+        <span class="brand-symbol">V<span>D</span></span>
+        <div><strong>VAULT DIRECTIVE</strong><small>SHELTER COMMAND / FOUNDATION BUILD</small></div>
+      </div>
+      <div class="topright">
+        <span class="session-status"><span class="status-dot"></span><span id="saveState">LOCAL SAVE READY</span></span>
+        <div class="timeinfo"><strong id="dayClock">DAY 01 · 08:00</strong><small id="dayPhase">SURFACE LIGHT</small></div>
+        <div class="speed-control" aria-label="Simulation speed">
+          <button id="pauseBtn" class="mini" type="button" title="Pause game">Ⅱ</button>
+          <button class="mini speed active" data-speed="1" type="button">1×</button>
+          <button class="mini speed" data-speed="2" type="button">2×</button>
+          <button class="mini speed" data-speed="4" type="button">4×</button>
+        </div>
+      </div>
+    </header>
+
+    <section class="resourcebar" aria-label="Settlement resources">
+      <div class="resource"><span class="res-icon">♙</span><div><small>SURVIVORS</small><strong id="popValue">3 / 3</strong></div></div>
+      <div class="resource"><span class="res-icon electric">ϟ</span><div><small>POWER</small><strong id="powerValue">0 / 0</strong></div></div>
+      <div class="resource"><span class="res-icon food">◒</span><div><small>RATIONS</small><strong id="foodValue">12</strong></div></div>
+      <div class="resource"><span class="res-icon water">◈</span><div><small>WATER</small><strong id="waterValue">14</strong></div></div>
+      <div class="resource"><span class="res-icon metal">▤</span><div><small>SALVAGE</small><strong id="scrapValue">19</strong></div></div>
+      <div class="resource"><span class="res-icon parts">⬡</span><div><small>COMPONENTS</small><strong id="partsValue">4</strong></div></div>
+      <div class="resource morale"><span class="res-icon">♡</span><div><small>MORALE</small><strong id="moraleValue">72%</strong></div></div>
+    </section>
+
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="sidehead"><small>OVERSEER TERMINAL</small><h2>Settlement control</h2><p>Build a home from the ground beneath you.</p></div>
+        <section class="side-section">
+          <div class="section-title"><span>01 / TOOLS</span><span class="tiny">SELECT AN ACTION</span></div>
+          <div class="tool-grid">
+            <button class="tool active" data-tool="inspect" type="button"><span class="tool-icon">⌖</span><span><strong>Inspect</strong><small>Explore / select</small></span></button>
+            <button class="tool" data-tool="dig" type="button"><span class="tool-icon">⚒</span><span><strong>Excavate</strong><small>Drag over earth</small></span></button>
+          </div>
+          <div class="tool-hint" id="toolHint">Click a survivor to view their status. Drag the world to move the camera.</div>
+        </section>
+        <section class="side-section">
+          <div class="section-title"><span>02 / CONSTRUCTION</span><span class="tiny">CLEARED SPACE REQUIRED</span></div>
+          <div id="buildList" class="build-list">
+            <button type="button" class="build-choice" data-room="generator"><span class="build-glyph">ϟ</span><span><strong>Fuel generator</strong><small>9 salvage · 2 components</small></span><em>POWER</em></button>
+            <button type="button" class="build-choice" data-room="bunks"><span class="build-glyph">▥</span><span><strong>Sleeping quarters</strong><small>7 salvage</small></span><em>REST</em></button>
+            <button type="button" class="build-choice" data-room="water"><span class="build-glyph">◈</span><span><strong>Water treatment</strong><small>8 salvage · 1 component</small></span><em>WATER</em></button>
+            <button type="button" class="build-choice" data-room="garden"><span class="build-glyph">❈</span><span><strong>Hydroponics</strong><small>8 salvage · 1 component</small></span><em>FOOD</em></button>
+          </div>
+        </section>
+        <section class="side-section expedition-side">
+          <div class="section-title"><span>03 / THE SURFACE</span><span class="tiny">FINITE SUPPLIES</span></div>
+          <p>Explore actual sites, search rooms, and salvage old machinery. Loot doesn't regenerate.</p>
+          <button id="expeditionsBtn" class="full action-secondary" type="button">⌁ &nbsp; OPEN WASTELAND MAP <span>↗</span></button>
+        </section>
+        <div class="side-bottom"><button id="saveBtn" type="button">↓ SAVE</button><button id="helpBtn" type="button">? TUTORIAL</button><button id="resetBtn" type="button">↺ NEW GAME</button></div>
+      </aside>
+
+      <main class="center">
+        <div class="viewtop"><div><span class="eyebrow">LIVE WORLD VIEW</span><strong id="worldLabel">SECTOR 01 · ENTRY SHAFT</strong></div><div class="viewtop-right"><span class="pulsing"></span> SIMULATION ACTIVE <span class="sep">/</span> <span id="zoomLabel">100%</span></div></div>
+        <div class="world-wrap" id="worldWrap">
+          <canvas id="world" aria-label="Interactive underground shelter. Use the excavation tool then drag terrain to mark a dig zone."></canvas>
+          <div class="world-vignette"></div>
+          <div class="world-corner top-left"><span class="corner-title">LOCATION</span><strong>ASHFALL SHELTER · 01</strong><small>UNCLAIMED UNDERGROUND SITE</small></div>
+          <div class="world-corner top-right"><span class="corner-title">STATUS</span><strong id="worldStatus">UNDEVELOPED</strong><small id="worldSubStatus">SHELTER SYSTEMS OFFLINE</small></div>
+          <div class="world-bottom"><div class="legend"><span class="legend-dot live"></span> ACCESSIBLE <span class="legend-dot dig"></span> DIG ZONE <span class="legend-dot room"></span> ROOM</div><div class="view-controls"><button id="centerBtn" title="Center on the hatch" type="button">⌖</button><button id="zoomOut" title="Zoom out" type="button">−</button><button id="zoomIn" title="Zoom in" type="button">+</button></div></div>
+          <div class="world-tooltip hidden" id="worldTooltip"></div>
+        </div>
+        <div class="status-strip"><span id="statusText">Three survivors. One abandoned entrance. Your next decision changes everything.</span><span class="kbd-hint">DRAG TO PAN · SCROLL TO ZOOM · ESC TO CANCEL</span></div>
+        <div class="tutorial-panel" id="tutorialPanel">
+          <div class="tutorial-top"><div><span class="eyebrow">OPTIONAL / OVERSEER TRAINING</span><h3>Your first day underground</h3></div><button id="skipTutorial" type="button">SKIP TUTORIAL ×</button></div>
+          <div class="tutorial-tasks" id="tutorialTasks"></div>
+          <div class="tutorial-note" id="tutorialNote">The entire game remains accessible. Complete objectives in any order.</div>
+        </div>
+      </main>
+
+      <aside class="inspector">
+        <div class="inspector-header"><span class="eyebrow">SETTLEMENT INTELLIGENCE</span><h2 id="inspectorTitle">Your survivors</h2><p id="inspectorSubtitle">Tap a resident to inspect or assign them.</p></div>
+        <div id="inspectorBody"></div>
+        <div class="event-section"><div class="section-title"><span>FIELD REPORT</span><span>RECENT EVENTS</span></div><div id="eventLog" class="event-log" aria-live="polite"></div></div>
+      </aside>
+    </div>
+
+    <footer class="foot"><span>VAULT DIRECTIVE <b>FOUNDATION 0.1</b> — EARLY PLAYABLE BUILD</span><span>LOCAL SAVE · SINGLE PLAYER · NO MULTIPLAYER</span></footer>
+  </div>
+
+  <div class="modal-backdrop" id="introModal" role="dialog" aria-modal="true" aria-labelledby="introTitle">
+    <div class="intro-card">
+      <div class="intro-mark">V<span>D</span></div>
+      <div class="intro-overline">OVERSEER INITIALIZATION / INCIDENT 001</div>
+      <h1 id="introTitle">The world above is gone.<br><em>What you build below is yours.</em></h1>
+      <p>The hatch still opens. Beneath it is an empty service tunnel, three exhausted survivors, and the few supplies they carried. There are no rooms, no electricity, and no one coming to help.</p>
+      <div class="intro-facts"><span>03 SURVIVORS</span><span>00 FUNCTIONAL ROOMS</span><span>01 CHANCE</span></div>
+      <div class="intro-actions"><button id="startWithTutorial" type="button">BEGIN SURVIVAL <span>→</span></button><button id="startWithoutTutorial" type="button">SKIP TUTORIAL</button></div>
+      <small>Tutorial guidance is optional. You can play freely and save locally.</small>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="expeditionModal" role="dialog" aria-modal="true" aria-labelledby="expeditionTitle">
+    <div class="expedition-card">
+      <div class="modal-head"><div><span class="eyebrow">WASTELAND OPERATIONS</span><h2 id="expeditionTitle">Surface survey</h2></div><button id="closeExpedition" class="close-x" title="Return to shelter" type="button">×</button></div>
+      <p id="expeditionDescription" class="expedition-desc">Select a location. Your people will actually explore its rooms and search for supplies.</p>
+      <div id="expeditionContent"></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="confirm-card"><span class="eyebrow">OVERSEER DIRECTIVE</span><h2 id="confirmTitle">Start a new settlement?</h2><p>All local VAULT DIRECTIVE progress on this device will be erased. Your other GAMESHUB games are unaffected.</p><div><button id="cancelReset" type="button">CANCEL</button><button id="confirmReset" type="button">ERASE & RESTART</button></div></div>
+  </div>
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+</body>
+</html>
