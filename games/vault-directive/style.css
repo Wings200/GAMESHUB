@@ -128,3 +128,7 @@
 .sector.target-build::before{content:'▣';color:#eac68a}
 .sector.target-remove::before{content:'⊖';color:#ef9887}
 .sector.target-dig::before{content:'⛏';color:#f0d79e}
+
+.people-layer>.dweller.sleep::after{content:'z z';opacity:.95;color:#cde9d6;font:900 11px var(--mono);background:#132d31b9;top:-22px}
+.people-layer>.dweller.sick::after{content:'✚';opacity:1;color:#ffb6a6;background:#482e2edb;top:-20px}
+.people-layer>.dweller.meal::after{content:'♨';opacity:1;color:#f6d79c;background:#4b3e2acc;top:-21px;font-size:12px}
