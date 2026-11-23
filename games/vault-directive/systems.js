@@ -52,6 +52,7 @@
     state.resourceRate={food:0,water:0,fuel:0};
     state.airQuality=state.airQuality??95;
     state.policy=state.policy||{rationing:false,overtime:false};
+    state.familyPlans=state.familyPlans||[];
     state.doors=state.doors||[];
     state.ladders=state.ladders||[];
     state.arrivals=state.arrivals||[];
@@ -83,6 +84,9 @@
       r.level=r.level||1;
       r.xp=r.xp||0;
       r.infection=r.infection||0;
+      r.age=r.age??(23+(r.id%7));
+      r.child=!!r.child;
+      r.growthRemaining=r.growthRemaining??0;
       r.trainingProgress=r.trainingProgress||{};
       r.striking=!!r.striking;
       r.dead=!!r.dead;
@@ -129,7 +133,7 @@
   }
   function assignment(state,residentId,roomId,hooks) {
     const r=get(state,residentId),dest=room(state,roomId);
-    if(!r||r.dead||r.trapped||!dest){return {ok:false,error:'Resident or room unavailable.'};}
+    if(!r||r.dead||r.trapped||!dest||r.child){return {ok:false,error:'Resident or room unavailable for work.'};}
     const cap=max(2,Math.floor(dest.width/2));
     const used=alive(state).filter(s=>s.jobRoom===roomId&&s.id!==residentId).length;
     if(used>=cap)return {ok:false,error:'This room has no available worker positions.'};
@@ -180,6 +184,48 @@
     emit(hooks,s.name+' was welcomed into the settlement. Population '+alive(state).length+'/'+capacity(state)+'.');
     return {ok:true,resident:s};
   }
+  function startFamily(state,parent1,parent2,hooks){
+    const a=get(state,parent1),b=get(state,parent2);
+    if(!a||!b||a.id===b.id||a.dead||b.dead||a.child||b.child||
+      a.age<18||b.age<18||a.trapped||b.trapped)return {ok:false,error:'Choose two available adult residents.'};
+    if(a.morale<45||b.morale<45)return {ok:false,error:'Both residents need adequate morale before starting a family.'};
+    if(!state.rooms.some(r=>r.type==='bunks'&&r.integrity>0&&!r.captured))
+      return {ok:false,error:'Construct living quarters first.'};
+    if(alive(state).length+state.familyPlans.length>=capacity(state))
+      return {ok:false,error:'Not enough beds for a new family member.'};
+    if(state.familyPlans.some(p=>p.parents.includes(a.id)||p.parents.includes(b.id)))
+      return {ok:false,error:'One parent already has an active family plan.'};
+    state.familyPlans.push({id:++state.threatId,parents:[a.id,b.id],remaining:115});
+    a.morale=min(100,a.morale+7);b.morale=min(100,b.morale+7);
+    emit(hooks,a.name+' and '+b.name+' started a family. Expect a new dependent resident later.');
+    return {ok:true};
+  }
+  function createChild(state,plan,hooks){
+    const a=get(state,plan.parents[0]),b=get(state,plan.parents[1]);
+    if(!a||!b)return null;
+    const index=state.survivors.length+1;
+    const first=['Avery','Rowan','Emery','Robin','River','Morgan','Sky','Kai'][
+      Math.floor(nextRand(state)*8)];
+    const last=a.name.split(' ').at(-1);
+    const attrs={};
+    for(const skill of Object.keys(DEFAULT_SKILLS))attrs[skill]=clamp(Math.round(
+      ((a.skills[skill]||4)+(b.skills[skill]||4))/2 +(nextRand(state)-.5)*2
+    ),1,10);
+    const person={
+      id:state.survivors.reduce((v,r)=>max(v,r.id),0)+1,name:first+' '+last,
+      age:0,child:true,growthRemaining:235,skills:attrs,strength:attrs.S,source:'family',
+      role:'Dependent',health:100,energy:87,hunger:88,thirst:86,morale:88,loyalty:83,
+      skin:['#a47e64','#ddba91','#c79f80'][index%3],
+      hair:['#342a24','#564034','#202529'][index%3],
+      coat:['#8ca197','#8699a2','#a89983'][index%3],
+      level:1,xp:0,weapon:0,jobRoom:null,taskId:null,shift:'flex',
+      state:'child',path:[],wait:0,infection:0,dead:false,trapped:false,
+      defending:false,recoverable:true,trainingProgress:{},striking:false,parents:plan.parents
+    };
+    state.survivors.push(person);
+    emit(hooks,'NEW FAMILY MEMBER: '+person.name+' joined the settlement. They will grow before they can work.');
+    return person;
+  }
   function reject(state,id,hooks){
     const item=state.arrivals.find(a=>a.id===id);if(!item)return {ok:false,error:'Visitor not found.'};
     state.arrivals=state.arrivals.filter(a=>a.id!==id);
@@ -208,7 +254,7 @@
     state.loss=null;return {ok:true};
   }
   function equip(state,residentId,hooks){
-    const r=get(state,residentId);if(!r||r.dead)return {ok:false,error:'Resident unavailable.'};
+    const r=get(state,residentId);if(!r||r.dead||r.child)return {ok:false,error:'Resident unavailable for equipment.'};
     if(state.resources.parts<1||state.resources.scrap<3)return {ok:false,error:'Requires 3 salvage and 1 component.'};
     if(r.weapon>=4)return {ok:false,error:'Weapon has already reached its current maximum.'};
     state.resources.parts-=1;state.resources.scrap-=3;r.weapon+=1;
@@ -315,7 +361,7 @@
     return true;
   }
   function defend(state,id,hooks){
-    const r=get(state,id);if(!r||r.dead||r.trapped)return {ok:false,error:'Resident is unavailable.'};
+    const r=get(state,id);if(!r||r.dead||r.trapped||r.child)return {ok:false,error:'Resident is unavailable for defence.'};
     if(r.taskId){const p=state.projects.find(p=>p.id===r.taskId);if(p)p.workers=p.workers.filter(w=>w!==r.id);r.taskId=null;}
     r.jobRoom=null;r.state='defending';r.defending=true;r.path=[];
     emit(hooks,r.name+' assigned to emergency defence.');
@@ -475,7 +521,21 @@
         emit(hooks,'Incident spreading through the settlement. Dispatch workers!',true);
       }
     }
+    for(const plan of state.familyPlans.slice()){
+      plan.remaining-=dt;
+      if(plan.remaining<=0 && alive(state).length<capacity(state)){
+        createChild(state,plan,hooks);
+        state.familyPlans=state.familyPlans.filter(p=>p.id!==plan.id);
+      }
+    }
     for(const r of residents){
+      if(r.child){
+        r.growthRemaining=Math.max(0,(r.growthRemaining??235)-dt);
+        if(r.growthRemaining===0){
+          r.child=false;r.age=18;r.role='Resident';r.state='idle';r.weapon=1;
+          emit(hooks,r.name+' reached adulthood and is available for work.');
+        }
+      }
       if(state.policy.rationing)r.morale=max(0,r.morale-dt*.018);
       else if(state.resources.food>1&&state.resources.water>1&&r.morale<72)r.morale=min(72,r.morale+dt*.007);
       if(state.policy.overtime){r.energy=max(0,r.energy-dt*.045);r.morale=max(0,r.morale-dt*.009);}
@@ -642,7 +702,7 @@
   }
   window.VDSystems={
     ROOMS,normalize,capacity,power,active,getRoomWorkers,assignment,unassign,shift,
-    createArrival,admit,reject,heal,revive,equip,door,toggleDoor,repair,
+    createArrival,admit,reject,startFamily,heal,revive,equip,door,toggleDoor,repair,
     createRaid,defend,standDown,triggerFire,contain,tick,tickRaid,trap,rescue,finishRescue,negotiate,setPolicy,craft,upgradeCost,rushRisk,rush,alive,get,room
   };
 })();
