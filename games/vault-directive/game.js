@@ -7,17 +7,17 @@
   const T = TILE;
   const SAVE_KEY = 'gameshub.vault-directive.foundation.v1';
   const ROOM_TYPES = {
-    generator: { name: 'Field generator', cost: { scrap: 9, parts: 2 }, power: 7, use: 0, color: '#d5ac63', glyph: 'ϟ' },
-    bunks: { name: 'Sleeping quarters', cost: { scrap: 7, parts: 0 }, power: 0, use: 0, color: '#9ab0a0', glyph: '▥' },
-    water: { name: 'Water treatment', cost: { scrap: 8, parts: 1 }, power: 0, use: 2, color: '#8acbd8', glyph: '◈' },
-    garden: { name: 'Hydroponics', cost: { scrap: 8, parts: 1 }, power: 0, use: 2, color: '#8ac69b', glyph: '❈' },
-    medbay: { name: 'Medical bay', cost: { scrap: 10, parts: 2 }, power: 0, use: 2, color: '#91c8b3', glyph: '✚' },
-    radio: { name: 'Radio beacon', cost: { scrap: 12, parts: 2 }, power: 0, use: 2, color: '#b5a4d1', glyph: '⌁' },
-    security: { name: 'Security post', cost: { scrap: 10, parts: 2 }, power: 0, use: 2, color: '#ccaa86', glyph: '◇' },
-    storage: { name: 'Storage depot', cost: { scrap: 8, parts: 0 }, power: 0, use: 1, color: '#9ba7b6', glyph: '▤' },
-    ventilation: { name: 'Air-handling plant', cost: { scrap: 9, parts: 2 }, power: 0, use: 2, color: '#80c5bb', glyph: '≋' },
-    training: { name: 'Training center', cost: { scrap: 10, parts: 2 }, power: 0, use: 2, color: '#b6a1c7', glyph: '⌘' },
-    workshop: { name: 'Workshop', cost: { scrap: 11, parts: 2 }, power: 0, use: 3, color: '#d9a679', glyph: '⚒' }
+    generator: { name: 'Field generator', cost: { scrap: 9, parts: 2 }, color: '#d5ac63', glyph: 'ϟ' },
+    bunks: { name: 'Sleeping quarters', cost: { scrap: 7, parts: 0 }, color: '#9ab0a0', glyph: '▥' },
+    water: { name: 'Water treatment', cost: { scrap: 8, parts: 1 }, color: '#8acbd8', glyph: '◈' },
+    garden: { name: 'Hydroponics', cost: { scrap: 8, parts: 1 }, color: '#8ac69b', glyph: '❈' },
+    medbay: { name: 'Medical bay', cost: { scrap: 10, parts: 2 }, color: '#91c8b3', glyph: '✚' },
+    radio: { name: 'Radio beacon', cost: { scrap: 12, parts: 2 }, color: '#b5a4d1', glyph: '⌁' },
+    security: { name: 'Security post', cost: { scrap: 10, parts: 2 }, color: '#ccaa86', glyph: '◇' },
+    storage: { name: 'Storage depot', cost: { scrap: 8, parts: 0 }, color: '#9ba7b6', glyph: '▤' },
+    ventilation: { name: 'Air-handling plant', cost: { scrap: 9, parts: 2 }, color: '#80c5bb', glyph: '≋' },
+    training: { name: 'Training center', cost: { scrap: 10, parts: 2 }, color: '#b6a1c7', glyph: '⌘' },
+    workshop: { name: 'Workshop', cost: { scrap: 11, parts: 2 }, color: '#d9a679', glyph: '⚒' }
   };
   const SURVIVORS = [
     { id: 1, name: 'Mara Voss', role: 'Mechanic', strength: 7, skin: '#b68b6c', hair: '#312720', coat: '#779c8e', x: 8.2, y: 7, energy: 87, hunger: 88, thirst: 89, health: 100, morale: 74 },
