@@ -45,6 +45,7 @@ test('IN DEV is an exclusive filter for Vault Directive, including search', () =
     {dataset: {name: 'redline', categories: 'racing multiplayer action'}, style: {}},
     {dataset: {name: 'illegal chess', categories: 'multiplayer strategy'}, style: {}},
     {dataset: {name: 'vault directive below the surface', categories: 'in-dev strategy simulation'}, style: {display: 'none'}},
+    {dataset: {name: 'vault directive foundations', categories: 'in-dev strategy simulation'}, style: {display: 'none'}},
     {dataset: {name: 'coming soon', categories: 'action'}, style: {}}
   ];
   const document = {
@@ -55,15 +56,29 @@ test('IN DEV is an exclusive filter for Vault Directive, including search', () =
   };
   vm.runInNewContext(homepageScript, {document, console, fetch: async () => ({}), window: {location: {}}});
   assert.equal(cards[2].style.display, 'none', 'development game must be hidden by default');
+  assert.equal(cards[3].style.display, 'none', 'Foundations must be hidden by default');
   searchInput.value = 'vault';
   events.search();
   assert.equal(cards[2].style.display, 'none', 'typing a game name must not reveal an IN DEV game under ALL');
+  assert.equal(cards[3].style.display, 'none', 'search cannot reveal Foundations under ALL');
   searchInput.value = '';
   buttons.find(button => button.dataset.filter === 'in-dev').click();
   assert.equal(cards[2].style.display, '', 'IN DEV should reveal Vault Directive');
-  assert.ok([cards[0], cards[1], cards[3]].every(card => card.style.display === 'none'), 'IN DEV shows no public games');
+  assert.equal(cards[3].style.display, '', 'IN DEV should reveal Foundations');
+  assert.ok([cards[0], cards[1], cards[4]].every(card => card.style.display === 'none'), 'IN DEV shows no public games');
   buttons.find(button => button.dataset.filter === 'racing').click();
   assert.equal(cards[2].style.display, 'none', 'other filters must hide Vault Directive again');
+  assert.equal(cards[3].style.display, 'none', 'other filters must hide Foundations again');
   buttons.find(button => button.dataset.filter === 'all').click();
   assert.equal(cards[2].style.display, 'none', 'ALL must not include development games');
+  assert.equal(cards[3].style.display, 'none', 'ALL must not include Foundations');
+});
+
+
+test('Foundations test is linked under IN DEV without displacing Vault Directive Alpha 0.2', () => {
+  assert.match(home, /href="\/games\/vault-foundations\/"[\s\S]*?data-categories="in-dev strategy simulation"[\s\S]*?style="display:none"/);
+  assert.match(home, /href="\/games\/vault-directive\/"/);
+  for(const path of ['index.html','style.css','game.js']){
+    assert.ok(existsSync(new URL('../games/vault-foundations/' + path, import.meta.url)), path + ' exists');
+  }
 });
