@@ -182,6 +182,9 @@
 
 
 
+    // Apply the visibility rule immediately on page initialization.
+    updateGames();
+
     /* =====================================================
        LOGOUT
     ====================================================== */
@@ -1464,6 +1467,14 @@
           ACTION
         </button>
 
+        <button
+          class="filter-button"
+          data-filter="in-dev"
+          type="button"
+        >
+          IN DEV
+        </button>
+
       </div>
 
 
@@ -1550,7 +1561,8 @@
         <!-- VAULT DIRECTIVE · single-player strategy alpha -->
         <a href="/games/vault-directive/" class="game-card"
            data-name="vault directive below the surface underground vault survival management"
-           data-categories="strategy simulation">
+           data-categories="in-dev strategy simulation"
+           style="display:none">
           <div class="game-thumb" style="background:
             radial-gradient(circle at 54% 10%,#8d9f8355,transparent 34%),
             repeating-linear-gradient(0deg,transparent 0px,transparent 28px,#669a8255 29px,#669a8255 30px),
@@ -1566,7 +1578,7 @@
           <div class="game-card-content">
             <h3 class="game-card-title">VAULT DIRECTIVE</h3>
             <p class="game-card-description">Build an underground civilization. Manage residents, survive disasters, defend sectors, and reclaim your vault from rebellion.</p>
-            <div class="card-tags"><span class="card-tag">SINGLE-PLAYER</span><span class="card-tag">STRATEGY</span><span class="card-tag">ALPHA</span></div>
+            <div class="card-tags"><span class="card-tag">SINGLE-PLAYER</span><span class="card-tag">STRATEGY</span><span class="card-tag">IN DEV</span></div>
           </div>
         </a>
 
@@ -1723,15 +1735,19 @@
           );
 
 
-        const matchesFilter =
-          activeFilter ===
-          "all"
-          ||
+        const isDevelopmentGame =
           categories
             .split(" ")
-            .includes(
-              activeFilter
-            );
+            .includes("in-dev");
+
+        // Development games only appear under the dedicated IN DEV filter,
+        // not under ALL, other categories, or ordinary search results.
+        const matchesFilter =
+          isDevelopmentGame
+            ? activeFilter === "in-dev"
+            : activeFilter === "all" ||
+              (activeFilter !== "in-dev" &&
+               categories.split(" ").includes(activeFilter));
 
 
         const show =
