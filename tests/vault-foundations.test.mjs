@@ -67,7 +67,10 @@ function harness(stored={},fakeMath=Math){
  return {el,tools,frames,state,target,surface,dig,equip,stored,scavengeBase,excavateTutorial,buildQuarters};
 }
 test('the game starts at one entrance only with no resources, rooms, or settlers',()=>{
- const h=harness();h.el('startBtn').click();
+ const h=harness();
+ // The first browser frame runs BEFORE the player starts; rendering must not crash.
+ h.frames(2);
+ h.el('startBtn').click();h.frames(3);
  const g=h.state();
  assert.equal(g.cells.filter(c=>c.kind==='open').length,1);
  assert.equal(g.cells[9].support,'steel');
@@ -76,6 +79,20 @@ test('the game starts at one entrance only with no resources, rooms, or settlers
  assert.equal(g.tutorial.step,0);assert.equal(g.tutorial.done,false);
  assert.equal(g.digs,0);assert.equal(g.scavenges,0);
  assert.equal(h.el('tutTitle').textContent,'SCAVENGE FOR SUPPLIES');
+});
+test('the animation loop is alive before and after starting, and when entering the surface',()=>{
+ const h=harness();
+ h.frames(5); // Open start overlay: must draw background safely with no active game
+ h.el('startBtn').click();
+ h.frames(5); // Underground grid and Overseer
+ h.el('surfaceBtn').click();
+ h.frames(5); // Scavenge destination cards
+ h.surface(0);
+ assert.equal(h.state().scavenges,1);
+ h.frames(5); // Render still alive after scavenging
+ h.el('undergroundBtn').click();
+ h.frames(5);
+ assert.equal(h.state().cells.length,190);
 });
 test('surface scavenging is an actual action and first excavations require a connected path',()=>{
  const h=harness();h.el('startBtn').click();
