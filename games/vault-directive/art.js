@@ -282,6 +282,21 @@ function props(ctx,s,r,t){
       txt(ctx,'+',x+w-62,base-118,42,'#d8e3d1','center');
       break;
     }
+    case 'quarantine':{
+      for(let i=0;i<r.w-1;i++){
+        const bx=x+19+i*83;
+        paint(ctx,bx,base-144,73,126,'#a0d5c94a');
+        ctx.strokeStyle='#9ac4b8';ctx.lineWidth=4;
+        ctx.strokeRect(bx,base-144,73,126);
+        line(ctx,bx+36,base-141,bx+36,base-20,'#a3ccbe88',2);
+        paint(ctx,bx+8,base-61,58,17,'#a9c6b6');
+        paint(ctx,bx+13,base-57,50,12,'#7aada3');
+        paint(ctx,bx+12,base-48,45,12,'#dee1c0');
+        txt(ctx,'ISOLATE',bx+37,base-128,13,'#e7f4da','center');
+      }
+      pipe(ctx,x+20,base-151,w-40,8,'#a4bfad');
+      break;
+    }
     case 'radio':{
       pipe(ctx,x+27,base-150,w-50,9,'#939b99');
       for(let i=0;i<r.w-1;i++){
