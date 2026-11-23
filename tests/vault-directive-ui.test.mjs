@@ -55,11 +55,15 @@ function runUI(initialFiles={}){
   const n={dataset:{index:String(i)}};
   document.onclick({target:{closest:q=>q==='.sector[data-index]'?n:null},preventDefault(){},stopPropagation(){}});
  };
+ const clickRoom=id=>{
+  const n={dataset:{room:String(id)}};
+  document.onclick({target:{closest:q=>q==='.room[data-room]'?n:null},preventDefault(){},stopPropagation(){}});
+ };
  const panel=name=>{
   const b=panels.find(x=>x.dataset.panel===name);
   document.onclick({target:{closest:q=>q==='[data-panel]'?b:null},preventDefault(){},stopPropagation(){}});
  };
- return {el,actions,step,command,clickTile,state,errors,panel,panels};
+ return {el,actions,step,command,clickTile,clickRoom,state,errors,panel,panels};
 }
 test('browser UI boots, draws 63 real HTML sectors, scavenges and builds first room',()=>{
  const h=runUI();
@@ -140,5 +144,21 @@ test('night and day routines move the same resident sprite instead of duplicatin
  assert.ok(node.className.includes('sleep'),'day-shift worker goes to bed at night');
  assert.ok(node.dataset.state.includes('Sleeping'));
  assert.equal(node.style.left,'748px','same DOM node now appears in quarters');
+ assert.deepEqual(h.errors,[]);
+});
+
+
+test('Remove tool actually demolishes a clicked visual room rather than just opening its panel',()=>{
+ const h=runUI();h.el('newRun').click();
+ h.command('search','','grove');h.step(10);
+ h.clickTile(5);h.step(2);h.clickTile(6);h.step(2);
+ h.actions[1].click();h.clickTile(5);h.step(2);
+ h.actions[2].click();h.clickTile(5);h.step(3);
+ assert.equal(h.state().rooms.length,1);
+ const id=h.state().rooms[0].id;
+ h.actions[4].click();
+ h.clickRoom(id);h.step(2);
+ assert.equal(h.state().rooms.length,0,'room should really be removed');
+ assert.equal(h.state().grid[5].kind,'open');
  assert.deepEqual(h.errors,[]);
 });
