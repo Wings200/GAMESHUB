@@ -257,7 +257,7 @@
       const r=state.survivors.find(s=>s.id===id2);if(!r)continue;
       const old=projectFor(r.taskId);
       if(old && old.id!==p.id)old.workers=old.workers.filter(w=>w!==r.id);
-      r.taskId=p.id;r.state='idle';r.path=[];r.wait=0;
+      r.taskId=p.id;r.state='idle';r.path=[];r.workTarget=null;r.wait=0;
     }
     const newStart=p.status==='planned';p.status='active';
     if(p.kind==='dig'){flag('assign');report(p.workers.length+' survivor(s) assigned to the excavation zone.');}
@@ -272,7 +272,7 @@
       const cost=ROOM_TYPES[p.roomType].cost;
       state.resources.scrap+=cost.scrap;state.resources.parts+=cost.parts;
     }
-    for(const r of state.survivors)if(r.taskId===id){r.taskId=null;r.state='idle';r.path=[];}
+    for(const r of state.survivors)if(r.taskId===id){r.taskId=null;r.state='idle';r.path=[];r.workTarget=null;}
     p.workers=[];p.status='cancelled';
     selection=null;chosenWorkers.clear();report('Work order cancelled. Excavation progress remains in the earth.');
     renderInspector();saveGame();
@@ -351,7 +351,14 @@
       if(!p||p.status!=='active'){r.taskId=null;r.path=[];r.state='idle';continue;}
       if(p.kind==='dig'){
         if(r.path && r.path.length){walkPath(r,r.path,dt);continue;}
-        const target=chooseDigTarget(r,p);
+        let target=null;
+        if(r.workTarget && state.terrain[r.workTarget.cell.y][r.workTarget.cell.x]===1 &&
+           Math.hypot(r.workTarget.stand.x-r.x,r.workTarget.stand.y-r.y)<.08)
+          target={cell:r.workTarget.cell,stand:r.workTarget.stand,path:[]};
+        else {
+          target=chooseDigTarget(r,p);
+          r.workTarget=target?{cell:target.cell,stand:target.stand}:null;
+        }
         if(!target){
           if(p.cells.every(c=>state.terrain[c.y][c.x]===0)){completeProject(p);}
           else {r.state='waiting';r.wait+=dt;if(r.wait>8){r.wait=0;toast('An excavation zone is not reachable. Extend a connected passage.');}}
@@ -365,7 +372,7 @@
         state.digProgress[k]=(state.digProgress[k]||0)+dt*(0.78+r.strength*.20);
         if(state.digProgress[k]>=hardness){
           state.terrain[target.cell.y][target.cell.x]=0;
-          delete state.digProgress[k];r.energy=Math.max(0,r.energy-.3);
+          delete state.digProgress[k];r.workTarget=null;r.energy=Math.max(0,r.energy-.3);
           if(p.cells.every(c=>state.terrain[c.y][c.x]===0)){completeProject(p);}
         }
       }else{
@@ -550,6 +557,15 @@
     for(const r of state.survivors) {
       if(state.expedition && state.expedition.crew.includes(r.id))continue;
       drawSurvivor(r,now);
+    }
+    if(state.tutorialEnabled && !state.tutorialFlags.dig && !drag){
+      const gx=13*T,gy=6*T;
+      ctx.save();ctx.fillStyle='rgba(234,193,112,.055)';ctx.fillRect(gx,gy,4*T,2*T);
+      ctx.strokeStyle='rgba(248,210,146,.86)';ctx.lineWidth=2;
+      ctx.setLineDash([8,6]);ctx.lineDashOffset=-(now*.02)%14;
+      ctx.strokeRect(gx+2,gy+2,4*T-4,2*T-4);ctx.setLineDash([]);
+      ctx.fillStyle='#f7dcaa';ctx.textAlign='center';ctx.font='bold 10px sans-serif';
+      ctx.fillText('SUGGESTED FIRST DIG',gx+2*T,gy-8);ctx.restore();
     }
     if(drag && drag.kind!=='pan')drawDragHighlight(drag.start,drag.current);
     if(hoverCell&&tool==='dig'&&valid(hoverCell.x,hoverCell.y)) {
@@ -808,6 +824,20 @@
     ];
     $('tutorialTasks').innerHTML=steps.map(([k,label],i)=>
       '<div class="tutorial-task'+(state.tutorialFlags[k]?' done':'')+'"><strong>'+(state.tutorialFlags[k]?'✓':String(i+1).padStart(2,'0'))+'</strong><span>'+label+'</span></div>').join('');
+    const next=steps.find(([k])=>!state.tutorialFlags[k]);
+    const tips={
+      inspect:'Click one of your three survivors to inspect their condition and Strength.',
+      dig:'Select EXCAVATE on the left, then drag a rectangle in the glowing earth to the right of the entry passage.',
+      assign:'Select the marked dig zone, choose which resident will work, and confirm the crew in the right panel.',
+      build:'Once you have two clear rows, choose a room on the left. Drag across the empty space, then assign a builder.',
+      scavenge:'Open WASTELAND MAP, deploy a resident, explore rooms, then bring your findings home.'
+    };
+    $('tutorialNote').textContent=next?tips[next[0]]:'Orientation complete. The shelter is yours to develop.';
+    const target=next?next[0]:null;
+    document.querySelectorAll('.tool').forEach(b=>b.classList.toggle('tutorial-highlight',state.tutorialEnabled &&
+      ((target==='inspect'&&b.dataset.tool==='inspect')||(target==='dig'&&b.dataset.tool==='dig'))));
+    document.querySelectorAll('.build-choice').forEach(b=>b.classList.toggle('tutorial-highlight',state.tutorialEnabled&&target==='build'&&b.dataset.room==='generator'));
+    $('expeditionsBtn').classList.toggle('tutorial-highlight',state.tutorialEnabled&&target==='scavenge');
   }
   function bar(value,label){
     return '<div class="stat"><div class="stat-header"><span>'+label+'</span><strong>'+Math.round(value)+'%</strong></div>'+
