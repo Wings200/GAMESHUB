@@ -119,7 +119,8 @@
   }
   function route(s,from,to,openDoors=false){
     const a={x:Math.round(from.x),y:Math.round(from.y)},dest={x:Math.round(to.x),y:Math.round(to.y)};
-    if(!walkable(s,a.x,a.y,openDoors)||!walkable(s,dest.x,dest.y,openDoors))return null;
+    if(!valid(a.x,a.y)||!walkable(s,dest.x,dest.y,openDoors))return null;
+    // A cave-in can form under a standing rescuer. Let them step out into a clear adjacent tile.
     const q=[a],vis=new Set([cell(a.x,a.y)]),back=new Map();
     for(let i=0;i<q.length;i++){
       const t=q[i];if(t.x===dest.x&&t.y===dest.y){
