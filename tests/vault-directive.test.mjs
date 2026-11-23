@@ -13,7 +13,7 @@ const passTime=(D,s,n)=>{for(let i=0;i<n;i++)D.simulate(s,1);};
 function task(D,s,type,i,meta){
  const started=D.start(s,type,i,meta);
  assert.equal(started.ok,true,started.message);
- passTime(D,s,7);
+ passTime(D,s,12);
  assert.equal(s.task,null,'task completed');
 }
 function buildStarter(D,s){
@@ -56,6 +56,9 @@ test('working reactors produce collectible power',()=>{
  task(D,s,'room',7,'power');
  const r=s.rooms.find(r=>r.type==='power');
  assert.ok(D.assign(s,p.id,r.id).ok);
+ // Production requires a healthy, hydrated and awake on-duty worker. Set the
+ // deterministic daytime window after the longer multi-stage expeditions.
+ s.clock=12*60;p.sick=false;p.hunger=90;p.thirst=90;s.res.food=15;s.res.water=15;
  passTime(D,s,20);assert.ok(r.ready);
  assert.ok(D.collect(s,r.id).ok);assert.ok(s.res.power>0);
 });
@@ -92,7 +95,7 @@ test('no Canvas boot path; new cutaway assets and controls exist',()=>{
  const ui=readFileSync(new URL('game.js',root),'utf8');
  const css=readFileSync(new URL('style.css',root),'utf8');
  for(const file of ['core.js','game.js','style.css','index.html'])assert.ok(existsSync(new URL(file,root)));
- assert.match(html,/src="\.\/core\.js\?v=rebuilt-100"/);
+ assert.match(html,/src="\.\/core\.js\?v=routines-110"/);
  assert.match(html,/id="earth"/);assert.match(html,/id="roomLayer"/);
  assert.match(html,/id="outsidePeople"/);assert.match(html,/id="powerCount"/);
  assert.doesNotMatch(ui,/getContext\(/);

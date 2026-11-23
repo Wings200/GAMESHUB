@@ -11,6 +11,7 @@ const ROOMS={
  water:{name:"Water Purifier",icon:"◈",desc:"Clean drinking water, essential to survival.",cost:{wood:2,scrap:6,stone:4},type:"water",output:18,cycle:14,skill:"engineering"},
  storage:{name:"Supply Depot",icon:"▤",desc:"Expand food, power and water storage.",cost:{wood:5,scrap:3},type:"storage"},
  recreation:{name:"Common Room",icon:"♫",desc:"Socializing increases morale.",cost:{wood:7,scrap:4,stone:1},type:"recreation"},
+ cafeteria:{name:"Community Cafeteria",icon:"♨",desc:"Shared dining tables where residents eat and socialize on timed breaks.",cost:{wood:5,scrap:3,stone:1},type:"cafeteria",skill:"farming"},
  medical:{name:"Medical Ward",icon:"✚",desc:"Staff with medics to cure sick residents.",cost:{wood:4,scrap:7,stone:3},type:"medical",skill:"medicine",unlock:"medical"},
  security:{name:"Security Post",icon:"⌖",desc:"Guards defend this post on their assigned shifts.",cost:{wood:3,scrap:8,stone:4},type:"security",skill:"combat",unlock:"security"}
 };
@@ -65,6 +66,7 @@ function create(name){
  rooms:[],people:[],visitors:[],nextId:1,task:null,res:{power:0,food:0,water:0,scrap:0,wood:0,stone:0,medicine:0},
  unlocked:[],research:0,tool:"dig",buildType:"quarters",supportType:"timber",focus:null,selectedPerson:null,
  tutorial:0,skipTutorial:false,scavenges:0,digs:0,collapses:0,nextArrival:22,nextRaid:260,threat:null,
+ expeditionHistory:[],lastExpedition:null,
  log:[],totals:{built:0,harvested:0,lost:0}};
  note(s,"The hatch is sealed. You have no rooms, no settlers and no source of supplies. Begin on the surface.");
  return s;
@@ -87,6 +89,24 @@ function access(s,i){
   if(n===i)return true;seen.add(n);queue.push(n);
  }
  return false;
+}
+// Shortest traversable route through excavations, room floors and elevators.
+// People should walk via existing rooms, not glide diagonally through solid earth.
+function path(s,from,to){
+ if(from===to)return [from];
+ if(![from,to].every(i=>i>=0&&i<N&&["open","room","lift"].includes(s.grid[i]?.kind)))return null;
+ const previous=new Map([[from,from]]),queue=[from];
+ for(let n=0;n<queue.length;n++){
+  const current=queue[n];if(current===to)break;
+  for(const next of adjacent(current)){
+   if(previous.has(next)||!["open","room","lift"].includes(s.grid[next].kind))continue;
+   previous.set(next,current);queue.push(next);
+  }
+ }
+ if(!previous.has(to))return null;
+ const result=[to];let current=to;
+ while(current!==from){current=previous.get(current);result.push(current);}
+ return result.reverse();
 }
 function canDig(s,i){
  if(i<0||i>=N||!["dirt","rubble"].includes(s.grid[i].kind))return false;
@@ -146,10 +166,49 @@ function accept(s,id){
 }
 function reject(s,id){const p=s.visitors.find(p=>p.id===id);if(!p)return {ok:false,message:"No such visitor."};s.visitors=s.visitors.filter(v=>v.id!==id);note(s,p.name+" was refused entry.");return {ok:true,message:"Visitor turned away."};}
 function person(s,id){return s.people.find(p=>p.id===id);}
+// One authoritative placement and routine for each resident. A sleeper never works.
+// Rendering and resource production both read this function, preventing duplicated sprites.
+function routine(s,p){
+ if(!p||p.health<=0)return {phase:"absent",roomId:null,label:"Unavailable"};
+ const quarters=s.rooms.filter(r=>r.type==="quarters");
+ const bed=quarters.length?quarters[Math.max(0,s.people.findIndex(x=>x.id===p.id))%quarters.length]:null;
+ const medical=s.rooms.find(r=>r.type==="medical");
+ const lounge=s.rooms.find(r=>r.type==="recreation");
+ const dining=s.rooms.find(r=>r.type==="cafeteria");
+ const needsSleep=night(s)?p.shift==="day":p.shift==="night";
+ if(s.threat){
+  if(p.weapon>0&&!p.rebel){
+   const post=s.rooms.find(r=>r.type==="security"&&r.workers.includes(p.id))||s.rooms.find(r=>r.type==="security");
+   return {phase:"guarding",roomId:post?.id??null,label:"Responding to alarm"};
+  }
+  return {phase:"shelter",roomId:bed?.id??null,label:"Taking shelter"};
+ }
+ if(p.sick||p.health<25)return {phase:"sick",roomId:medical?.id??bed?.id??null,label:medical?"In medical care":"Resting while ill"};
+ if(needsSleep)return {phase:"sleep",roomId:bed?.id??null,label:"Sleeping — "+p.shift+" shift"};
+ const mealtime=dining&&s.res.food>.25&&((Math.floor(s.clock/60)+p.id)%7===0);
+ if((p.hunger<22&&s.res.food>.25)||(p.thirst<22&&s.res.water>.25)||mealtime)return {phase:"meal",roomId:dining?.id??lounge?.id??bed?.id??null,label:"Eating or drinking"};
+ const workplace=s.rooms.find(r=>r.id===p.job);
+ if(workplace&&workplace.workers.includes(p.id)){
+  if(!access(s,workplace.cells[0]))return {phase:"stranded",roomId:workplace.id,label:"Passage blocked — cannot work"};
+  return {phase:workplace.type==="security"?"guarding":"working",roomId:workplace.id,label:"On duty: "+ROOMS[workplace.type].name};
+ }
+ return {phase:lounge?"socializing":"idle",roomId:lounge?.id??bed?.id??null,label:lounge?"Socializing":"Off duty"};
+}
+function workersOnDuty(s,r){
+ return r.workers.map(id=>person(s,id)).filter(p=>{
+  if(!p)return false;
+  const activity=routine(s,p);
+  return activity.roomId===r.id&&["working","guarding"].includes(activity.phase);
+ });
+}
+function residentsIn(s,r){
+ return s.people.map(p=>({person:p,activity:routine(s,p)})).filter(v=>v.activity.roomId===r.id);
+}
 function assign(s,pid,rid){
  const p=person(s,pid),r=s.rooms.find(r=>r.id===rid);
  if(!p||!r)return {ok:false,message:"Select a valid resident and room."};
  if(["quarters","storage"].includes(r.type))return {ok:false,message:"This room needs no workers."};
+ if(!access(s,r.cells[0]))return {ok:false,message:"The room has no safe tunnel route to the entrance."};
  if(r.workers.length>= (r.type==="security"?3:2)&&!r.workers.includes(pid))return {ok:false,message:"This room is already fully staffed."};
  s.rooms.forEach(x=>x.workers=x.workers.filter(id=>id!==pid));r.workers.push(pid);p.job=rid;p.served++;
  note(s,p.name+" assigned to "+ROOMS[r.type].name+".");tutorial(s);
@@ -170,7 +229,9 @@ function research(s,id){
 function collect(s,id){
  const r=s.rooms.find(r=>r.id===id);if(!r||!r.ready)return {ok:false,message:"Production is not ready."};
  const def=ROOMS[r.type],number=Math.round(def.output*(1+(r.workers.length*.12)+(s.unlocked.includes("efficiency")?.22:0)));
- const max=caps(s)[r.type],before=s.res[r.type];s.res[r.type]=clamp(before+number,0,max);r.ready=false;r.progress=0;r.cycles++;
+ const max=caps(s)[r.type],before=s.res[r.type];
+ if(before>=max)return {ok:false,message:"Storage is full. Add a Supply Depot or use some "+r.type+" first."};
+ s.res[r.type]=clamp(before+number,0,max);r.ready=false;r.progress=0;r.cycles++;
  const gain=Math.round((s.res[r.type]-before)*10)/10;
  note(s,def.name+" supplied "+gain+" "+r.type+".","good");s.totals.harvested++;
  return {ok:true,message:"Collected "+gain+" "+r.type+"."};
@@ -182,7 +243,7 @@ function start(s,type,i,meta){
  else if(type==="support"){if(!canFrame(s,i,meta))return {ok:false,message:"This tile needs to be an empty connected tunnel. Advanced supports require research."};if(!afford(s,SUPPORTS[meta].cost))return {ok:false,message:"Need "+cost(SUPPORTS[meta].cost)};t.duration=.8;}
  else if(type==="room"){const test=canRoom(s,i,meta);if(!test.ok)return test;t.duration=1.9;}
  else if(type==="lift"){if(!canLift(s,i))return {ok:false,message:"Build a lift on an accessible open tile."};if(!afford(s,{wood:2,scrap:4}))return {ok:false,message:"Lift costs 2 wood and 4 scrap."};t.duration=1.4;}
- else if(type==="scavenge"){const site=SITES.find(x=>x.id===meta);if(!site)return {ok:false,message:"Unknown scavenging site."};t.duration=site.duration;}
+ else if(type==="scavenge"){const site=SITES.find(x=>x.id===meta);if(!site)return {ok:false,message:"Unknown scavenging site."};t.duration=site.duration*3.5;t.phase="outbound";t.loot=null;note(s,"Overseer departed for "+site.name+". Traveling across the surface.","info");}
  else if(type==="remove"){if(i===START||!(s.grid[i]?.support||["room","lift"].includes(s.grid[i]?.kind)))return {ok:false,message:"Nothing removable here."};t.duration=.7;}
  else return {ok:false,message:"Unknown action."};
  s.task=t;return {ok:true,message:type==="scavenge"?"Scavenging in progress…":type==="dig"?"The Overseer is digging…":"Construction started…"};
@@ -210,6 +271,9 @@ function finish(s){
   const gains=Object.entries(site.loot).map(([k,[lo,hi]])=>[k,hazard?Math.ceil(rand(lo,hi)*.5):rand(lo,hi)]);
   for(const [k,v]of gains)s.res[k]+=v;
   s.scavenges++;s.research+=2;
+  s.lastExpedition={siteId:site.id,site:site.name,loot:Object.fromEntries(gains),hazard,day:s.day,time:time(s)};
+  if(!Array.isArray(s.expeditionHistory))s.expeditionHistory=[];
+  s.expeditionHistory.unshift(s.lastExpedition);s.expeditionHistory=s.expeditionHistory.slice(0,12);
   note(s,site.name+": "+gains.filter(([,v])=>v).map(([k,v])=>"+"+v+" "+k).join(", ")+(hazard?" (forced to retreat)":"")+"." ,hazard?"warn":"good");
   if(meta==="outpost"&&!hazard&&s.people.length){pick(s.people).weapon=1;note(s,"A salvaged firearm was assigned to one resident.");}
  }else if(type==="remove"){
@@ -246,6 +310,16 @@ function simulate(s,seconds){
  if(!valid(s)||s.speed===0)return;
  const dt=clamp(seconds,0,3)*s.speed;s.elapsed+=dt;s.clock+=dt*6;
  if(s.clock>=1440){s.clock%=1440;s.day++;note(s,"Day "+s.day+" begins. Check your production and watch schedules.");}
+ if(s.task&&s.task.type==="scavenge"){
+  const progress=clamp((s.elapsed-s.task.start)/s.task.duration,0,1);
+  const phase=progress<.35?"outbound":progress<.76?"searching":"returning";
+  if(phase!==s.task.phase){
+   const site=SITES.find(x=>x.id===s.task.meta);
+   s.task.phase=phase;
+   if(site&&phase==="searching")note(s,"Reached "+site.name+". Searching through the ruins.");
+   if(site&&phase==="returning")note(s,"Leaving "+site.name+". Returning to the vault with salvage.");
+  }
+ }
  if(s.task&&s.elapsed>=s.task.start+s.task.duration)finish(s);
  if(s.elapsed>=s.nextArrival&&s.visitors.length<2){visitor(s);s.nextArrival=s.elapsed+rand(38,65);}
  s.visitors.forEach(p=>p.waited+=dt);
@@ -266,20 +340,21 @@ function simulate(s,seconds){
  }
  for(const r of s.rooms){
   const d=ROOMS[r.type];if(d.output&&!r.ready){
-   const workers=r.workers.map(id=>person(s,id)).filter(p=>p&&!p.sick&&(p.shift==="night"?night(s):!night(s)));
+   const workers=workersOnDuty(s,r);
    if(workers.length&&(r.type==="power"||s.res.power>0)){
     const boost=workers.reduce((v,p)=>v+p.skills[d.skill]*.075,0);
     r.progress+=dt*100/d.cycle*(.6+.5*workers.length+boost)*(s.unlocked.includes("efficiency")?1.25:1);
     if(r.progress>=100){r.progress=100;r.ready=true;note(s,d.name+" finished production. Collect the resource bubble!","good");}
    }
   }
-  if(r.type==="recreation")r.workers.forEach(id=>{const p=person(s,id);if(p)p.mood=clamp(p.mood+dt*.5,0,100);});
-  if(r.type==="medical")r.workers.forEach(()=>s.people.forEach(p=>{if(p.sick&&s.res.medicine>=.001){p.health=clamp(p.health+dt*.4,0,100);s.res.medicine=Math.max(0,s.res.medicine-dt*.02);if(p.health>80)p.sick=false;}}));
+  if(r.type==="recreation")for(const p of s.people){if(routine(s,p).phase==="socializing"&&routine(s,p).roomId===r.id)p.mood=clamp(p.mood+dt*.12,0,100);}
+  if(r.type==="cafeteria"&&workersOnDuty(s,r).length&&s.res.food>.2)for(const p of s.people){const here=routine(s,p);if(here.phase==="meal"&&here.roomId===r.id)p.mood=clamp(p.mood+dt*.16,0,100);}
+  if(r.type==="medical"&&workersOnDuty(s,r).length)for(const p of s.people){if(p.sick&&s.res.medicine>=dt*.02){p.health=clamp(p.health+dt*.4,0,100);s.res.medicine=Math.max(0,s.res.medicine-dt*.02);if(p.health>80)p.sick=false;}}
  }
  s.res.power=clamp(s.res.power-dt*s.rooms.filter(r=>!["power","quarters","storage"].includes(r.type)).length*.045,0,caps(s).power);
  if(s.threat&&s.elapsed-s.threat.created>7)resolveThreat(s);
  if(s.people.length>=3&&s.elapsed>=s.nextRaid&&!s.threat){s.threat={name:s.people.some(p=>p.rebel)&&Math.random()<.3?"ARMED REBELLION":"SURFACE RAIDERS",force:10+s.people.length*3,created:s.elapsed};note(s,"ALARM! "+s.threat.name+" are attacking the entrance.","danger");}
  tutorial(s);
 }
-root.VDCore={W,H,N,START,ROOMS,SUPPORTS,TECH,SITES,TRAITS,TUTORIAL,clamp,rand,ix,xy,adjacent,create,valid,time,night,note,capacity,caps,morale,afford,spend,cost,access,canDig,canFrame,canLift,roomCells,canRoom,roomAt,risk,actor,visitor,check,accept,reject,person,assign,unassign,shift,equip,research,collect,start,finish,tutorial,resolveThreat,simulate};
+root.VDCore={W,H,N,START,ROOMS,SUPPORTS,TECH,SITES,TRAITS,TUTORIAL,clamp,rand,ix,xy,adjacent,create,valid,time,night,note,capacity,caps,morale,afford,spend,cost,access,path,canDig,canFrame,canLift,roomCells,canRoom,roomAt,risk,actor,visitor,check,accept,reject,person,routine,workersOnDuty,residentsIn,assign,unassign,shift,equip,research,collect,start,finish,tutorial,resolveThreat,simulate};
 })(window);

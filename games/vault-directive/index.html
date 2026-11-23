@@ -5,9 +5,9 @@
 <title>Vault Directive — Below the Surface | GAMESHUB</title>
 <meta name="theme-color" content="#111b20">
 <meta name="description" content="Build a living underground civilization. Dig and support tunnels, recruit survivors, operate production rooms, and defend your people.">
-<link rel="stylesheet" href="./style.css?v=rebuilt-100">
-<script src="./core.js?v=rebuilt-100" defer></script>
-<script src="./game.js?v=rebuilt-100" defer></script>
+<link rel="stylesheet" href="./style.css?v=routines-110">
+<script src="./core.js?v=routines-110" defer></script>
+<script src="./game.js?v=routines-110" defer></script>
 </head>
 <body>
 <div id="app">
@@ -29,9 +29,12 @@
     <div class="stat" id="statWater"><span class="stat-icon water-icon">◈</span><span class="stat-txt"><b>WATER</b><strong id="waterCount">0</strong></span><div class="statbar"><i id="waterBar"></i></div></div>
     <div class="stat"><span class="stat-icon resident-icon">♟</span><span class="stat-txt"><b>PEOPLE</b><strong id="peopleCount">0 / 0</strong></span></div>
     <div class="stat"><span class="stat-icon mood-icon">♥</span><span class="stat-txt"><b>MORALE</b><strong id="moraleCount">—</strong></span><div class="statbar"><i id="moraleBar"></i></div></div>
-    <div class="stat material"><span class="stat-icon">⬡</span><span class="stat-txt"><b>SCRAP</b><strong id="scrapCount">0</strong></span></div>
-    <div class="stat material"><span class="stat-icon">▤</span><span class="stat-txt"><b>WOOD</b><strong id="woodCount">0</strong></span></div>
-    <div class="stat material"><span class="stat-icon">◆</span><span class="stat-txt"><b>STONE</b><strong id="stoneCount">0</strong></span></div>
+    <button id="materialsBtn" class="materials-summary" type="button" title="View construction supplies and production">
+      <strong>▤ SUPPLIES</strong>
+      <span>SCRAP <b id="scrapCount">0</b></span>
+      <span>WOOD <b id="woodCount">0</b></span>
+      <span>STONE <b id="stoneCount">0</b></span>
+    </button>
   </section>
 
   <main class="play">
@@ -40,12 +43,19 @@
         <div class="hud-label"><span class="live-dot"></span> <span id="mapStatus">VAULT ENTRANCE ONLINE</span></div>
         <div class="world-utilities">
           <button id="surfaceBtn" class="mini">☀ SCAVENGE</button>
-          <button id="visitorsBtn" class="mini">♟ VISITORS <span id="visitorBadge" class="bubble" hidden>0</span></button>
+          <button id="visitorsBtn" class="mini">♟ ENTRANCE <span id="visitorBadge" class="bubble" hidden>0</span></button>
+          <button id="guideBtn" class="mini">? GUIDE</button>
           <button id="centerBtn" class="mini" title="Center vault">⌖</button>
           <button id="zoomOut" class="mini" title="Zoom out">−</button>
           <span id="zoomLabel" class="zoomtext">100%</span>
           <button id="zoomIn" class="mini" title="Zoom in">+</button>
         </div>
+      </div>
+      <div id="coach" class="coach" aria-label="Current tutorial objective">
+        <span id="coachProgress" class="coach-count">01 / 08</span>
+        <div class="coach-copy"><strong id="coachTitle">SCAVENGE YOUR FIRST SUPPLIES</strong><span id="coachText">Visit the Deadwood Grove to find materials.</span></div>
+        <button id="coachAction" class="coach-action" type="button">SHOW ME →</button>
+        <button id="coachHide" class="coach-hide" type="button" title="Hide guided tutorial">×</button>
       </div>
       <div class="viewport" id="viewport" tabindex="0" aria-label="Scrollable underground vault with clickable terrain and rooms">
         <div id="worldStage" class="world-stage">
@@ -59,13 +69,26 @@
           </div>
           <div id="earth" class="earth" role="group" aria-label="Underground excavation map"></div>
           <div id="roomLayer" class="room-layer"></div>
+          <div id="peopleLayer" class="people-layer" aria-label="Residents moving through the vault"></div>
           <div id="miner" class="miner"><span class="miner-hat"></span><span class="miner-face"></span><span class="miner-torso"></span><span class="miner-shovel"></span></div>
           <div id="terrainFx" class="terrain-fx"></div>
         </div>
       </div>
+      <div id="surfaceLayer" class="surface-layer hidden" aria-label="Interactive wasteland scavenging map">
+        <div class="surface-map-header"><div><span class="eyebrow">EXPLORATION / OVERWORLD</span><h2>BEYOND THE HATCH</h2></div><button id="returnVaultBtn" type="button" class="mini">◀ RETURN TO VAULT</button></div>
+        <div id="surfaceMap" class="surface-overworld" role="group" aria-label="Explore five wasteland locations">
+          <div class="surface-route route-one"></div><div class="surface-route route-two"></div><div class="surface-route route-three"></div>
+          <div class="map-home">⌂ <span>VAULT</span></div>
+          <div id="travelAvatar" class="travel-avatar" aria-label="Overseer traveling through the wasteland">♟</div>
+          <div id="surfaceSites" class="surface-sites"></div>
+          <div class="map-region">RUST BELT EXCLUSION ZONE // SECTOR 04</div>
+        </div>
+        <div id="travelBar" class="travel-bar"><span id="travelStage">CHOOSE A SCAVENGING SITE</span><div class="travel-progress"><i id="travelFill"></i></div><strong id="travelPercent">—</strong></div>
+        <div id="surfaceDetails" class="surface-details"></div>
+      </div>
       <div class="viewport-bottom">
         <span id="bottomHint">SELECT SHOVEL, THEN CLICK ADJACENT EARTH TO DIG.</span>
-        <span class="bottom-location">◈ VAULT DIRECTIVE / BUILD 1.0</span>
+        <span class="bottom-location">◈ VAULT DIRECTIVE / BUILD 1.1</span>
       </div>
 
       <div class="actions" aria-label="Construction and management actions">
@@ -81,9 +104,19 @@
       </div>
     </div>
     <aside id="sidebar" class="sidebar">
-      <div class="sidebar-top"><div><div class="eyebrow" id="sideEyebrow">OVERSEER TERMINAL</div><h2 id="sideTitle">FIRST STEPS</h2></div><button id="sideClose" class="side-close" title="Close panel">×</button></div>
+      <div class="sidebar-top"><div><div class="eyebrow" id="sideEyebrow">OVERSEER TERMINAL</div><h2 id="sideTitle">FIRST STEPS</h2></div><button id="sideClose" class="side-close" title="Return to guide">?</button></div>
+      <nav id="panelNav" class="panel-nav" aria-label="Game management panels">
+        <button type="button" data-panel="tutorial" class="panel-tab active">⌖ GUIDE</button>
+        <button type="button" data-panel="build" class="panel-tab">▣ BUILD</button>
+        <button type="button" data-panel="roster" class="panel-tab">♟ PEOPLE</button>
+        <button type="button" data-panel="supplies" class="panel-tab">◈ SUPPLIES</button>
+        <button type="button" data-panel="explore" class="panel-tab">☀ EXPLORE</button>
+        <button type="button" data-panel="security" class="panel-tab">⌖ SECURITY</button>
+        <button type="button" data-panel="research" class="panel-tab">✣ RESEARCH</button>
+        <button type="button" data-panel="journal" class="panel-tab">▤ EVENTS</button>
+      </nav>
       <div id="sideContent" class="sidebar-content"></div>
-      <div class="sidebar-base"><span>◉</span> FOUNDATION NETWORK <span class="tiny">ACTIVE</span></div>
+      <div class="sidebar-base"><span>◉</span> FOUNDATION NETWORK <span class="tiny">1.1</span></div>
     </aside>
   </main>
 
@@ -95,7 +128,7 @@
     <div class="welcome-card">
       <span class="eyebrow">GAMESHUB ORIGINAL // CIVILIZATION SIMULATION</span>
       <h1>BELOW THE<br><em>SURFACE.</em></h1>
-      <p>No citizens. No buildings. A single hatch above untouched earth. Scavenge, excavate, reinforce, and transform a forgotten shaft into a living settlement.</p>
+      <p>No citizens. No buildings. A single hatch above untouched earth. Scavenge, excavate, reinforce, and transform a forgotten shaft into a living settlement. A guided mission introduces each system while you build.</p>
       <label for="vaultName">NAME YOUR SETTLEMENT</label>
       <input id="vaultName" value="NEW HORIZON" maxlength="25" autocomplete="off">
       <button id="newRun" class="primary">ESTABLISH YOUR VAULT <span>→</span></button>
