@@ -861,28 +861,66 @@
     const panel=$('tutorialPanel');
     panel.classList.toggle('hidden',!state.tutorialEnabled);
     const steps=[
-      ['inspect','Inspect a survivor'],
-      ['dig','Mark an excavation'],
-      ['assign','Assign a digger'],
-      ['build','Finish your first room'],
-      ['scavenge','Return from scavenging']
+      ['inspect','Meet your team','Inspect a survivor',
+       'You have three people, each with different skills. Open the right panel to see who can help.'],
+      ['dig','Clear a safe room','Excavate ground',
+       'Choose EXCAVATE and drag across the glowing ground next to the entrance. The walls are real, so you must dig them out.'],
+      ['assign','Send a worker','Assign a digger',
+       'Select your excavation order. Pick Mara, Eli or Iris and press CONFIRM & ASSIGN CREW. They will physically walk to the work.'],
+      ['build','Build your first facility','Construct a room',
+       'Once the area is clear, choose a generator, drag sideways across two clear rows, and assign a builder.'],
+      ['staff','Put somebody to work','Staff a facility',
+       'Click the new room, then assign someone to run it. An unstaffed generator makes only emergency power.'],
+      ['scavenge','Resupply the shelter','Explore a location',
+       'Open the WASTELAND MAP, send a free resident, search rooms, then bring your supplies home.'],
+      ['recruit','Welcome a survivor','Accept a visitor',
+       'Build sleeping quarters to create beds. When somebody reaches the hatch, decide whether to admit them.']
     ];
+    const done=steps.filter(row=>state.tutorialFlags[row[0]]).length;
     $('tutorialTasks').innerHTML=steps.map(([k,label],i)=>
       '<div class="tutorial-task'+(state.tutorialFlags[k]?' done':'')+'"><strong>'+(state.tutorialFlags[k]?'✓':String(i+1).padStart(2,'0'))+'</strong><span>'+label+'</span></div>').join('');
-    const next=steps.find(([k])=>!state.tutorialFlags[k]);
-    const tips={
-      inspect:'Click one of your three survivors to inspect their condition and Strength.',
-      dig:'Select EXCAVATE on the left, then drag a rectangle in the glowing earth to the right of the entry passage.',
-      assign:'Select the marked dig zone, choose which resident will work, and confirm the crew in the right panel.',
-      build:'Once you have two clear rows, choose a room on the left. Drag across the empty space, then assign a builder.',
-      scavenge:'Open WASTELAND MAP, deploy a resident, explore rooms, then bring your findings home.'
-    };
-    $('tutorialNote').textContent=next?tips[next[0]]:'Orientation complete. The shelter is yours to develop.';
+    const next=steps.find(row=>!state.tutorialFlags[row[0]]);
+    if(next){
+      $('objectiveFocus').innerHTML='<span class="eyebrow">NEXT STEP / '+(done+1)+' OF '+steps.length+
+        '</span><strong>'+next[1]+'</strong><p>'+next[3]+'</p>';
+      $('tutorialNote').textContent='Only this objective needs your attention right now. Everything else can wait.';
+      $('tutorialAction').classList.remove('hidden');
+      $('tutorialAction').textContent=next[0]==='recruit'?'SHOW VISITORS / HOUSING →':"TAKE ME TO THIS STEP →";
+    }else{
+      $('objectiveFocus').innerHTML='<strong>YOU HAVE THE CONTROLS.</strong><p>All initial tasks completed. Expand or explore at your own pace. You can still reopen this guide.</p>';
+      $('tutorialNote').textContent='Orientation completed · '+steps.length+' / '+steps.length;
+      $('tutorialAction').classList.add('hidden');
+    }
     const target=next?next[0]:null;
     document.querySelectorAll('.tool').forEach(b=>b.classList.toggle('tutorial-highlight',state.tutorialEnabled &&
       ((target==='inspect'&&b.dataset.tool==='inspect')||(target==='dig'&&b.dataset.tool==='dig'))));
-    document.querySelectorAll('.build-choice').forEach(b=>b.classList.toggle('tutorial-highlight',state.tutorialEnabled&&target==='build'&&b.dataset.room==='generator'));
+    document.querySelectorAll('.build-choice').forEach(b=>b.classList.toggle('tutorial-highlight',state.tutorialEnabled &&
+      ((target==='build'&&b.dataset.room==='generator')||(target==='recruit'&&b.dataset.room==='bunks'))));
     $('expeditionsBtn').classList.toggle('tutorial-highlight',state.tutorialEnabled&&target==='scavenge');
+    $('peopleBtn').classList.toggle('tutorial-highlight',state.tutorialEnabled&&target==='staff');
+  }
+  function guideNext(){
+    const order=['inspect','dig','assign','build','staff','scavenge','recruit'];
+    const next=order.find(k=>!state.tutorialFlags[k]);
+    if(!next)return;
+    if(next==='inspect'){selection=null;renderInspector();toast('Click a survivor on the right to inspect their skills.');}
+    if(next==='dig'){setTool('dig');panToHatch();toast('Drag across the golden glowing earth just right of the entrance.');}
+    if(next==='assign'){
+      const p=state.projects.find(p=>p.kind==='dig' && (p.status==='planned'||p.status==='active'));
+      if(p){selection={kind:'project',id:p.id};chosenWorkers=new Set(p.workers);renderInspector();}
+      else {setTool('dig');toast('First select some ground to dig.');}
+    }
+    if(next==='build'){setTool('build','generator');panToHatch();toast('Drag across an excavated space, then assign a builder.');}
+    if(next==='staff'){
+      const room=state.rooms[0];
+      if(room){selection={kind:'room',id:room.id};renderInspector();}
+      else {setTool('build','generator');toast('Construct a room first.');}
+    }
+    if(next==='scavenge')openExpedition();
+    if(next==='recruit'){
+      if(state.arrivals.length){renderArrivals();toast('Choose whether to welcome the person at the hatch.');}
+      else {setTool('build','bunks');toast('Build sleeping quarters, then watch for arrivals at the hatch.');}
+    }
   }
   function bar(value,label){
     return '<div class="stat"><div class="stat-header"><span>'+label+'</span><strong>'+Math.round(value)+'%</strong></div>'+
@@ -896,71 +934,135 @@
       '<button class="secondary-btn" data-action="back" type="button">← ALL SURVIVORS</button></div>';
   }
   function renderInspector(){
-    const body=$('inspectorBody');
+    const body=$('inspectorBody'),systems=window.VDSystems;
+    const residentButtons=state.survivors.map(s=>{
+      const dead=s.dead?' · DEAD':'';
+      return '<div class="survivor-card'+(s.dead?' dead':'')+'" role="button" tabindex="0" data-action="inspect-resident" data-id="'+s.id+'">'+
+        '<div class="avatar">'+s.name[0]+'</div><div><div class="resident-title">'+s.name+dead+'</div>'+
+        '<div class="resident-sub">'+s.role+' · LV '+s.level+' · STR '+s.skills.S+'</div>'+
+        '<div class="mini-state">'+(s.jobRoom?('WORKING · '+(ROOM_TYPES[systems.room(state,s.jobRoom)?.type]?.name||'Assigned')):s.state.toUpperCase())+
+        ' · HP '+Math.ceil(s.health)+'</div></div></div>';
+    }).join('');
     if(!selection){
-      $('inspectorTitle').textContent='Your survivors';
-      $('inspectorSubtitle').textContent='Three people. All shelter work is physical.';
+      $('inspectorTitle').textContent='Your residents';
+      $('inspectorSubtitle').textContent=systems.alive(state).length+' living · '+systems.capacity(state)+' bed capacity · Manage individually';
       const jobs=state.projects.filter(p=>p.status==='active'||p.status==='planned');
-      body.innerHTML=state.survivors.map(s=>
-        '<div class="survivor-card" role="button" tabindex="0" data-action="inspect-resident" data-id="'+s.id+'">'+
-        '<div class="avatar">'+s.name[0]+'</div><div><div class="resident-title">'+s.name+'</div>'+
-        '<div class="resident-sub">'+s.role+' · STR '+s.strength+'</div><div class="mini-state">'+s.state.toUpperCase()+'</div></div></div>').join('')+
-        '<div class="divider"></div><p class="small-head">Active work orders</p>'+
-        (jobs.length?jobs.map(p=>'<button class="worker-choice" data-action="inspect-project" data-id="'+p.id+'"><span>'+(p.kind==='dig'?'⚒ Excavation':'▣ '+ROOM_TYPES[p.roomType].name)+'</span><small>'+p.status.toUpperCase()+'</small></button>').join(''):'<p class="helper">No active work orders. Start by marking an excavation area.</p>');
+      const working=state.survivors.filter(r=>r.jobRoom&&!r.dead).length;
+      body.innerHTML='<p class="small-head">RESIDENT ROSTER</p>'+residentButtons+
+        '<p class="inspector-info">Staffed facilities: '+working+' assigned. Click a resident to change their job, shift, equipment or medical care.</p>'+
+        '<div class="divider"></div><p class="small-head">OPEN WORK ORDERS</p>'+
+        (jobs.length?jobs.map(p=>'<button class="worker-choice" data-action="inspect-project" data-id="'+p.id+'"><span>'+
+          (p.kind==='dig'?'⚒ Excavation':p.kind==='rescue'?'⚠ Rescue':'▣ '+ROOM_TYPES[p.roomType].name)+
+          '</span><small>'+p.status.toUpperCase()+'</small></button>').join(''):
+          '<p class="helper">No work orders. You can dig a new room, explore the wasteland or manage your staff.</p>');
       return;
     }
     if(selection.kind==='resident'){
-      const s=state.survivors.find(r=>r.id===selection.id);
-      if(!s){selection=null;renderInspector();return;}
-      $('inspectorTitle').textContent=s.name;
-      $('inspectorSubtitle').textContent='Personal condition · '+s.role;
-      body.innerHTML=detailSummary(s);return;
+      const r=systems.get(state,selection.id);
+      if(!r){selection=null;renderInspector();return;}
+      $('inspectorTitle').textContent=r.name;
+      $('inspectorSubtitle').textContent='Level '+r.level+' · '+r.role+' · '+r.state;
+      const jobOptions='<option value="">Unassigned / general duty</option>'+state.rooms.map(room=>
+        '<option value="'+room.id+'"'+(r.jobRoom===room.id?' selected':'')+'>'+
+        ROOM_TYPES[room.type].name+' · '+systems.getRoomWorkers(state,room.id).length+' active</option>').join('');
+      const statLabels={S:'Strength',P:'Perception',E:'Endurance',C:'Charisma',I:'Intelligence',A:'Agility',L:'Luck'};
+      const skills='<div class="attribute-grid">'+Object.entries(statLabels).map(([k,label])=>
+        '<div title="'+label+'"><span>'+k+'</span><strong>'+r.skills[k]+'</strong></div>').join('')+'</div>';
+      body.innerHTML='<div class="detail-card"><div class="small-head">'+r.name+'</div>'+
+        '<span class="pill '+(r.dead||r.trapped?'warn':'')+'">'+(r.dead?'DECEASED':r.trapped?'TRAPPED':r.state.toUpperCase())+'</span>'+
+        '<p class="inspector-info">Level '+r.level+' · Defence '+r.weapon+' · Loyalty '+Math.round(r.loyalty)+'% · Shift '+r.shift+'</p>'+skills+
+        bar(r.health,'Health')+bar(r.energy,'Energy')+bar(r.hunger,'Hunger')+bar(r.thirst,'Hydration')+
+        bar(r.morale,'Morale')+(r.infection?bar(r.infection,'Infection level'):'')+
+        '<div class="divider"></div><label class="management-label" for="residentJob">WORK ASSIGNMENT</label>'+
+        '<select class="management-select" id="residentJob" data-resident="'+r.id+'" '+(r.dead?'disabled':'')+'>'+jobOptions+'</select>'+
+        '<label class="management-label" for="residentShift">WORK SCHEDULE</label>'+
+        '<select class="management-select" id="residentShift" data-resident="'+r.id+'" '+(r.dead?'disabled':'')+'>'+
+        ['flex','day','night'].map(v=>'<option value="'+v+'" '+(r.shift===v?'selected':'')+'>'+({flex:'Flexible / any time',day:'Day shift',night:'Night shift'}[v])+'</option>').join('')+'</select>'+
+        '<button class="management-control" data-action="equip" data-id="'+r.id+'" '+(r.dead?'disabled':'')+'>⚒ Upgrade defensive gear · 3 salvage, 1 component</button>'+
+        '<button class="management-control" data-action="heal" data-id="'+r.id+'" '+(r.dead?'disabled':'')+'>✚ Medical treatment · 1 medicine</button>'+
+        (r.dead?'<button class="management-control" data-action="revive" data-id="'+r.id+'">✚ Revive in medical bay · 3 medicine</button>':
+          '<button class="management-control" data-action="'+(r.defending?'stand-down':'defend')+'" data-id="'+r.id+'">'+
+          (r.defending?'◌ Stand down from defence':'◇ Assign to emergency defence')+'</button>')+
+        '<button class="secondary-btn" data-action="focus-resident" data-id="'+r.id+'">⌖ LOCATE IN WORLD</button>'+
+        '<button class="secondary-btn" data-action="back">← ALL RESIDENTS</button></div>';return;
     }
     if(selection.kind==='room'){
-      const room=state.rooms.find(r=>r.id===selection.id);
-      if(!room){selection=null;renderInspector();return;}
-      const def=ROOM_TYPES[room.type];
+      const rm=systems.room(state,selection.id);
+      if(!rm){selection=null;renderInspector();return;}
+      const def=ROOM_TYPES[rm.type],data=powerData(),crew=state.survivors.filter(r=>r.jobRoom===rm.id&&!r.dead);
       $('inspectorTitle').textContent=def.name;
-      $('inspectorSubtitle').textContent='Constructed · level '+room.y+' · '+room.width+' tiles wide';
-      const p=powerData();
+      $('inspectorSubtitle').textContent='Level '+rm.y+' · '+rm.width+' tiles wide · '+crew.length+' assigned';
+      const descriptions={
+        generator:'Generates 3 emergency power automatically; staff residents to increase output. Consumes fuel continuously.',
+        bunks:'Expands capacity and allows exhausted residents to recover faster when electricity is available.',
+        water:'Staff with high-Perception residents to turn electricity into clean drinking water.',
+        garden:'Staff with high-Agility residents to grow steady food supplies.',
+        medbay:'Staff with high-Intelligence residents to produce medical supplies and treat injuries.',
+        radio:'Staff with high-Charisma residents to attract more surface refugees.',
+        security:'Equip defenders and monitor the settlement. Powered security posts enable surveillance in hostile sectors.'
+      };
       body.innerHTML='<div class="detail-card"><p class="small-head">ROOM OPERATIONS</p>'+
-        '<span class="pill '+(!roomActive(room)?'warn':'')+'">'+(roomActive(room)?'OPERATIONAL':'OFFLINE · NO POWER')+'</span>'+
-        '<p class="helper">'+(room.type==='generator'?'Provides '+def.power+' grid power.':
-          room.type==='bunks'?'Improves resident recovery while resting.':
-          room.type==='water'?'Produces 2 water every production cycle while powered.':
-          'Produces 2 rations every production cycle while powered.')+'</p>'+
-        '<p class="inspector-info">Grid '+p.generation+' generated / '+p.demand+' required</p>'+
+        '<span class="pill '+(!roomActive(rm)?'warn':'')+'">'+
+        (rm.captured?'OCCUPIED BY HOSTILES':roomActive(rm)?'POWERED':'OFFLINE / SHED FROM GRID')+'</span>'+
+        '<p class="helper">'+descriptions[rm.type]+'</p>'+bar(rm.integrity,'Structural integrity')+
+        '<p class="small-econ">Consumes '+(systems.ROOMS[rm.type].draw||'fuel')+' power · Grid '+data.generation+'/'+data.demand+
+        ' · '+crew.length+' assigned</p>'+
+        '<p class="small-head">ASSIGN A RESIDENT</p>'+
+        state.survivors.filter(r=>!r.dead).map(r=>
+          '<button class="worker-choice" data-action="assign-room" data-id="'+r.id+'" data-room="'+rm.id+'">'+
+          '<span>'+(r.jobRoom===rm.id?'✓ ':'○ ')+r.name+'</span><small>'+systems.ROOMS[rm.type].skill+' '+r.skills[systems.ROOMS[rm.type].skill]+'</small></button>').join('')+
+        '<label class="management-label">POWER PRIORITY</label>'+
+        '<select class="management-select" id="roomPriority" data-room="'+rm.id+'">'+
+        [1,2,3].map(v=>'<option value="'+v+'" '+((rm.priority||2)===v?'selected':'')+'>'+({1:'Critical',2:'Normal',3:'Low'}[v])+'</option>').join('')+'</select>'+
+        '<button class="secondary-btn" data-action="repair" data-id="'+rm.id+'">⚒ REPAIR / RECLAIM (3 SALVAGE)</button>'+
+        '<button class="secondary-btn" data-action="back">← SETTLEMENT</button></div>';return;
+    }
+    if(selection.kind==='door'){
+      const door=state.doors.find(d=>d.id===selection.id);
+      if(!door){selection=null;renderInspector();return;}
+      $('inspectorTitle').textContent='Blast-door chamber';
+      $('inspectorSubtitle').textContent='Physical security checkpoint';
+      body.innerHTML='<div class="detail-card"><p class="small-head">'+(door.closed?'SEALED':'OPEN')+
+        ' · INTEGRITY '+Math.ceil(door.hp)+'</p>'+bar(door.hp,'Door durability')+
+        '<p class="helper">A closed door blocks residents and intruders. Make sure you do not trap your own people in the wrong sector.</p>'+
+        '<button class="primary-btn" data-action="toggle-door" data-id="'+door.id+'">'+(door.closed?'OPEN DOOR':'LOCK DOWN DOOR')+'</button>'+
+        '<button class="secondary-btn" data-action="repair" data-id="'+door.id+'">REPAIR DOOR · 3 SALVAGE</button>'+
         '<button class="secondary-btn" data-action="back">← SETTLEMENT</button></div>';return;
     }
     if(selection.kind==='project'){
       const p=projectFor(selection.id);
       if(!p){selection=null;renderInspector();return;}
-      $('inspectorTitle').textContent=p.kind==='dig'?'Excavation order':'Construction order';
-      $('inspectorSubtitle').textContent=p.kind==='dig'?'Manual digging · partial progress is saved':ROOM_TYPES[p.roomType].name+' · '+p.width+' tiles wide';
+      const rescue=p.kind==='rescue';
+      $('inspectorTitle').textContent=rescue?'Emergency rescue':p.kind==='dig'?'Excavation order':'Construction order';
+      $('inspectorSubtitle').textContent=rescue?'Manual crew rescue · trapped survivors need oxygen':p.kind==='dig'?
+        'Manual digging · progress is saved':ROOM_TYPES[p.roomType].name+' · '+p.width+' tiles wide';
       const done=p.kind==='dig'?p.cells.filter(c=>!state.terrain[c.y][c.x]).length:0;
-      const progress=p.kind==='dig'?done/Math.max(p.cells.length,1)*100:p.progress/(13+p.width*.6)*100;
-      if(p.status==='planned' && !chosenWorkers.size && p.workers.length)chosenWorkers=new Set(p.workers);
-      const workers=state.survivors.map(r=>{
-        const assigned=chosenWorkers.has(r.id);
-        const busy=r.taskId&&r.taskId!==p.id;
-        const away=state.expedition&&state.expedition.crew.includes(r.id);
-        return '<button class="worker-choice '+(assigned?'chosen':'')+'" data-action="choose-worker" data-id="'+r.id+'"'+(away?' disabled':'')+'>'+
+      const progress=rescue?p.progress/22*100:p.kind==='dig'?done/Math.max(p.cells.length,1)*100:p.progress/(13+p.width*.6)*100;
+      if(p.status==='planned'&&!chosenWorkers.size&&p.workers.length)chosenWorkers=new Set(p.workers);
+      const workers=state.survivors.filter(r=>!r.dead).map(r=>{
+        const assigned=chosenWorkers.has(r.id),busy=r.taskId&&r.taskId!==p.id,
+          away=state.expedition&&state.expedition.crew.includes(r.id);
+        return '<button class="worker-choice '+(assigned?'chosen':'')+'" data-action="choose-worker" data-id="'+r.id+'"'+(away||r.trapped?' disabled':'')+'>'+
           '<span>'+(assigned?'✓ ':'○ ')+r.name+(busy?' · REASSIGN':'')+'</span><small>STR '+r.strength+'</small></button>';
       }).join('');
       const costs=p.kind==='build'?ROOM_TYPES[p.roomType].cost:null;
       body.innerHTML='<div class="detail-card"><span class="pill '+(p.status==='planned'?'warn':'')+'">'+p.status.toUpperCase()+'</span>'+
-        '<p class="small-head" style="margin-top:14px">'+(p.kind==='dig'?p.cells.length+' EARTH TILES':ROOM_TYPES[p.roomType].name.toUpperCase())+'</p>'+
-        '<p class="helper">'+(p.kind==='dig'?'Residents physically move along accessible passages, dig reachable terrain, and keep partial progress after breaks.':
-          'Workers must walk to the cleared construction area before assembling equipment.')+'</p>'+
+        '<p class="small-head" style="margin-top:14px">'+(rescue?'TRAPPED PERSON / RUBBLE CLEARANCE':p.kind==='dig'?p.cells.length+' EARTH TILES':ROOM_TYPES[p.roomType].name.toUpperCase())+'</p>'+
+        '<p class="helper">'+(rescue?'Rescuers must access the collapsed area and clear rubble before the trapped resident runs out of air.':
+          p.kind==='dig'?'Workers travel along accessible passages and physically dig reachable earth.':
+          'Builders walk to the cleared room, carrying the required salvage and components.')+'</p>'+
         '<div class="stat"><div class="stat-header"><span>Progress</span><strong>'+Math.round(progress)+'%</strong></div>'+
         '<div class="progress-track"><div class="progress-fill" style="width:'+bound(progress,0,100)+'%"></div></div></div>'+
-        (costs?'<p class="inspector-info">Cost: '+costs.scrap+' salvage'+(costs.parts?', '+costs.parts+' components':'')+
-          (p.status==='active'?' · RESERVED':' · DUE ON CONFIRM')+'</p>':'')+
-        '<p class="small-head">ASSIGN SPECIFIC RESIDENTS</p>'+workers+
+        (costs?'<p class="inspector-info">Cost: '+costs.scrap+' salvage'+(costs.parts?', '+costs.parts+' components':'')+'</p>':'')+
+        '<p class="small-head">SELECT YOUR WORK CREW</p>'+workers+
         '<button class="primary-btn" data-action="start-project" data-id="'+p.id+'">'+(p.status==='planned'?'CONFIRM & ASSIGN CREW':'UPDATE WORK CREW')+' →</button>'+
         '<button class="secondary-btn" data-action="cancel-project" data-id="'+p.id+'">CANCEL WORK ORDER</button>'+
         '<button class="secondary-btn" data-action="back">← RETURN TO SETTLEMENT</button></div>';return;
     }
+  }
+  function applySystem(result){
+    if(!result?.ok){toast(result?.error||'This action is unavailable.');return false;}
+    updateHud();renderInspector();renderArrivals();renderSecurity();saveGame();return true;
   }
   function showIntro() {$('introModal').classList.toggle('hidden',state.introSeen);}
   function openExpedition(){
