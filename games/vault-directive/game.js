@@ -10,7 +10,10 @@
     generator: { name: 'Field generator', cost: { scrap: 9, parts: 2 }, power: 7, use: 0, color: '#d5ac63', glyph: 'ϟ' },
     bunks: { name: 'Sleeping quarters', cost: { scrap: 7, parts: 0 }, power: 0, use: 0, color: '#9ab0a0', glyph: '▥' },
     water: { name: 'Water treatment', cost: { scrap: 8, parts: 1 }, power: 0, use: 2, color: '#8acbd8', glyph: '◈' },
-    garden: { name: 'Hydroponics', cost: { scrap: 8, parts: 1 }, power: 0, use: 2, color: '#8ac69b', glyph: '❈' }
+    garden: { name: 'Hydroponics', cost: { scrap: 8, parts: 1 }, power: 0, use: 2, color: '#8ac69b', glyph: '❈' },
+    medbay: { name: 'Medical bay', cost: { scrap: 10, parts: 2 }, power: 0, use: 2, color: '#91c8b3', glyph: '✚' },
+    radio: { name: 'Radio beacon', cost: { scrap: 12, parts: 2 }, power: 0, use: 2, color: '#b5a4d1', glyph: '⌁' },
+    security: { name: 'Security post', cost: { scrap: 10, parts: 2 }, power: 0, use: 2, color: '#ccaa86', glyph: '◇' }
   };
   const SURVIVORS = [
     { id: 1, name: 'Mara Voss', role: 'Mechanic', strength: 7, skin: '#b68b6c', hair: '#312720', coat: '#779c8e', x: 8.2, y: 7, energy: 87, hunger: 88, thirst: 89, health: 100, morale: 74 },
@@ -18,10 +21,10 @@
     { id: 3, name: 'Iris Chen', role: 'Medic', strength: 3, skin: '#c89c80', hair: '#222c30', coat: '#7c8eaa', x: 11.6, y: 7, energy: 86, hunger: 86, thirst: 86, health: 100, morale: 76 }
   ];
   const SITES = [
-    { id: 'clinic', name: 'Abandoned clinic', icon: '✚', subtitle: 'Medicine, water and supplies', threat: 'LOW · UNSTABLE INTERIOR',
+    { id: 'clinic', name: 'Abandoned clinic', icon: '✚', subtitle: 'Medicine, water and medical supplies', threat: 'LOW · UNSTABLE INTERIOR',
       rooms: [
         { name: 'Reception', icon: '▣', kind: 'Search', loot: { food: 2, water: 1, scrap: 1 }, danger: 0 },
-        { name: 'Pharmacy', icon: '✚', kind: 'Search', loot: { food: 1, water: 3, parts: 1 }, danger: 0 },
+        { name: 'Pharmacy', icon: '✚', kind: 'Search', loot: { food: 1, water: 3, meds: 2, parts: 1 }, danger: 0 },
         { name: 'Treatment', icon: '◇', kind: 'Search', loot: { water: 2, scrap: 3 }, danger: 6 },
         { name: 'Backup plant', icon: 'ϟ', kind: 'Salvage', loot: { scrap: 6, parts: 2 }, danger: 0 }
       ] },
@@ -29,14 +32,14 @@
       rooms: [
         { name: 'Shop front', icon: '▤', kind: 'Search', loot: { food: 4, water: 1 }, danger: 0 },
         { name: 'Stockroom', icon: '◫', kind: 'Search', loot: { food: 3, water: 2, scrap: 1 }, danger: 0 },
-        { name: 'Garage', icon: '⚙', kind: 'Salvage', loot: { scrap: 6, parts: 1 }, danger: 4 },
+        { name: 'Garage', icon: '⚙', kind: 'Salvage', loot: { scrap: 6, parts: 1, fuel: 3 }, danger: 4 },
         { name: 'Workshop', icon: '⚒', kind: 'Salvage', loot: { scrap: 5, parts: 2 }, danger: 0 }
       ] },
     { id: 'depot', name: 'Freight depot', icon: '▥', subtitle: 'Metal and industrial components', threat: 'ELEVATED · FALLING DEBRIS',
       rooms: [
         { name: 'Gatehouse', icon: '⌑', kind: 'Search', loot: { water: 2, food: 1 }, danger: 0 },
         { name: 'Warehouse', icon: '▥', kind: 'Salvage', loot: { scrap: 8 }, danger: 7 },
-        { name: 'Maintenance', icon: '⚙', kind: 'Salvage', loot: { scrap: 6, parts: 3 }, danger: 0 },
+        { name: 'Maintenance', icon: '⚙', kind: 'Salvage', loot: { scrap: 6, parts: 3, fuel: 2 }, danger: 0 },
         { name: 'Loading bay', icon: '◈', kind: 'Salvage', loot: { scrap: 7, parts: 1 }, danger: 9 }
       ] }
   ];
@@ -72,7 +75,7 @@
     for (let y = 3; y <= 7; y++) terrain[y][8] = 0;
     for (let x = 7; x <= 12; x++) terrain[7][x] = 0;
     return {
-      version: 1, minutes: 480, speed: 1, paused: false, nextId: 1,
+      version: 2, minutes: 480, speed: 1, paused: false, nextId: 1,
       terrain, digProgress: {}, rooms: [], projects: [],
       survivors: SURVIVORS.map(r=>({...r, taskId: null, state: 'idle', path: [], wait: 0})),
       resources: { food: 12, water: 14, scrap: 19, parts: 4 },
@@ -87,8 +90,8 @@
       const raw = localStorage.getItem(SAVE_KEY);
       if (raw) {
         const value = JSON.parse(raw);
-        if (value.version === 1 && Array.isArray(value.terrain) && value.terrain.length === ROWS &&
-            Array.isArray(value.survivors) && value.survivors.length === 3 &&
+        if ((value.version === 1 || value.version === 2) && Array.isArray(value.terrain) && value.terrain.length === ROWS &&
+            Array.isArray(value.survivors) && value.survivors.length >= 1 &&
             value.resources && Array.isArray(value.sites)) {
           for (const r of value.survivors) { r.path = []; r.wait = 0; }
           return value;
@@ -119,12 +122,11 @@
   }
   function flag(k) { if (state.tutorialFlags && !state.tutorialFlags[k]) {state.tutorialFlags[k]=true;renderTutorial();} }
   function powerData() {
-    const generation = state.rooms.filter(r=>r.type==='generator').length * ROOM_TYPES.generator.power;
-    const demand = state.rooms.reduce((n,r)=>n+ROOM_TYPES[r.type].use,0);
-    return {generation,demand,online:generation>0 && generation>=demand};
+    const data=window.VDSystems.power(state);
+    return {...data,online: data.generation>=data.demand,onlineRooms:data.online};
   }
   function roomActive(room) {
-    return room.type === 'generator' || room.type === 'bunks' || powerData().online;
+    return window.VDSystems.active(state,room);
   }
   function cellFree(x,y) {return valid(x,y) && state.terrain[y][x] === 0;}
   function walkable(x,y) {
@@ -133,7 +135,11 @@
   function isSurface(x,y){return y < 3;}
   function movementAllowed(a,b) {
     if (!cellFree(b.x,b.y)) return false;
+    if (state.doors.some(d=>d.closed && d.hp>0 && (d.x===b.x&&d.y===b.y || d.x===a.x&&d.y===a.y))) return false;
     if (a.y === b.y) return true;
+    const verticalLadder = v => state.ladders.some(l=>l.x===v.x && l.y===v.y) ||
+      (v.x===8 && v.y>=3 && v.y<=7);
+    if(verticalLadder(a) && verticalLadder(b)) return true;
     // Residents cannot float up raw vertical excavations. The original entrance has a ladder.
     // More player-built vertical transport arrives in a later systems milestone.
     return a.x === 8 && b.x === 8 && a.y >= 3 && a.y <= 7 && b.y >= 3 && b.y <= 7;
@@ -176,9 +182,11 @@
     document.querySelectorAll('.tool').forEach(b=>b.classList.toggle('active',b.dataset.tool===tool));
     document.querySelectorAll('.build-choice').forEach(b=>b.classList.toggle('active',tool==='build' && b.dataset.room===buildType));
     worldWrap.classList.toggle('tool-dig',tool==='dig');
-    worldWrap.classList.toggle('tool-build',tool==='build');
+    worldWrap.classList.toggle('tool-build',tool==='build'||tool==='door'||tool==='ladder');
     $('toolHint').textContent=tool==='dig'?'Click and drag across solid earth beside the existing passage. Confirm workers in the right panel.':
       tool==='build'?'Drag sideways across cleared space to place '+ROOM_TYPES[buildType].name+'. The preview snaps to a standard floor.':
+      tool==='door'?'Click a cleared corridor tile with passages on both sides to build a reinforced blast-door chamber.':
+      tool==='ladder'?'Click an excavated shaft tile beside another ladder tile to extend vertical access.':
       'Click a survivor, project or room to inspect. Drag empty space to pan the camera.';
     selection = null;chosenWorkers.clear();renderInspector();updateHud();
   }
@@ -257,10 +265,11 @@
       const r=state.survivors.find(s=>s.id===id2);if(!r)continue;
       const old=projectFor(r.taskId);
       if(old && old.id!==p.id)old.workers=old.workers.filter(w=>w!==r.id);
-      r.taskId=p.id;r.state='idle';r.path=[];r.workTarget=null;r.wait=0;
+      r.taskId=p.id;r.jobRoom=null;r.defending=false;r.state='idle';r.path=[];r.workTarget=null;r.wait=0;
     }
     const newStart=p.status==='planned';p.status='active';
     if(p.kind==='dig'){flag('assign');report(p.workers.length+' survivor(s) assigned to the excavation zone.');}
+    else if(p.kind==='rescue')report('Rescue team dispatched. They are clearing the rubble.');
     else report(p.workers.length+' survivor(s) assigned to build '+ROOM_TYPES[p.roomType].name+'.');
     if(!newStart)toast('Crew updated.');
     renderInspector();updateHud();saveGame();
@@ -321,9 +330,9 @@
     p.status='done';
     for(const r of state.survivors)if(r.taskId===p.id){r.taskId=null;r.state='idle';r.path=[];r.wait=0;}
     if(p.kind==='build'){
-      state.rooms.push({id:nextId(),type:p.roomType,x:p.x,y:p.y,width:p.width});
+      state.rooms.push({id:nextId(),type:p.roomType,x:p.x,y:p.y,width:p.width,integrity:100,priority:p.roomType==='water'?1:2});
       flag('build');report(ROOM_TYPES[p.roomType].name+' construction complete. The room is now operational.');
-      toast('ROOM ONLINE · '+ROOM_TYPES[p.roomType].name.toUpperCase());
+      toast('ROOM CONSTRUCTED · '+ROOM_TYPES[p.roomType].name.toUpperCase());
     }else{
       report('Excavation complete. '+p.cells.length+' terrain tiles cleared and ready for building.');
       toast('EXCAVATION COMPLETE');
@@ -337,8 +346,8 @@
       r.hunger=Math.max(0,r.hunger-dt*.047);
       r.thirst=Math.max(0,r.thirst-dt*.063);
       if(r.state!=='resting')r.energy=Math.max(0,r.energy-dt*(r.taskId?0.068:0.025));
-      if(r.hunger<57 && state.resources.food>0){state.resources.food--;r.hunger=Math.min(100,r.hunger+36);report(r.name+' ate a ration.');}
-      if(r.thirst<57 && state.resources.water>0){state.resources.water--;r.thirst=Math.min(100,r.thirst+39);report(r.name+' drank water.');}
+      if(r.hunger<57 && state.resources.food>=.1){r.hunger=Math.min(100,r.hunger+36);report(r.name+' ate a ration.');}
+      if(r.thirst<57 && state.resources.water>=.1){r.thirst=Math.min(100,r.thirst+39);report(r.name+' drank water.');}
       if((r.hunger<12||r.thirst<12)&&Math.random()<dt*.06){r.health=Math.max(0,r.health-1);r.morale=Math.max(0,r.morale-2);}
       if(r.energy<24 && r.state!=='resting'){r.state='resting';r.path=[];r.wait=0;report(r.name+' is taking an essential rest break.');}
       if(r.state==='resting'){
@@ -347,8 +356,48 @@
         if(r.energy>=80){r.state='idle';report(r.name+' is rested and returning to their assignment.');}
         continue;
       }
+      if(r.dead){r.state='dead';r.path=[];continue;}
+      if(r.trapped){r.state='trapped';r.path=[];continue;}
+      if(r.defending){r.state='defending';continue;}
       const p=projectFor(r.taskId);
-      if(!p||p.status!=='active'){r.taskId=null;r.path=[];r.state='idle';continue;}
+      if(!p||p.status!=='active'){
+        r.taskId=null;
+        if(r.jobRoom){
+          const rm=state.rooms.find(q=>q.id===r.jobRoom);
+          if(rm){
+            const target={x:Math.min(rm.x+rm.width-1,Math.max(rm.x,rm.x+Math.floor(rm.width/2))),y:rm.y+1};
+            if(Math.hypot(target.x-r.x,target.y-r.y)<.05){
+              r.x=target.x;r.y=target.y;r.path=[];r.state='working';
+            }else{
+              if(!r.path||!r.path.length)r.path=bfs({x:Math.round(r.x),y:Math.round(r.y)},target)||[];
+              if(r.path.length)walkPath(r,r.path,dt);else r.state='waiting';
+            }
+            continue;
+          }
+          r.jobRoom=null;
+        }
+        r.path=[];r.state='idle';continue;
+      }
+      if(p.kind==='rescue'){
+        const event=state.traps.find(t=>t.id===p.rescueId&&!t.rescued);
+        if(!event){completeProject(p);continue;}
+        const candidates=neighbours(event.x,event.y).filter(c=>cellFree(c.x,c.y));
+        let best=null;
+        for(const c of candidates){const path=bfs({x:Math.round(r.x),y:Math.round(r.y)},c);
+          if(path && (!best || path.length<best.path.length))best={c,path};}
+        if(!best){r.state='waiting';continue;}
+        if(Math.hypot(best.c.x-r.x,best.c.y-r.y)>.06){
+          if(!r.path||!r.path.length)r.path=best.path;
+          walkPath(r,r.path,dt);continue;
+        }
+        r.state='rescuing';r.x=best.c.x;r.y=best.c.y;
+        p.progress+=dt*(.75+r.strength*.10);
+        if(p.progress>=22){
+          state.terrain[event.y][event.x]=0;window.VDSystems.finishRescue(state,p.rescueId,{report});
+          completeProject(p);
+        }
+        continue;
+      }
       if(p.kind==='dig'){
         if(r.path && r.path.length){walkPath(r,r.path,dt);continue;}
         let target=null;
@@ -373,6 +422,14 @@
         if(state.digProgress[k]>=hardness){
           state.terrain[target.cell.y][target.cell.x]=0;
           delete state.digProgress[k];r.workTarget=null;r.energy=Math.max(0,r.energy-.3);
+          if(target.cell.y>=11 && hash(target.cell.x+Math.floor(state.simSeconds),target.cell.y)>.993 &&
+            !state.traps.some(t=>!t.rescued && t.people.includes(r.id))){
+            state.terrain[target.cell.y][target.cell.x]=2;
+            const incident=window.VDSystems.trap(state,r.id,target.cell.x,target.cell.y,{report});
+            if(incident){const rescue=window.VDSystems.rescue(state,incident.id,{report});
+              if(rescue.ok){selection={kind:'project',id:rescue.job.id};chosenWorkers.clear();renderInspector();}}
+            continue;
+          }
           if(p.cells.every(c=>state.terrain[c.y][c.x]===0)){completeProject(p);}
         }
       }else{
@@ -432,29 +489,17 @@
     }
   }
   function tick(dt) {
-    if(state.paused)return;
+    if(state.paused||state.loss)return;
     const step=dt*state.speed;
     state.minutes+=step*2.3;
     updateProjectWorkers(step);
     updateExpedition(step);
-    state.productionTime+=step;
-    if(state.productionTime>=14){
-      state.productionTime-=14;
-      if(powerData().online){
-        const water=state.rooms.filter(r=>r.type==='water').length;
-        const garden=state.rooms.filter(r=>r.type==='garden').length;
-        if(water){state.resources.water+=water*2;report('Water treatment produced '+water*2+' clean water.');}
-        if(garden){state.resources.food+=garden*2;report('Hydroponics harvested '+garden*2+' rations.');}
-      }
-      const avg=state.survivors.reduce((v,r)=>v+r.morale,0)/3;
-      if(state.resources.food===0||state.resources.water===0)
-        state.survivors.forEach(r=>r.morale=Math.max(4,r.morale-.6));
-      else if(avg<75)state.survivors.forEach(r=>r.morale=Math.min(82,r.morale+.2));
-    }
+    window.VDSystems.tick(state,step,{report});
+    window.VDSystems.tickRaid(state,step,{report},bfs);
   }
   function siteById(id){return SITES.find(s=>s.id===id);}
   function lootString(loot){
-    const names={scrap:'salvage',parts:'components',food:'rations',water:'water'};
+    const names={scrap:'salvage',parts:'components',food:'rations',water:'water',fuel:'fuel',meds:'medicine'};
     const entries=Object.entries(loot).filter(([,n])=>n>0).map(([k,n])=>n+' '+(names[k]||k));
     return entries.length?entries.join(', '):'no supplies';
   }
@@ -464,7 +509,7 @@
     const crew=Array.from(chosenCrew);
     if(!crew.length){toast('Choose at least one available survivor.');return;}
     if(crew.some(id=>{const r=state.survivors.find(s=>s.id===id);return !r||r.taskId;})){toast('Assigned workers must finish or leave their current job first.');return;}
-    state.expedition={site:viewedSite,crew,phase:'outbound',travel:0,position:0.16,action:null,loot:{food:0,water:0,scrap:0,parts:0},message:'Traveling to the site. Arrival in approximately six seconds.'};
+    state.expedition={site:viewedSite,crew,phase:'outbound',travel:0,position:0.16,action:null,loot:{food:0,water:0,scrap:0,parts:0,fuel:0,meds:0},message:'Traveling to the site. Arrival in approximately six seconds.'};
     for(const id of crew){const r=state.survivors.find(s=>s.id===id);r.state='expedition';r.path=[];}
     chosenCrew.clear();report('Scavenging team departed for '+siteById(viewedSite).name+'.');renderExpedition();saveGame();
   }
@@ -1131,7 +1176,7 @@
     requestAnimationFrame(frame);
   }
 
-  state=loadGame();
+  state=window.VDSystems.normalize(loadGame());
   attachEvents();resizeCanvas();renderAll();showIntro();
   requestAnimationFrame(frame);
 })();
