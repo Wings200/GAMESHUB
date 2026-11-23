@@ -201,6 +201,8 @@
         '<span class="inspector-label">SCHEDULE</span><select id="residentShift" class="inspector-select" data-person="'+p.id+'">'+
         ['flex','day','night'].map(v=>'<option value="'+v+'" '+(p.shift===v?'selected':'')+'>'+({flex:'Flexible',day:'Day shift',night:'Night shift'}[v])+'</option>').join('')+'</select>'+
         '<button class="inspector-button" data-action="medicine" data-id="'+p.id+'">✚ TREAT WITH MEDICINE (1)</button>'+
+        '<button class="inspector-button" data-action="'+(p.quarantined?'release':'quarantine')+'" data-id="'+p.id+'">'+
+          (p.quarantined?'♡ RELEASE FROM ISOLATION':'☷ QUARANTINE IN AN ISOLATION WARD')+'</button>'+
         '<button class="inspector-button" data-action="equip" data-id="'+p.id+'">⚒ UPGRADE WEAPON (3 METAL / 1 PART)</button>'+
         '<button class="inspector-button" data-action="defend" data-id="'+p.id+'">◇ ASSIGN TO DEFENCE</button>'+
         '<p class="inspector-subtle">Tip: select this resident, then click a room to assign them directly.</p>';
@@ -506,6 +508,8 @@
     if(action==='staff'){result(M.assign(s,id,Number(el.dataset.room)));openSelectRoom(Number(el.dataset.room));}
     if(action==='jobworker')result(M.assignJob(s,Number(el.dataset.job),id));
     if(action==='medicine')result(M.medicine(s,id));
+    if(action==='quarantine')result(M.quarantine(s,id));
+    if(action==='release')result(M.releaseQuarantine(s,id));
     if(action==='equip')result(M.equip(s,id));
     if(action==='defend')result(M.dispatch(s,id));
     if(action==='rush')result(M.rush(s,id));
