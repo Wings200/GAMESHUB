@@ -10,7 +10,11 @@
     garden: { draw:2, supply:0, skill:'A', label:'Hydroponics', work:true },
     medbay: { draw:2, supply:0, skill:'I', label:'Medical bay', work:true },
     radio: { draw:2, supply:0, skill:'C', label:'Radio beacon', work:true },
-    security: { draw:2, supply:0, skill:'E', label:'Security post', work:true }
+    security: { draw:2, supply:0, skill:'E', label:'Security post', work:true },
+    storage: { draw:1, supply:0, skill:'E', label:'Storage depot', work:false },
+    ventilation: { draw:2, supply:0, skill:'I', label:'Air-handling plant', work:true },
+    training: { draw:2, supply:0, skill:'I', label:'Training center', work:true },
+    workshop: { draw:3, supply:0, skill:'S', label:'Workshop', work:true }
   };
   const NAMES = [
     ['Nora','Vale'],['Jonah','Price'],['Sylvie','Reed'],['Tomas','Gale'],
@@ -46,6 +50,8 @@
     state.resources.fuel=Number.isFinite(state.resources.fuel)?state.resources.fuel:9;
     state.resources.meds=Number.isFinite(state.resources.meds)?state.resources.meds:2;
     state.resourceRate={food:0,water:0,fuel:0};
+    state.airQuality=state.airQuality??95;
+    state.policy=state.policy||{rationing:false,overtime:false};
     state.doors=state.doors||[];
     state.ladders=state.ladders||[];
     state.arrivals=state.arrivals||[];
@@ -77,6 +83,8 @@
       r.level=r.level||1;
       r.xp=r.xp||0;
       r.infection=r.infection||0;
+      r.trainingProgress=r.trainingProgress||{};
+      r.striking=!!r.striking;
       r.dead=!!r.dead;
       r.recoverable=r.recoverable??true;
       r.trapped=!!r.trapped;
@@ -84,7 +92,10 @@
       r.hunger=r.hunger??85;r.thirst=r.thirst??85;
       r.morale=r.morale??70;
     }
-    for(const room of state.rooms){room.integrity=room.integrity??100;room.captured=!!room.captured;room.priority=room.priority??2;room.stock=room.stock??0;}
+    for(const room of state.rooms){
+      room.integrity=room.integrity??100;room.captured=!!room.captured;room.priority=room.priority??2;
+      room.stock=room.stock??0;room.air=room.air??95;room.focus=room.focus||'S';
+    }
     return state;
   }
   function capacity(state) {
@@ -233,6 +244,39 @@
     state.resources.scrap-=3;r.integrity=min(100,r.integrity+40);r.captured=false;
     emit(hooks,(ROOMS[r.type]?.label||r.type)+' repaired.');return {ok:true};
   }
+  function negotiate(state,id,hooks){
+    const person=get(state,id);
+    if(!person||person.dead)return {ok:false,error:'Resident unavailable.'};
+    if(state.resources.food<1||state.resources.water<1)return {ok:false,error:'A sincere offer needs at least 1 ration and 1 water.'};
+    state.resources.food-=1;state.resources.water-=1;
+    person.morale=min(100,person.morale+28);person.loyalty=min(100,person.loyalty+15);
+    person.striking=false;if(person.state==='strike')person.state='idle';
+    emit(hooks,person.name+' accepted a fair settlement and returned to the community.');
+    return {ok:true};
+  }
+  function setPolicy(state,key,value,hooks){
+    if(!['rationing','overtime'].includes(key))return {ok:false,error:'Unknown policy.'};
+    state.policy[key]=!!value;emit(hooks,(key==='rationing'?'Emergency rationing':'Overtime shifts')+
+      (value?' enabled. People will notice.':' disabled.'));return {ok:true};
+  }
+  function craft(state,kind,hooks){
+    const workshop=state.rooms.find(r=>r.type==='workshop'&&active(state,r));
+    if(!workshop)return {ok:false,error:'Build and power a workshop before crafting.'};
+    const crew=getRoomWorkers(state,workshop.id);
+    if(!crew.length)return {ok:false,error:'Assign a resident to the workshop first.'};
+    const recipes={
+      medicine:{cost:{scrap:3,parts:1},output:{meds:2}},
+      fuel:{cost:{scrap:4,parts:1},output:{fuel:3}},
+      components:{cost:{scrap:7},output:{parts:2}}
+    };
+    const recipe=recipes[kind];
+    if(!recipe)return {ok:false,error:'Unknown recipe.'};
+    for(const [r,n] of Object.entries(recipe.cost))if(state.resources[r]<n)
+      return {ok:false,error:'Not enough '+r+' to craft '+kind+'.'};
+    for(const [r,n] of Object.entries(recipe.cost))state.resources[r]-=n;
+    for(const [r,n] of Object.entries(recipe.output))state.resources[r]+=n;
+    emit(hooks,'Workshop produced '+kind+' using recovered materials.');return {ok:true};
+  }
   function createRaid(state,hooks,kind='raiders'){
     if(state.threat||state.rooms.length===0)return false;
     state.threat={id:++state.threatId,kind,remaining:kind==='ferals'?3:4,
@@ -276,14 +320,15 @@
     const residents=alive(state);
     const consuming=residents.length;
     // Consumption is continuous; both visible stocks and rates update immediately.
-    const foodOut=consuming*.0034*dt;
-    const waterOut=consuming*.0043*dt;
+    const rationFactor=state.policy.rationing?.70:1;
+    const foodOut=consuming*.0034*dt*rationFactor;
+    const waterOut=consuming*.0043*dt*rationFactor;
     state.resources.food=max(0,state.resources.food-foodOut);
     state.resources.water=max(0,state.resources.water-waterOut);
     const gennies=state.rooms.filter(r=>r.type==='generator'&&r.integrity>0).length;
     const fuelOut=p.generation>0?gennies*.0042*dt:0;
     state.resources.fuel=max(0,state.resources.fuel-fuelOut);
-    let foodIn=0,waterIn=0,medIn=0;
+    let foodIn=0,waterIn=0,medIn=0,ventilation=0;
     for(const r of state.rooms){
       if(!active(state,r,p))continue;
       const crew=getRoomWorkers(state,r.id);
@@ -292,16 +337,54 @@
       if(r.type==='water'&&crew.length)waterIn+=dt*(.010+.004*effectiveness);
       if(r.type==='garden'&&crew.length)foodIn+=dt*(.009+.004*effectiveness);
       if(r.type==='medbay'&&crew.length)medIn+=dt*(.0018+.0004*effectiveness);
+      if(r.type==='ventilation')ventilation+=dt*(crew.length?.13:.05);
+      if(r.type==='training'&&crew.length){
+        for(const person of crew){
+          const focus=r.focus||'S';
+          person.trainingProgress[focus]=(person.trainingProgress[focus]||0)+dt*(.15+.02*(person.skills.I||4));
+          if(person.trainingProgress[focus]>=100 && person.skills[focus]<10){
+            person.trainingProgress[focus]=0;person.skills[focus]++;
+            person.strength=person.skills.S;
+            emit(hooks,person.name+' improved '+focus+' to '+person.skills[focus]+' through training.');
+          }
+        }
+      }
       if(r.type==='radio'&&crew.length)state.nextArrival-=dt*(.12+effectiveness*.028);
-      if(crew.length && ['generator','water','garden','medbay','radio','security'].includes(r.type)){
+      if(crew.length && ['generator','water','garden','medbay','radio','security','ventilation','training','workshop'].includes(r.type)){
         for(const c of crew){c.xp=(c.xp||0)+dt*.10;
           if(c.xp>=80+c.level*20){c.xp=0;c.level++;c.health=min(100,c.health+12);emit(hooks,c.name+' advanced to level '+c.level+'.');}
         }
       }
     }
-    state.resources.food=min(200,state.resources.food+foodIn);
-    state.resources.water=min(200,state.resources.water+waterIn);
-    state.resources.meds=min(50,state.resources.meds+medIn);
+    const storage=state.rooms.filter(r=>r.type==='storage'&&r.integrity>0&&!r.captured).length;
+    state.resources.food=min(26+storage*32,state.resources.food+foodIn);
+    state.resources.water=min(28+storage*32,state.resources.water+waterIn);
+    state.resources.meds=min(8+storage*8,state.resources.meds+medIn);
+    state.resources.scrap=min(150+storage*150,state.resources.scrap);
+    state.resources.parts=min(60+storage*35,state.resources.parts);
+    state.resources.fuel=min(26+storage*24,state.resources.fuel);
+    state.airQuality=clamp(state.airQuality+dt*(p.lit?.035:-.11)+ventilation-
+      consuming*.0008*dt,0,100);
+    if(state.airQuality<24){
+      for(const resident of residents){resident.health=max(0,resident.health-dt*.04);}
+      if(state.simSeconds-state.lastShortage>40){
+        emit(hooks,'AIR QUALITY CRITICAL: Supply ventilation or restore grid power.',true);
+        state.lastShortage=state.simSeconds;
+      }
+    }
+    const access=hooks?.accessible?.();
+    if(access){
+      for(const rm of state.rooms){
+        const connected=Array.from({length:rm.width},(_,i)=>access.has((rm.x+i)+','+(rm.y+1))).some(Boolean);
+        if(!connected){
+          rm.air=clamp(rm.air-dt*(.21-(rm.type==='ventilation'&&active(state,rm,p)?.16:0)),0,100);
+          if(rm.air<20)for(const resident of residents){
+            if(resident.y>=rm.y&&resident.y<=rm.y+1&&resident.x>=rm.x&&resident.x<rm.x+rm.width)
+              resident.health=max(0,resident.health-dt*.20);
+          }
+        }else rm.air=clamp(rm.air+dt*.30,0,state.airQuality);
+      }
+    }
     state.resourceRate={food:0,water:0,fuel:0};
     state.resourceRate.food=round((foodIn-foodOut)/dt*60);
     state.resourceRate.water=round((waterIn-waterOut)/dt*60);
@@ -362,6 +445,14 @@
       }
     }
     for(const r of residents){
+      if(state.policy.rationing)r.morale=max(0,r.morale-dt*.018);
+      else if(state.resources.food>1&&state.resources.water>1&&r.morale<72)r.morale=min(72,r.morale+dt*.007);
+      if(state.policy.overtime){r.energy=max(0,r.energy-dt*.045);r.morale=max(0,r.morale-dt*.009);}
+      if(r.morale<18&&r.loyalty<30&&!r.striking&&!r.trapped){
+        r.striking=true;r.jobRoom=null;r.taskId=null;r.state='strike';
+        emit(hooks,r.name+' has joined a strike over poor living conditions. Address their needs or negotiate.',true);
+      }
+      if(r.striking&&r.morale>=47){r.striking=false;r.state='idle';emit(hooks,r.name+' returned to duty.');}
       if(r.infection>0){
         r.infection=min(110,r.infection+dt*.045);
         if(r.infection>60)r.morale=max(0,r.morale-dt*.02);
@@ -495,6 +586,6 @@
   window.VDSystems={
     ROOMS,normalize,capacity,power,active,getRoomWorkers,assignment,unassign,shift,
     createArrival,admit,reject,heal,revive,equip,door,toggleDoor,repair,
-    createRaid,defend,standDown,triggerFire,contain,tick,tickRaid,trap,rescue,finishRescue,alive,get,room
+    createRaid,defend,standDown,triggerFire,contain,tick,tickRaid,trap,rescue,finishRescue,negotiate,setPolicy,craft,alive,get,room
   };
 })();
