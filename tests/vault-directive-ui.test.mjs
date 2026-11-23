@@ -125,16 +125,17 @@ test('night and day routines move the same resident sprite instead of duplicatin
  ];
  s.nextId=22;
  const p=D.actor('Alex Test',s);p.sick=false;p.hunger=90;p.thirst=90;
- s.people=[p];s.rooms[1].workers=[p.id];p.job=21;s.clock=20*60+53;
+ s.people=[p];s.rooms[1].workers=[p.id];p.job=21;s.clock=20*60+10;
  const h=runUI({'gameshub-vault-directive-rebuild-v3':JSON.stringify(s)});
  h.el('continueRun').click();
+ h.step(5); // Walk from hatch through quarters and into the reactor
  const layer=h.el('peopleLayer');
  assert.equal(layer.children.length,1);
  const node=layer.children[0];
  assert.ok(node.className.includes('walk'),'day worker is awake');
  assert.equal(node.dataset.state.includes('On duty'),true);
  assert.equal(node.style.left,'997px','worker appears in reactor not living quarters');
- h.step(3);
+ h.step(8); // Day-to-night transition; walk back along the corridor to quarters
  assert.equal(layer.children.length,1,'still a single sprite');
  assert.ok(node.className.includes('sleep'),'day-shift worker goes to bed at night');
  assert.ok(node.dataset.state.includes('Sleeping'));
