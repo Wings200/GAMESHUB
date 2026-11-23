@@ -65,6 +65,7 @@ function create(name){
  rooms:[],people:[],visitors:[],nextId:1,task:null,res:{power:0,food:0,water:0,scrap:0,wood:0,stone:0,medicine:0},
  unlocked:[],research:0,tool:"dig",buildType:"quarters",supportType:"timber",focus:null,selectedPerson:null,
  tutorial:0,skipTutorial:false,scavenges:0,digs:0,collapses:0,nextArrival:22,nextRaid:260,threat:null,
+ expeditionHistory:[],lastExpedition:null,
  log:[],totals:{built:0,harvested:0,lost:0}};
  note(s,"The hatch is sealed. You have no rooms, no settlers and no source of supplies. Begin on the surface.");
  return s;
@@ -146,6 +147,41 @@ function accept(s,id){
 }
 function reject(s,id){const p=s.visitors.find(p=>p.id===id);if(!p)return {ok:false,message:"No such visitor."};s.visitors=s.visitors.filter(v=>v.id!==id);note(s,p.name+" was refused entry.");return {ok:true,message:"Visitor turned away."};}
 function person(s,id){return s.people.find(p=>p.id===id);}
+// One authoritative placement and routine for each resident. A sleeper never works.
+// Rendering and resource production both read this function, preventing duplicated sprites.
+function routine(s,p){
+ if(!p||p.health<=0)return {phase:"absent",roomId:null,label:"Unavailable"};
+ const quarters=s.rooms.filter(r=>r.type==="quarters");
+ const bed=quarters.length?quarters[Math.max(0,s.people.findIndex(x=>x.id===p.id))%quarters.length]:null;
+ const medical=s.rooms.find(r=>r.type==="medical");
+ const lounge=s.rooms.find(r=>r.type==="recreation");
+ const needsSleep=night(s)?p.shift==="day":p.shift==="night";
+ if(s.threat){
+  if(p.weapon>0&&!p.rebel){
+   const post=s.rooms.find(r=>r.type==="security"&&r.workers.includes(p.id))||s.rooms.find(r=>r.type==="security");
+   return {phase:"guarding",roomId:post?.id??null,label:"Responding to alarm"};
+  }
+  return {phase:"shelter",roomId:bed?.id??null,label:"Taking shelter"};
+ }
+ if(p.sick||p.health<25)return {phase:"sick",roomId:medical?.id??bed?.id??null,label:medical?"In medical care":"Resting while ill"};
+ if(needsSleep)return {phase:"sleep",roomId:bed?.id??null,label:"Sleeping — "+p.shift+" shift"};
+ if(p.hunger<22||p.thirst<22)return {phase:"meal",roomId:lounge?.id??bed?.id??null,label:"Taking a food/water break"};
+ const workplace=s.rooms.find(r=>r.id===p.job);
+ if(workplace&&workplace.workers.includes(p.id)){
+  return {phase:workplace.type==="security"?"guarding":"working",roomId:workplace.id,label:"On duty: "+ROOMS[workplace.type].name};
+ }
+ return {phase:lounge?"socializing":"idle",roomId:lounge?.id??bed?.id??null,label:lounge?"Socializing":"Off duty"};
+}
+function workersOnDuty(s,r){
+ return r.workers.map(id=>person(s,id)).filter(p=>{
+  if(!p)return false;
+  const activity=routine(s,p);
+  return activity.roomId===r.id&&["working","guarding"].includes(activity.phase);
+ });
+}
+function residentsIn(s,r){
+ return s.people.map(p=>({person:p,activity:routine(s,p)})).filter(v=>v.activity.roomId===r.id);
+}
 function assign(s,pid,rid){
  const p=person(s,pid),r=s.rooms.find(r=>r.id===rid);
  if(!p||!r)return {ok:false,message:"Select a valid resident and room."};
@@ -170,7 +206,9 @@ function research(s,id){
 function collect(s,id){
  const r=s.rooms.find(r=>r.id===id);if(!r||!r.ready)return {ok:false,message:"Production is not ready."};
  const def=ROOMS[r.type],number=Math.round(def.output*(1+(r.workers.length*.12)+(s.unlocked.includes("efficiency")?.22:0)));
- const max=caps(s)[r.type],before=s.res[r.type];s.res[r.type]=clamp(before+number,0,max);r.ready=false;r.progress=0;r.cycles++;
+ const max=caps(s)[r.type],before=s.res[r.type];
+ if(before>=max)return {ok:false,message:"Storage is full. Add a Supply Depot or use some "+r.type+" first."};
+ s.res[r.type]=clamp(before+number,0,max);r.ready=false;r.progress=0;r.cycles++;
  const gain=Math.round((s.res[r.type]-before)*10)/10;
  note(s,def.name+" supplied "+gain+" "+r.type+".","good");s.totals.harvested++;
  return {ok:true,message:"Collected "+gain+" "+r.type+"."};
@@ -182,7 +220,7 @@ function start(s,type,i,meta){
  else if(type==="support"){if(!canFrame(s,i,meta))return {ok:false,message:"This tile needs to be an empty connected tunnel. Advanced supports require research."};if(!afford(s,SUPPORTS[meta].cost))return {ok:false,message:"Need "+cost(SUPPORTS[meta].cost)};t.duration=.8;}
  else if(type==="room"){const test=canRoom(s,i,meta);if(!test.ok)return test;t.duration=1.9;}
  else if(type==="lift"){if(!canLift(s,i))return {ok:false,message:"Build a lift on an accessible open tile."};if(!afford(s,{wood:2,scrap:4}))return {ok:false,message:"Lift costs 2 wood and 4 scrap."};t.duration=1.4;}
- else if(type==="scavenge"){const site=SITES.find(x=>x.id===meta);if(!site)return {ok:false,message:"Unknown scavenging site."};t.duration=site.duration;}
+ else if(type==="scavenge"){const site=SITES.find(x=>x.id===meta);if(!site)return {ok:false,message:"Unknown scavenging site."};t.duration=site.duration*3.5;t.phase="outbound";t.loot=null;note(s,"Overseer departed for "+site.name+". Traveling across the surface.","info");}
  else if(type==="remove"){if(i===START||!(s.grid[i]?.support||["room","lift"].includes(s.grid[i]?.kind)))return {ok:false,message:"Nothing removable here."};t.duration=.7;}
  else return {ok:false,message:"Unknown action."};
  s.task=t;return {ok:true,message:type==="scavenge"?"Scavenging in progress…":type==="dig"?"The Overseer is digging…":"Construction started…"};
@@ -210,6 +248,9 @@ function finish(s){
   const gains=Object.entries(site.loot).map(([k,[lo,hi]])=>[k,hazard?Math.ceil(rand(lo,hi)*.5):rand(lo,hi)]);
   for(const [k,v]of gains)s.res[k]+=v;
   s.scavenges++;s.research+=2;
+  s.lastExpedition={siteId:site.id,site:site.name,loot:Object.fromEntries(gains),hazard,day:s.day,time:time(s)};
+  if(!Array.isArray(s.expeditionHistory))s.expeditionHistory=[];
+  s.expeditionHistory.unshift(s.lastExpedition);s.expeditionHistory=s.expeditionHistory.slice(0,12);
   note(s,site.name+": "+gains.filter(([,v])=>v).map(([k,v])=>"+"+v+" "+k).join(", ")+(hazard?" (forced to retreat)":"")+"." ,hazard?"warn":"good");
   if(meta==="outpost"&&!hazard&&s.people.length){pick(s.people).weapon=1;note(s,"A salvaged firearm was assigned to one resident.");}
  }else if(type==="remove"){
@@ -246,6 +287,16 @@ function simulate(s,seconds){
  if(!valid(s)||s.speed===0)return;
  const dt=clamp(seconds,0,3)*s.speed;s.elapsed+=dt;s.clock+=dt*6;
  if(s.clock>=1440){s.clock%=1440;s.day++;note(s,"Day "+s.day+" begins. Check your production and watch schedules.");}
+ if(s.task&&s.task.type==="scavenge"){
+  const progress=clamp((s.elapsed-s.task.start)/s.task.duration,0,1);
+  const phase=progress<.35?"outbound":progress<.76?"searching":"returning";
+  if(phase!==s.task.phase){
+   const site=SITES.find(x=>x.id===s.task.meta);
+   s.task.phase=phase;
+   if(site&&phase==="searching")note(s,"Reached "+site.name+". Searching through the ruins.");
+   if(site&&phase==="returning")note(s,"Leaving "+site.name+". Returning to the vault with salvage.");
+  }
+ }
  if(s.task&&s.elapsed>=s.task.start+s.task.duration)finish(s);
  if(s.elapsed>=s.nextArrival&&s.visitors.length<2){visitor(s);s.nextArrival=s.elapsed+rand(38,65);}
  s.visitors.forEach(p=>p.waited+=dt);
@@ -266,20 +317,20 @@ function simulate(s,seconds){
  }
  for(const r of s.rooms){
   const d=ROOMS[r.type];if(d.output&&!r.ready){
-   const workers=r.workers.map(id=>person(s,id)).filter(p=>p&&!p.sick&&(p.shift==="night"?night(s):!night(s)));
+   const workers=workersOnDuty(s,r);
    if(workers.length&&(r.type==="power"||s.res.power>0)){
     const boost=workers.reduce((v,p)=>v+p.skills[d.skill]*.075,0);
     r.progress+=dt*100/d.cycle*(.6+.5*workers.length+boost)*(s.unlocked.includes("efficiency")?1.25:1);
     if(r.progress>=100){r.progress=100;r.ready=true;note(s,d.name+" finished production. Collect the resource bubble!","good");}
    }
   }
-  if(r.type==="recreation")r.workers.forEach(id=>{const p=person(s,id);if(p)p.mood=clamp(p.mood+dt*.5,0,100);});
-  if(r.type==="medical")r.workers.forEach(()=>s.people.forEach(p=>{if(p.sick&&s.res.medicine>=.001){p.health=clamp(p.health+dt*.4,0,100);s.res.medicine=Math.max(0,s.res.medicine-dt*.02);if(p.health>80)p.sick=false;}}));
+  if(r.type==="recreation")for(const p of s.people){if(routine(s,p).phase==="socializing"&&routine(s,p).roomId===r.id)p.mood=clamp(p.mood+dt*.12,0,100);}
+  if(r.type==="medical"&&workersOnDuty(s,r).length)for(const p of s.people){if(p.sick&&s.res.medicine>=dt*.02){p.health=clamp(p.health+dt*.4,0,100);s.res.medicine=Math.max(0,s.res.medicine-dt*.02);if(p.health>80)p.sick=false;}}
  }
  s.res.power=clamp(s.res.power-dt*s.rooms.filter(r=>!["power","quarters","storage"].includes(r.type)).length*.045,0,caps(s).power);
  if(s.threat&&s.elapsed-s.threat.created>7)resolveThreat(s);
  if(s.people.length>=3&&s.elapsed>=s.nextRaid&&!s.threat){s.threat={name:s.people.some(p=>p.rebel)&&Math.random()<.3?"ARMED REBELLION":"SURFACE RAIDERS",force:10+s.people.length*3,created:s.elapsed};note(s,"ALARM! "+s.threat.name+" are attacking the entrance.","danger");}
  tutorial(s);
 }
-root.VDCore={W,H,N,START,ROOMS,SUPPORTS,TECH,SITES,TRAITS,TUTORIAL,clamp,rand,ix,xy,adjacent,create,valid,time,night,note,capacity,caps,morale,afford,spend,cost,access,canDig,canFrame,canLift,roomCells,canRoom,roomAt,risk,actor,visitor,check,accept,reject,person,assign,unassign,shift,equip,research,collect,start,finish,tutorial,resolveThreat,simulate};
+root.VDCore={W,H,N,START,ROOMS,SUPPORTS,TECH,SITES,TRAITS,TUTORIAL,clamp,rand,ix,xy,adjacent,create,valid,time,night,note,capacity,caps,morale,afford,spend,cost,access,canDig,canFrame,canLift,roomCells,canRoom,roomAt,risk,actor,visitor,check,accept,reject,person,routine,workersOnDuty,residentsIn,assign,unassign,shift,equip,research,collect,start,finish,tutorial,resolveThreat,simulate};
 })(window);
