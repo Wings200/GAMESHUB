@@ -252,6 +252,24 @@
     report('Construction planned: '+def.name+'. Assign a builder to begin.');
     setToolKeepSelection('inspect');renderInspector();saveGame();
   }
+  function requestUpgrade(roomId){
+    const rm=window.VDSystems.room(state,roomId);
+    if(!rm || rm.captured || rm.integrity<=0){toast('You must reclaim and repair the room before upgrading.');return;}
+    if(rm.level>=3){toast('This facility is fully upgraded.');return;}
+    if(state.projects.some(p=>p.status!=='done'&&p.status!=='cancelled'&&
+      (p.roomId===roomId||p.kind==='build'&&p.x===rm.x&&p.y===rm.y))){
+      toast('Construction is already scheduled in this room.');return;
+    }
+    const project={
+      id:nextId(),kind:'upgrade',roomId,roomType:rm.type,x:rm.x,y:rm.y,width:rm.width,
+      cells:Array.from({length:rm.width},(_,i)=>({x:rm.x+i,y:rm.y+1})),
+      status:'planned',workers:[],progress:0,cost:window.VDSystems.upgradeCost(rm)
+    };
+    state.projects.push(project);
+    selection={kind:'project',id:project.id};chosenWorkers.clear();
+    report('Upgrade planned for '+ROOM_TYPES[rm.type].name+'. Assign a builder to begin.');
+    renderInspector();saveGame();
+  }
   function selectResident(id) {
     selection={kind:'resident',id};flag('inspect');renderInspector();
   }
@@ -262,8 +280,8 @@
   function startProject(id){
     const p=projectFor(id);if(!p)return;
     if(!chosenWorkers.size){toast('Choose at least one survivor to assign.');return;}
-    if(p.kind==='build' && p.status==='planned'){
-      const cost=ROOM_TYPES[p.roomType].cost;
+    if((p.kind==='build'||p.kind==='upgrade') && p.status==='planned'){
+      const cost=p.kind==='upgrade'?p.cost:ROOM_TYPES[p.roomType].cost;
       if(state.resources.scrap<cost.scrap || state.resources.parts<cost.parts){
         toast('Insufficient supplies. Explore the surface to gather more.');return;
       }
@@ -282,15 +300,14 @@
     const newStart=p.status==='planned';p.status='active';
     if(p.kind==='dig'){flag('assign');report(p.workers.length+' survivor(s) assigned to the excavation zone.');}
     else if(p.kind==='rescue')report('Rescue team dispatched. They are clearing the rubble.');
-    else report(p.workers.length+' survivor(s) assigned to build '+ROOM_TYPES[p.roomType].name+'.');
+    else report(p.workers.length+' survivor(s) assigned to '+(p.kind==='upgrade'?'upgrade ':'build ')+ROOM_TYPES[p.roomType].name+'.');
     if(!newStart)toast('Crew updated.');
     renderInspector();updateHud();saveGame();
   }
   function cancelProject(id){
     const p=projectFor(id);if(!p)return;
-    if(p.kind==='build'&&p.status==='active'){
-      // The materials remain with the building crew until dismantling is complete.
-      const cost=ROOM_TYPES[p.roomType].cost;
+    if((p.kind==='build'||p.kind==='upgrade')&&p.status==='active'){
+      const cost=p.kind==='upgrade'?p.cost:ROOM_TYPES[p.roomType].cost;
       state.resources.scrap+=cost.scrap;state.resources.parts+=cost.parts;
     }
     for(const r of state.survivors)if(r.taskId===id){r.taskId=null;r.state='idle';r.path=[];r.workTarget=null;}
@@ -342,9 +359,14 @@
     p.status='done';
     for(const r of state.survivors)if(r.taskId===p.id){r.taskId=null;r.state='idle';r.path=[];r.wait=0;}
     if(p.kind==='build'){
-      state.rooms.push({id:nextId(),type:p.roomType,x:p.x,y:p.y,width:p.width,integrity:100,priority:p.roomType==='water'?1:2,air:95,focus:'S',captured:false});
+      state.rooms.push({id:nextId(),type:p.roomType,x:p.x,y:p.y,width:p.width,integrity:100,priority:p.roomType==='water'?1:2,air:95,focus:'S',captured:false,level:1,rushAttempts:0});
       flag('build');report(ROOM_TYPES[p.roomType].name+' construction complete. The room is now operational.');
       toast('ROOM CONSTRUCTED · '+ROOM_TYPES[p.roomType].name.toUpperCase());
+    }else if(p.kind==='upgrade'){
+      const rm=window.VDSystems.room(state,p.roomId);
+      if(rm){rm.level=Math.min(3,rm.level+1);rm.integrity=100;
+        report(ROOM_TYPES[rm.type].name+' upgraded to level '+rm.level+'.');
+        toast('FACILITY UPGRADED · LEVEL '+rm.level);}
     }else if(p.kind==='rescue'){
       report('Rubble cleared. Emergency rescue order completed.');
     }else{
@@ -1222,6 +1244,11 @@
         '<label class="management-label">POWER PRIORITY</label>'+
         '<select class="management-select" id="roomPriority" data-room="'+rm.id+'">'+
         [1,2,3].map(v=>'<option value="'+v+'" '+((rm.priority||2)===v?'selected':'')+'>'+({1:'Critical',2:'Normal',3:'Low'}[v])+'</option>').join('')+'</select>'+
+        '<button class="management-control" data-action="upgrade-room" data-id="'+rm.id+'" '+(rm.level>=3?'disabled':'')+
+          '>⬆ UPGRADE TO LEVEL '+Math.min(3,rm.level+1)+' · '+window.VDSystems.upgradeCost(rm).scrap+
+          ' salvage / '+window.VDSystems.upgradeCost(rm).parts+' components</button>'+
+        (['garden','water','medbay'].includes(rm.type)?
+          '<button class="management-control" data-action="rush-room" data-id="'+rm.id+'">ϟ RUSH PRODUCTION · '+Math.round(window.VDSystems.rushRisk(state,rm.id)*100)+'% fire risk</button>':'')+
         '<button class="secondary-btn" data-action="repair" data-id="'+rm.id+'">⚒ REPAIR / RECLAIM (3 SALVAGE)</button>'+
         '<button class="secondary-btn" data-action="back">← SETTLEMENT</button></div>';return;
     }
@@ -1241,7 +1268,7 @@
       const p=projectFor(selection.id);
       if(!p){selection=null;renderInspector();return;}
       const rescue=p.kind==='rescue';
-      $('inspectorTitle').textContent=rescue?'Emergency rescue':p.kind==='dig'?'Excavation order':'Construction order';
+      $('inspectorTitle').textContent=rescue?'Emergency rescue':p.kind==='dig'?'Excavation order':p.kind==='upgrade'?'Facility upgrade':'Construction order';
       $('inspectorSubtitle').textContent=rescue?'Manual crew rescue · trapped survivors need oxygen':p.kind==='dig'?
         'Manual digging · progress is saved':ROOM_TYPES[p.roomType].name+' · '+p.width+' tiles wide';
       const done=p.kind==='dig'?p.cells.filter(c=>!state.terrain[c.y][c.x]).length:0;
@@ -1253,9 +1280,9 @@
         return '<button class="worker-choice '+(assigned?'chosen':'')+'" data-action="choose-worker" data-id="'+r.id+'"'+(away||r.trapped?' disabled':'')+'>'+
           '<span>'+(assigned?'✓ ':'○ ')+r.name+(busy?' · REASSIGN':'')+'</span><small>STR '+r.strength+'</small></button>';
       }).join('');
-      const costs=p.kind==='build'?ROOM_TYPES[p.roomType].cost:null;
+      const costs=p.kind==='build'?ROOM_TYPES[p.roomType].cost:p.kind==='upgrade'?p.cost:null;
       body.innerHTML='<div class="detail-card"><span class="pill '+(p.status==='planned'?'warn':'')+'">'+p.status.toUpperCase()+'</span>'+
-        '<p class="small-head" style="margin-top:14px">'+(rescue?'TRAPPED PERSON / RUBBLE CLEARANCE':p.kind==='dig'?p.cells.length+' EARTH TILES':ROOM_TYPES[p.roomType].name.toUpperCase())+'</p>'+
+        '<p class="small-head" style="margin-top:14px">'+(rescue?'TRAPPED PERSON / RUBBLE CLEARANCE':p.kind==='dig'?p.cells.length+' EARTH TILES':ROOM_TYPES[p.roomType].name.toUpperCase()+(p.kind==='upgrade'?' LEVEL '+(window.VDSystems.room(state,p.roomId)?.level+1):''))+'</p>'+
         '<p class="helper">'+(rescue?'Rescuers must access the collapsed area and clear rubble before the trapped resident runs out of air.':
           p.kind==='dig'?'Workers travel along accessible passages and physically dig reachable earth.':
           'Builders walk to the cleared room, carrying the required salvage and components.')+'</p>'+
@@ -1530,6 +1557,8 @@
       else if(action==='choose-worker')chooseWorker(id);
       else if(action==='start-project')startProject(id);
       else if(action==='cancel-project')cancelProject(id);
+      else if(action==='upgrade-room')requestUpgrade(id);
+      else if(action==='rush-room')applySystem(window.VDSystems.rush(state,id,{report}));
       else if(action==='craft')applySystem(window.VDSystems.craft(state,el.dataset.kind,{report}));
       else if(action==='negotiate')applySystem(window.VDSystems.negotiate(state,id,{report}));
       else if(action==='assign-room'){
