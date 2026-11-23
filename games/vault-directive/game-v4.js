@@ -510,20 +510,17 @@
     if(action==='defend')result(M.dispatch(s,id));
     if(action==='rush')result(M.rush(s,id));
     if(action==='upgrade'){if(result(M.upgrade(s,id))){const job=s.jobs.at(-1);openSelectJob(job.id);}}
-    if(action==='repair')result(M.repair(s,id));
+    if(action==='repair'){
+      const repair=M.repair(s,id);
+      if(result(repair))openSelectJob(repair.job.id);
+    }
     if(action==='toggle')result(M.toggleDoor(s,id));
     if(action==='family')openModal('family');
     if(action==='workshop')openModal('workshop');
     if(action==='rescue')result(M.rescue(s,id));
     if(action==='conserve')result(M.rescuerOrder(s,id,'conserve'));
     if(action==='self')result(M.rescuerOrder(s,id,'self'));
-    if(action==='canceljob'){
-      const job=s.jobs.find(j=>j.id===id);if(!job)return;
-      job.cancelled=true;
-      for(const p of s.people)if(p.taskId===job.id){p.taskId=null;p.path=[];p.state='idle';}
-      M.message(s,'Work order cancelled. Any already excavated ground remains cleared.');
-      clearSelect();refresh();M.save(s);
-    }
+    if(action==='canceljob'){if(result(M.cancelJob(s,id)))clearSelect();}
   }
   function stageClick(pos){
     const worldPos={x:camera.x+pos.x/camera.zoom,y:camera.y+pos.y/camera.zoom};
@@ -648,7 +645,7 @@
         return;
       }
       if(old.mode==='door'){const t=tile(at),r=M.installDoor(s,t.x,t.y);
-        if(result(r)){setMode('inspect');openSelectDoor(r.door.id);}return;}
+        if(result(r)){setMode('inspect');openSelectJob(r.job.id);}return;}
       if(old.mode==='ladder'){const t=tile(at);result(M.installLadder(s,t.x,t.y));return;}
       if(old.mode==='pan'&&!old.moved)stageClick(at);
     });
