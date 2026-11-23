@@ -188,7 +188,7 @@
     p.roomId=null;p.taskId=null;p.path=[];p.state='idle';message(s,p.name+' returned to general duties.');
   }
   function selectWorkerFor(s,job){
-    const available=live(s).filter(p=>inWorld(p)&&!p.child&&!p.trapped&&!p.away&&!p.taskId&&p.state!=='striking');
+    const available=live(s).filter(p=>inWorld(p)&&!p.child&&!p.trapped&&!p.away&&!p.taskId&&p.state!=='striking'&&p.state!=='resting');
     const specialists=available.sort((a,b)=>(b.skills.S||0)-(a.skills.S||0));
     if(!specialists.length)return null;
     const p=specialists[0];
@@ -604,7 +604,7 @@
     const pwr=power(s),generation=s.rooms.filter(r=>r.type==='generator'&&powered(s,r));
     s.rates.food=-(live(s).length)*(s.policies.rations?.008:.012)*60;
     s.rates.water=-(live(s).length)*(s.policies.rations?.009:.014)*60;
-    s.rates.fuel=-generation.length*.012*60;
+    s.rates.fuel=generation.length?-generation.length*.012*60:0;
     s.res.food=clamp(s.res.food+dt*s.rates.food/60,0,resourceCap(s,'food'));
     s.res.water=clamp(s.res.water+dt*s.rates.water/60,0,resourceCap(s,'water'));
     s.res.fuel=clamp(s.res.fuel+dt*s.rates.fuel/60,0,resourceCap(s,'fuel'));
