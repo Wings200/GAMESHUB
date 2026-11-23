@@ -7,6 +7,7 @@ on:
     paths:
       - "games/vault-directive/**"
       - "tests/vault-directive.test.mjs"
+      - "tests/vault-directive-ui.test.mjs"
       - "index.html"
       - "tests/public-library.test.mjs"
       - ".github/workflows/vault-directive.yml"
@@ -14,6 +15,7 @@ on:
     paths:
       - "games/vault-directive/**"
       - "tests/vault-directive.test.mjs"
+      - "tests/vault-directive-ui.test.mjs"
       - "index.html"
       - "tests/public-library.test.mjs"
       - ".github/workflows/vault-directive.yml"
@@ -28,4 +30,4 @@ jobs:
         with:
           node-version: "22"
       - name: Validate game and library
-        run: node --test tests/vault-directive.test.mjs tests/public-library.test.mjs
+        run: node --test tests/vault-directive.test.mjs tests/vault-directive-ui.test.mjs tests/public-library.test.mjs

@@ -1,52 +1,42 @@
-# VAULT DIRECTIVE: BELOW THE SURFACE
+# VAULT DIRECTIVE: BELOW THE SURFACE — Rebuilt 1.0
 
-A GAMESHUB original, single-player, 2D underground civilization management game.
+A new, original, single-player underground settlement simulation for GAMESHUB. The two older prototypes were retired, not incorporated. The active game lives at /games/vault-directive/ and appears exclusively in the IN DEV filter.
 
-**Version:** Alpha 0.2 | **Library:** GAMESHUB → Games → **IN DEV**
+## Original art / inspiration
 
-## New game: begin with almost nothing
+This is an original underground cutaway game. It shares general simulation conventions with other shelter-management games but does NOT reproduce Bethesda's Fallout Shelter art, characters, audio, interface, dialogue, exact room layouts, or proprietary content. All rooms, residents, textures, and sprites use original HTML/CSS artwork; the game does not rely on Canvas rendering.
 
-All three modes (Standard, Hardcore, Sandbox) now start with **only two rooms**—a Command Center and an automated Power Reactor—and **zero residents**. Standard mode starts with enough resources to construct essential facilities; Sandbox provides extra resources. No residents arrive automatically during training.
+## Playable game systems
 
-The interactive six-step Overseer Tutorial teaches:
-1. Select an adjacent empty sector and build **Living Quarters**.
-2. Build **Water Works**.
-3. Build **Hydroponics**.
-4. Use **+ SURVIVOR** to welcome your first settler.
-5. Select that person in the roster and assign them to food or water production.
-6. Open **SKILLS** and unlock your first permanent upgrade with the starting point.
+- Begin with one hatch and visible on-screen Overseer. No resources, no residents, no prebuilt rooms or income.
+- SCAVENGE five surface locations. Farther sites are riskier; scavenging takes time and yields real supplies.
+- DIG connected dirt, producing stone and research. Unsupported deep tunnels can cave in.
+- SUPPORT tunnels with physical timber frames; research stone arches and steel shoring.
+- BUILD two-tile rooms on reinforced, accessible foundations. Living quarters, power reactors, hydroponic gardens, water purifiers, storage, common rooms, medical wards and security posts.
+- LIFT shafts access deeper floors.
+- VISITORS randomly appear and knock. Review skills, backstory, traits and health; optional background checks can return inaccurate information.
+- Assign residents to rooms. Residents have skills, hunger, thirst, health, mood, energy and loyalty. Day/night shifts change room activity.
+- Staffed production rooms produce clickable power, food and water resource yields. Settlers consume supplies and can die permanently.
+- Weapons, armor, security posts and automatic raid responses. Severe low loyalty may result in rebel recruitment.
+- A tech tree unlocks new room and tunnel designs rather than instantly upgrading existing buildings.
+- A guided first-time tutorial, auto-save, pause, 1-3x speed, zoom, in-game dialogs and event journal.
+- New localStorage save key: gameshub-vault-directive-rebuild-v3. Previous saves are not automatically loaded.
 
-Each objective has a "show me where" action. The tutorial can be skipped; random threats and scenario controls are held back during training. Completion gives a small scrap/credit bonus. Training progress is saved.
+## First 7 actions
+1. SCAVENGE Deadwood Grove.
+2. DIG two neighboring bays right of the hatch.
+3. Install one TIMBER SUPPORT in the excavation.
+4. BUILD Living Quarters by clicking the left tile.
+5. Admit the survivor who approaches your hatch.
+6. Dig, reinforce and build Power, Food and Water facilities.
+7. Assign people to work and collect resources by clicking glowing bubbles over productive rooms.
 
-## Skill tree and experience
+## Future expansion, not part of Rebuilt 1.0
 
-Automated facilities can work before anyone is recruited, and assigned workers improve production. Players gain experience from construction (+24 XP), recruiting (+15 XP), new job assignments (+10 XP), room upgrades (+18 XP), and each simulated day (+2 XP). Increasing experience thresholds provide one skill point per Overseer level. New runs also start with one point.
+A finished full-sized title would still need deeper AI locomotion, social relationships, faction diplomacy, tactical room-by-room raids, richer inventories and illnesses, full rebellion/exile/reconquest systems, original sound design, and considerably more art polish. This release is a playable systems foundation, not a content-complete copy of another game.
 
-Unlockable skills persist for each vault and have prerequisites:
+## Smoke tests
 
-- **Engineering:** Efficient Grid (+25% power); Water Recycling (+30% water, requires Efficient Grid); Nutrient Farming (+30% food); Salvage Teams (+40% scrap).
-- **Civilization:** Efficient Construction (20% cheaper new rooms, requires Salvage Teams); Community Outreach (improved loyalty and recruit morale); Modular Quarters (+5 beds per quarters level, requires Community Outreach); Advanced Triage (+30% medical production and healing, requires Community Outreach).
-- **Security:** Tactical Training (+15 percentage points to assault chance); Pressure Seals (50% faster siege pressure, requires Tactical Training).
+Run: node --test tests/vault-directive.test.mjs tests/public-library.test.mjs
 
-Production, costs, capacity, resident morale, assaults, and sieges are immediately affected by purchased skills.
-
-## Other gameplay
-
-- Connected room excavation, upgrades, repairs, structural damage, staff and daily resource economy.
-- Residents have names, traits, personal bonds, health, loyalty and assignments.
-- Outbreaks, hostile raids, resident rebellions, occupied sectors and supply-based siege outcomes.
-- Standard and Sandbox mode allow counteroffensives, diplomacy or founding a successor vault following overthrow; Hardcore defeat is permanent.
-- Developer uprising/raid/outbreak scenario buttons become available **after** training; rebellions require at least four people.
-- Browser localStorage saves only, without an account.
-
-## Existing Alpha 0.1 saves
-
-The existing save key, gameshub-vault-directive-v1, is retained. Old alpha saves migrate automatically without deleting rooms or residents. They resume with their tutorial marked complete and a one-point skill tree. To see the new empty start, select **START A NEW VAULT**. Beginning a new run replaces the old save.
-
-## Development
-
-Self-contained HTML/CSS/JavaScript with original procedural Canvas 2D art. One simulated day takes about 2.2 seconds at 1× speed; there is no offline progression.
-
-Run tests with: node --test tests/vault-directive.test.mjs tests/public-library.test.mjs
-
-This is still an early alpha. Further work remains on polish, challenge balance, NPC movement, missions, expeditions, diplomacy and deeper relationships.
+The app is static: index.html + style.css + core.js + game.js. The retired Alpha 0.2 and Foundations versions remain recoverable through Git history rather than current site files.
