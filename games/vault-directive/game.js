@@ -230,7 +230,7 @@ function buildMarkup(){
  const categories=[
   ['LIVING & STORAGE',['quarters','storage']],
   ['ESSENTIAL PRODUCTION',['power','food','water']],
-  ['COMMUNITY & DEFENSE',['recreation','medical','security']]
+  ['COMMUNITY & DEFENSE',['cafeteria','recreation','medical','security']]
  ];
  for(const [label,items] of categories){
   html+='<div class="panel-section">'+label+'</div><div class="room-list">';
