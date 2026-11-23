@@ -212,6 +212,7 @@
     for(const skill of Object.keys(DEFAULT_SKILLS))attrs[skill]=clamp(Math.round(
       ((a.skills[skill]||4)+(b.skills[skill]||4))/2 +(nextRand(state)-.5)*2
     ),1,10);
+    const residence=state.rooms.find(r=>r.type==='bunks'&&active(state,r));
     const person={
       id:state.survivors.reduce((v,r)=>max(v,r.id),0)+1,name:first+' '+last,
       age:0,child:true,growthRemaining:235,skills:attrs,strength:attrs.S,source:'family',
@@ -219,6 +220,8 @@
       skin:['#a47e64','#ddba91','#c79f80'][index%3],
       hair:['#342a24','#564034','#202529'][index%3],
       coat:['#8ca197','#8699a2','#a89983'][index%3],
+      x:residence?residence.x+Math.floor(residence.width/2):8,
+      y:residence?residence.y+1:7,
       level:1,xp:0,weapon:0,jobRoom:null,taskId:null,shift:'flex',
       state:'child',path:[],wait:0,infection:0,dead:false,trapped:false,
       defending:false,recoverable:true,trainingProgress:{},striking:false,parents:plan.parents
@@ -561,7 +564,9 @@
         if(r.infection>=100){
           r.dead=true;r.state='dead';r.recoverable=false;r.jobRoom=null;r.taskId=null;r.defending=false;
           emit(hooks,r.name+' succumbed to infection. Feral activity reported.',true);
-          createRaid(state,hooks,'ferals');
+          if(createRaid(state,hooks,'ferals')&&state.threat){
+            state.threat.x=r.x;state.threat.y=r.y;
+          }
         }
       }
       if(r.health<=0 && !r.dead){
