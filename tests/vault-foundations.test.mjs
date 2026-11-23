@@ -31,7 +31,7 @@ class FakeElement{
    ?()=>({addColorStop:noop}):noop;},set(){return true;}});
  }
 }
-function harness(stored={},fakeMath=Math){
+function harness(stored={},fakeMath=Math,forceCanvasFailure=false){
  const elements=new Map(),tools={};
  for(const name of ['dig','inspect','timber','stone','steel','remove','quarters','storage','water','farm']){
   const button=new FakeElement('button');button.dataset.tool=name;tools[name]=button;
@@ -45,6 +45,7 @@ function harness(stored={},fakeMath=Math){
   activeElement:null
  };
  let cb=null,now=0;
+ if(forceCanvasFailure)el('world').getContext=()=>({createLinearGradient(){throw Error('SIMULATED CANVAS FAILURE');}});
  const localStorage={getItem:key=>stored[key]??null,setItem:(key,v)=>{stored[key]=v;}};
  vm.runInNewContext(js,{
   document,localStorage,performance:{now:()=>now},
@@ -79,6 +80,43 @@ test('the game starts at one entrance only with no resources, rooms, or settlers
  assert.equal(g.tutorial.step,0);assert.equal(g.tutorial.done,false);
  assert.equal(g.digs,0);assert.equal(g.scavenges,0);
  assert.equal(h.el('tutTitle').textContent,'SCAVENGE FOR SUPPLIES');
+});
+test('rendering failure triggers interactive HTML fallback, and scavenging/digging still complete',()=>{
+ const h=harness({},Math,true);
+ h.frames(3);
+ const host=h.el('worldFallback');
+ assert.equal(host.hidden,false,'backup map must be visible after Canvas failure');
+ assert.ok(host.children.some(x=>x.className==='fallback-heading'),'backup map draws useful content');
+ h.el('startBtn').click();
+ h.frames(3);
+ h.el('surfaceBtn').click();
+ const siteGrid=host.children.find(x=>x.className==='fallback-site-grid');
+ assert.ok(siteGrid,'backup map includes surface locations');
+ assert.equal(siteGrid.children.length,4);
+ siteGrid.children[0].click();h.frames(40);
+ assert.equal(h.state().scavenges,1,'actions continue progressing after Canvas fails');
+ assert.ok(h.state().wood>=5,'scavenging grants resources');
+ h.el('undergroundBtn').click();
+ const tileMap=host.children.find(x=>x.className==='fallback-map');
+ assert.ok(tileMap,'backup map includes underground tiles');
+ const tiles=tileMap.children[0].children;
+ assert.equal(tiles.length,190);
+ tiles[10].click();h.frames(40);
+ assert.equal(h.state().digs,1,'backup tile clicks dig real tunnels');
+ assert.equal(h.state().cells[10].kind,'open');
+});
+test('SAFE MAP button manually turns backup map on or off with no Canvas failure',()=>{
+ const h=harness();
+ h.frames(3);h.el('startBtn').click();h.frames(3);
+ h.el('fallbackBtn').click();
+ assert.equal(h.el('worldFallback').hidden,false);
+ const map=h.el('worldFallback').children.find(x=>x.className==='fallback-map');
+ assert.ok(map,'manual SAFE MAP shows tile grid');
+ h.el('surfaceBtn').click();
+ assert.ok(h.el('worldFallback').children.some(x=>x.className==='fallback-site-grid'),'surface still visible in SAFE MAP');
+ h.el('fallbackBtn').click();
+ assert.equal(h.el('worldFallback').hidden,true,'return to Canvas view if supported');
+ h.frames(4);
 });
 test('the animation loop is alive before and after starting, and when entering the surface',()=>{
  const h=harness();
