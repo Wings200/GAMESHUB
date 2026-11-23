@@ -653,6 +653,7 @@ function activateFallback(err){
  renderError=String(err?.message||err||'unknown error').slice(0,150);
  fallbackMode=true;
  $('worldFallback').hidden=false;
+ $('fallbackBtn').classList.add('active');
  $('worldStatus').textContent='HTML MAP READY • CANVAS COMPATIBILITY MODE';
  renderFallback();
  try{console.error('[Vault Foundations] Canvas renderer failed. HTML map activated.',err);}catch(_){}
@@ -695,6 +696,14 @@ function newGame(){
  }
 }
 for(const b of document.querySelectorAll('[data-tool]'))b.addEventListener('click',()=>chooseTool(b.dataset.tool));
+$('fallbackBtn').addEventListener('click',()=>{
+ fallbackMode=!fallbackMode;
+ $('worldFallback').hidden=!fallbackMode;
+ $('fallbackBtn').classList.toggle('active',fallbackMode);
+ renderError=fallbackMode?'Manual SAFE MAP selection':null;
+ if(fallbackMode)renderFallback();
+ status(fallbackMode?'SAFE HTML MAP ACTIVE':'CANVAS MAP ACTIVE');
+});
 $('surfaceBtn').addEventListener('click',()=>setView('surface'));
 $('undergroundBtn').addEventListener('click',()=>setView('underground'));
 $('world').addEventListener('click',clickCanvas);
