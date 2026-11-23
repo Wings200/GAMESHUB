@@ -1344,7 +1344,12 @@
           '" data-explore="'+i+'" '+(progress.rooms[i].searched||e.action?'disabled':'')+'>'+
           '<span class="room-icon">'+r.icon+'</span><strong>'+r.name+'</strong><small>'+(progress.rooms[i].searched?'SEARCHED':'CLICK TO '+r.kind.toUpperCase())+'</small></button>').join('')+'</div>'+
           '<div id="expeditionMessage" class="site-log">'+e.message+'</div>'+
-          '<p class="inspector-info">BACKPACK: '+lootString(e.loot)+'</p>'+
+          '<p class="inspector-info">BACKPACK: '+lootString(e.loot)+(e.rescued?' · '+e.rescued+' PERSON RESCUED':'')+'</p>'+
+          (e.action&&e.action.phase==='combat'?
+            '<div class="expedition-toolbar"><button class="primary-btn" id="fightExpedition">⚔ FIGHT HOSTILES</button>'+
+              '<button class="secondary-btn" id="retreatExpedition">RETREAT WITH SUPPLIES</button></div>':'')+
+          (e.action&&e.action.phase==='fighting'?
+            '<div class="expedition-progress">DEFENDING TEAM ENGAGED · ENEMY HP '+Math.ceil(e.action.enemyHp)+'</div>':'')+
           '<button class="primary-btn" id="returnExpedition" '+(e.action?'disabled':'')+' type="button">RETURN TO SHELTER WITH SUPPLIES →</button>';
         const scene=$('expeditionScene');
         scene.addEventListener('click',ev=>{
