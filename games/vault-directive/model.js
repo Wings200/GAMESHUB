@@ -12,6 +12,7 @@
     storage:{name:'Storage bay',icon:'▤',cost:[6,0],draw:1,workers:0,skill:'E',desc:'Increases shelter storage capacity.',color:'#aeb6b9',at:4},
     air:{name:'Air filtration',icon:'≋',cost:[9,2],draw:2,workers:2,skill:'I',desc:'Improves shelter oxygen and sealed-sector survival.',color:'#90c5b0',at:5},
     medbay:{name:'Medical station',icon:'✚',cost:[9,2],draw:2,cycle:35,yield:2,resource:'meds',workers:3,skill:'I',desc:'Produces medicine and treats injured people.',color:'#a2d0c1',at:5},
+    quarantine:{name:'Isolation ward',icon:'☷',cost:[9,2],draw:2,workers:0,skill:'I',desc:'A sealed medical enclosure for infected residents and outbreak containment.',color:'#a4c7be',at:6},
     security:{name:'Security office',icon:'◇',cost:[10,2],draw:2,workers:3,skill:'E',desc:'Improves defence, surveillance, and incident response.',color:'#d4a58e',at:6},
     radio:{name:'Radio station',icon:'⌁',cost:[11,2],draw:2,workers:2,skill:'C',desc:'Broadcasts a safe haven to stranded survivors.',color:'#b1b4d6',at:7},
     workshop:{name:'Workshop',icon:'⚒',cost:[10,2],draw:3,workers:3,skill:'S',desc:'Converts salvaged junk into useful equipment.',color:'#d1b78d',at:8},
@@ -63,7 +64,7 @@
       skills:{...details.skills},hp:100,hunger:87,thirst:87,energy:88,morale:76,loyalty:74,
       x:8+((id-1)%3),y:4,goalX:null,goalY:null,path:[],taskId:null,roomId:null,
       state:'idle',weapon:1,shift:'flex',infection:0,level:1,xp:0,away:false,stunned:0,
-      trapped:false,left:false,child:false,age:22+(id%11),growth:0};
+      trapped:false,left:false,child:false,quarantined:false,age:22+(id%11),growth:0};
   }
   function fresh(){
     const terrain=Array.from({length:H},(_,y)=>Array.from({length:W},(_,x)=>y<2?0:(y>=11?2:1)));
@@ -98,7 +99,10 @@
       s.visitors||=[];s.reports||=[];s.survey||=null;s.expedition||=null;
       s.policies||={rations:false,overtime:false,autoLock:false};s.tasks||={};
       for(const k of ['inspected','dug','built','staffed','collected','expedition','admitted','door'])s.tasks[k]??=false;
-      for(const p of s.people){p.path=[];p.goalX=null;p.goalY=null;p.infection??=0;p.weapon??=1;p.shift||='flex';}
+      for(const p of s.people){
+        p.path=[];p.goalX=null;p.goalY=null;p.infection??=0;p.weapon??=1;
+        p.shift||='flex';p.quarantined??=false;
+      }
       for(const r of s.rooms){r.integrity??=100;r.air??=95;r.level??=1;r.priority??=2;r.progress??=0;r.ready??=false;}
       for(const l of LOCATIONS)if(!s.sites.some(st=>st.id===l.id))s.sites.push({id:l.id,seen:false,searched:l.rooms.map(()=>false)});
       s.speed=1;s.paused=false;return s;
@@ -181,12 +185,28 @@
     if(live(s).filter(q=>q.roomId===roomId&&q.id!==personId).length>=Math.min(ROOM[r.type].workers,r.w))
       return {ok:false,msg:'That room is fully staffed.'};
     if(p.taskId){const old=s.jobs.find(j=>j.id===p.taskId);if(old)old.workers=old.workers.filter(id=>id!==p.id);}
-    p.taskId=null;p.roomId=r.id;p.path=[];p.state='walking';s.tasks.staffed=true;
+    p.taskId=null;p.roomId=r.id;p.quarantined=false;p.path=[];p.state='walking';s.tasks.staffed=true;
     message(s,p.name+' assigned to '+ROOM[r.type].name+'.');return {ok:true};
   }
   function unassign(s,id){
     const p=getPerson(s,id);if(!p)return;
-    p.roomId=null;p.taskId=null;p.path=[];p.state='idle';message(s,p.name+' returned to general duties.');
+    p.roomId=null;p.taskId=null;p.quarantined=false;p.path=[];p.state='idle';message(s,p.name+' returned to general duties.');
+  }
+  function quarantine(s,id){
+    const p=getPerson(s,id),ward=s.rooms.find(r=>r.type==='quarantine'&&powered(s,r)&&r.integrity>0);
+    if(!p||!inWorld(p)||p.child)return {ok:false,msg:'This resident cannot be quarantined.'};
+    if(!ward)return {ok:false,msg:'Construct and power an isolation ward first.'};
+    const occupied=live(s).filter(q=>q.quarantined&&q.roomId===ward.id&&q.id!==p.id).length;
+    if(occupied>=Math.max(2,ward.w-1))return {ok:false,msg:'Isolation wards are at maximum safe capacity.'};
+    if(p.taskId){const job=s.jobs.find(j=>j.id===p.taskId);if(job)job.workers=job.workers.filter(x=>x!==p.id);}
+    p.taskId=null;p.quarantined=true;p.roomId=ward.id;p.state='walking';p.path=[];
+    message(s,p.name+' is being escorted to isolation to prevent an outbreak.');
+    return {ok:true};
+  }
+  function releaseQuarantine(s,id){
+    const p=getPerson(s,id);if(!p||!p.quarantined)return {ok:false,msg:'This resident is not isolated.'};
+    p.quarantined=false;p.roomId=null;p.state='idle';p.path=[];
+    message(s,p.name+' has been released from the isolation ward.');return {ok:true};
   }
   function selectWorkerFor(s,job){
     const available=live(s).filter(p=>inWorld(p)&&!p.child&&!p.trapped&&!p.away&&!p.taskId&&p.state!=='striking'&&p.state!=='resting');
@@ -588,7 +608,9 @@
       }
       if(i.severity>100){
         i.severity=30;
-        const next=s.rooms.find(a=>a.id!==r.id&&Math.abs(a.x-r.x)<r.w+3&&Math.abs(a.y-r.y)<=3&&!s.incidents.some(j=>j.roomId===a.id));
+        const next=s.rooms.find(a=>a.id!==r.id&&Math.abs(a.x-r.x)<r.w+3&&Math.abs(a.y-r.y)<=3&&
+          !s.incidents.some(j=>j.roomId===a.id)&&
+          route(s,{x:r.x+Math.floor(r.w/2),y:r.y+2},{x:a.x+Math.floor(a.w/2),y:a.y+2}));
         if(next)incident(s,i.kind,next.id);
       }
     }
@@ -617,10 +639,12 @@
       if(s.res.water<1)p.hp=clamp(p.hp-dt*.10,0,100);
       if(s.air<22)p.hp=clamp(p.hp-dt*.055,0,100);
       if(p.infection>0){
-        p.infection=clamp(p.infection+dt*.11,0,100);
-        if(p.infection>50){
-          for(const other of live(s))if(other.id!==p.id&&!other.away&&Math.hypot(p.x-other.x,p.y-other.y)<2){
-            other.infection=clamp(other.infection+dt*.023,0,100);
+        p.infection=clamp(p.infection+dt*(p.quarantined?.045:.11),0,100);
+        if(p.infection>50&&!p.quarantined){
+          for(const other of live(s)){
+            if(other.id===p.id||other.away||other.quarantined||Math.hypot(p.x-other.x,p.y-other.y)>=2)continue;
+            if(route(s,{x:p.x,y:p.y},{x:other.x,y:other.y}))
+              other.infection=clamp(other.infection+dt*.023,0,100);
           }
         }
         if(p.infection>=100){
@@ -881,7 +905,7 @@
     W,H,TILE,SAVE,ROOM,LOCATIONS,SKILLS,create:fresh,load:safeLoad,save,erase,valid,cell,isFloor,rowTop,clamp,
     terrainClear,ladderAt,doorAt,roomAt,jobAt,walkable,route,connected,roomConnected,getRoom,getPerson,
     live,team,capacity,power,powered,resourceCap,assign,unassign,assignJob,dig,build,upgrade,installLadder,installDoor,toggleDoor,
-    repair,cancelJob,createVisitor,admit,reject,medicine,equip,dispatch,changeShift,rush,collect,rescue,rescuerOrder,incident,respond,raid,
+    repair,cancelJob,createVisitor,admit,reject,medicine,quarantine,releaseQuarantine,equip,dispatch,changeShift,rush,collect,rescue,rescuerOrder,incident,respond,raid,
     getSite,startExpedition,searchSiteRoom,fight,returnExpedition,startSurvey,startFamily,tick,message
   };
 })();
