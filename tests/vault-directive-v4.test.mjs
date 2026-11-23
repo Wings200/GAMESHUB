@@ -408,6 +408,8 @@ test('a mocked browser can boot the controller, start the tutorial and issue an 
   elem('world').handlers.pointerup(point(15.4,4.4));
   assert.equal(s.jobs.length,1);
   assert.equal(s.jobs[0].kind,'dig');
+  assert.equal(elem('inspector').classList.contains('hidden'),true,
+    'The new build should show workers digging, not automatically open a management wall');
 });
 
 
