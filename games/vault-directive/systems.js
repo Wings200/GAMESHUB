@@ -30,9 +30,14 @@
     state.randomSeed = (Math.imul(1664525, state.randomSeed>>>0)+1013904223)>>>0;
     return state.randomSeed/4294967296;
   };
-  const getRoomWorkers = (state, id) => alive(state).filter(s=>s.jobRoom===id && !s.taskId && s.state!=='resting' &&
+  const getRoomWorkers = (state, id) => alive(state).filter(s=>{
+    const target=room(state,id);
+    return !!target && s.jobRoom===id && s.state==='working' &&
+      s.x>=target.x-.1 && s.x<target.x+target.width+.1 &&
+      Math.abs(s.y-(target.y+1))<.1 && !s.taskId && s.state!=='resting' &&
     s.state!=='expedition' && s.state!=='trapped' && s.state!=='defending' && s.state!=='dead' &&
-    (!s.shift || s.shift==='flex' || ((state.minutes % 1440 < 1200 && state.minutes % 1440 >= 480) === (s.shift==='day'))));
+    (!s.shift || s.shift==='flex' || ((state.minutes % 1440 < 1200 && state.minutes % 1440 >= 480) === (s.shift==='day')));
+  });
   function normalize(state) {
     state.version=2;
     state.simSeconds=Number.isFinite(state.simSeconds)?state.simSeconds:0;
@@ -207,7 +212,7 @@
     if(!horizontal)return {ok:false,error:'A blast-door chamber needs a corridor on both sides.'};
     if(state.resources.scrap<7||state.resources.parts<2)return {ok:false,error:'Blast-door chamber costs 7 salvage and 2 components.'};
     state.resources.scrap-=7;state.resources.parts-=2;
-    const obj={id:++state.threatId,x,y,hp:100,closed:false,priority:1};
+    const obj={id:10000+(++state.threatId),x,y,hp:100,closed:false,priority:1};
     state.doors.push(obj);emit(hooks,'Blast-door chamber installed at '+x+', '+y+'.');
     return {ok:true,door:obj};
   }
@@ -388,7 +393,7 @@
         }
       }
     }
-    if(!residents.length&&state.arrivals.length===0){
+    if(!alive(state).length && state.arrivals.length===0){
       state.loss={reason:'The last surviving resident is gone. The underground settlement has fallen.',at:state.minutes};
       emit(hooks,'VAULT LOST: No survivors remain.',true);
     }
@@ -421,8 +426,8 @@
             const p=path[0],dx=p.x-raid.x,dy=p.y-raid.y,dist=Math.hypot(dx,dy),step=min(dist,dt*.56);
             if(dist>.002){raid.x+=dx/dist*step;raid.y+=dy/dist*step;}
           }else{
-            raid.x+=Math.sign(goal.x-raid.x)*min(Math.abs(goal.x-raid.x),dt*.30);
-            raid.y+=Math.sign(goal.y-raid.y)*min(Math.abs(goal.y-raid.y),dt*.18);
+            // An unreachable sector does not allow attackers to pass through solid earth.
+            raid.phase='seeking-access';
           }
           const defenders=alive(state).filter(r=>r.defending||r.jobRoom===next.id && r.weapon>1)
             .filter(r=>Math.abs(r.x-raid.x)<5 || r.jobRoom===next.id);
@@ -453,6 +458,11 @@
       if(wasLost)emit(hooks,wasLost+' room(s) remain under hostile occupation. Repair to reclaim them.',true);
       state.threat=null;
       for(const r of alive(state)){if(r.defending){r.defending=false;r.state='idle';}}
+    }
+    if(state.rooms.length>0 && state.rooms.every(r=>r.captured||r.integrity<=0) && raid.raidClock>60){
+      state.loss={reason:'Hostile forces captured or destroyed every functional room.',at:state.minutes};
+      emit(hooks,'THE SHELTER HAS FALLEN: Hostile occupation is total.',true);
+      return;
     }
     if(raid.raidClock>165){
       emit(hooks,'Hostiles withdrew after looting the shelter.',true);state.threat=null;
