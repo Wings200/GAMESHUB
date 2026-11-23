@@ -15,3 +15,10 @@ test('active GAMESHUB games remain accessible from the library', () => {
   assert.match(home, /href=["']\/games\/redline\/["']/);
   assert.match(home, /href=["']\/games\/illegal-chess\/["']/);
 });
+
+test('Vault Directive alpha is listed and its playable assets exist', () => {
+  assert.match(home, /href=["']\/games\/vault-directive\/["']/);
+  for (const path of ['index.html','style.css','game.js']) {
+    assert.ok(existsSync(new URL('../games/vault-directive/' + path, import.meta.url)), path + ' must exist');
+  }
+});
