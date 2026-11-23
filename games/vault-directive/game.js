@@ -66,7 +66,7 @@ function renderTerrain(){
   const c=s.grid[i],[x,y]=D.xy(i);
   const cls=c.kind==='dirt'?'dirt':c.kind==='rubble'?'rubble':c.kind==='room'?'roomtile':i===D.START?'entrance':'open';
   const near=s.tool==='dig'&&D.canDig(s,i)?' nearby':'';
-  const target=s.task&&s.task.i===i&&s.task.type!=='scavenge'?' target':'';
+  const target=(s.task&&s.task.i===i&&s.task.type!=='scavenge')||(!s.skipTutorial&&s.tutorial===1&&[5,6].includes(i)&&s.grid[i].kind==='dirt')?' target':'';
   parts.push('<button type="button" class="sector '+cls+near+target+'" data-index="'+i+'" title="Level '+(y+1)+' · Bay '+(x+1)+' · '+cls+'">'+
   (x===0?'<span class="depth">L'+String(y+1).padStart(2,'0')+'</span>':'')+
   (c.support?'<span class="frame '+c.support+'"></span>':'')+
@@ -184,7 +184,7 @@ function updateHud(){
  $('statWater').title='Purifiers generate clean water. Dehydrated residents drink more.';
  $('visitorBadge').hidden=!s.visitors.length;
  $('visitorBadge').textContent=s.visitors.length;
- updateTask();
+ updateTask();updateSurfaceProgress();
  const c=s.rooms.filter(r=>r.ready).length;
  $('bottomHint').textContent=s.threat?'⚠ ALARM! ASSIGNED GUARDS ARE RESPONDING TO THE ATTACK.':
  s.task?s.task.type.toUpperCase()+' IN PROGRESS · '+Math.round(100*D.clamp((s.elapsed-s.task.start)/s.task.duration,0,1))+'%':
@@ -415,7 +415,7 @@ function journalMarkup(){
 function residentCard(p){
  const job=p.job?s.rooms.find(r=>r.id===p.job):null;
  return '<div class="resident-card"><div class="resident-portrait">'+personMarkup(p,'')+'</div><div class="bio"><h3>'+safe(p.name)+'</h3>'+
- '<div class="bio-line">'+D.TRAITS[p.trait].label+' · '+(job?D.ROOMS[job.type].name:'UNASSIGNED')+' · '+p.shift.toUpperCase()+'</div>'+
+ '<div class="bio-line">'+D.TRAITS[p.trait].label+' · '+(job?D.ROOMS[job.type].name:'UNASSIGNED')+' · '+p.shift.toUpperCase()+'</div><span class="routine-tag">'+safe(D.routine(s,p).label)+'</span>'+
  '<div class="microstats"><span>HP '+fmt(p.health)+'</span><span>MOOD '+fmt(p.mood)+'</span><span>LOYAL '+fmt(p.loyalty)+'</span></div>'+
  button('person','VIEW PROFILE →',p.id,'','small')+'</div></div>';
 }
@@ -433,7 +433,8 @@ function personMarkupPanel(p){
  return '<div class="resident-card"><div class="resident-portrait">'+personMarkup(p,'')+'</div><div class="bio"><h3>'+safe(p.name)+'</h3><div class="bio-line">Age '+p.age+' · '+D.TRAITS[p.trait].label+'<br>'+safe(p.background)+'</div><span class="badge">'+(p.sick?'SICK':p.rebel?'DISSENTING':'RESIDENT')+'</span></div></div>'+
  meter('Health',fmt(p.health)+'% ',p.health<40)+meter('Hunger',fmt(p.hunger)+'%',p.hunger<35)+meter('Hydration',fmt(p.thirst)+'%',p.thirst<35)+meter('Energy',fmt(p.energy)+'%',p.energy<25)+meter('Morale',fmt(p.mood)+'%')+meter('Loyalty',fmt(p.loyalty)+'%')+
  '<div class="panel-section">SKILLS</div><div class="microstats">'+Object.entries(p.skills).map(([k,v])=>'<span>'+k.toUpperCase()+' '+v+'</span>').join('')+'</div>'+
- '<div class="panel-section">ASSIGNMENTS & EQUIPMENT</div>'+meter('Assigned to',job?D.ROOMS[job.type].name:'None')+
+ '<div class="panel-section">DAILY ROUTINE</div>'+meter('Current activity',D.routine(s,p).label)+meter('Assigned to',job?D.ROOMS[job.type].name:'None')+
+ '<div class="panel-section">ASSIGNMENTS & EQUIPMENT</div>'+
  button('shift','SHIFT: '+p.shift.toUpperCase()+' (CLICK TO CHANGE)',p.id)+
  button('equip','ISSUE WEAPON · 6 SCRAP'+(p.weapon?' · LEVEL '+p.weapon:''),p.id,'weapon')+
  button('equip','ISSUE BODY ARMOR · 5 SCRAP'+(p.armor?' · LEVEL '+p.armor:''),p.id,'armor')+
@@ -446,7 +447,7 @@ function roomMarkupPanel(r){
  const d=D.ROOMS[r.type];
  const choices=s.people.filter(p=>!r.workers.includes(p.id));
  let html='<p class="panel-intro">'+safe(d.desc)+'</p>'+
- meter('Room type',d.name)+meter('Staff',r.workers.length+' / '+(r.type==='security'?3:r.type==='quarters'?4:2))+
+ meter('Room type',d.name)+meter('Staff assigned',r.workers.length+' / '+(r.type==='security'?3:r.type==='quarters'?4:2))+meter('Currently on duty',D.workersOnDuty(s,r).length)+
  meter('Depth',D.xy(r.cells[0])[1]*4+4+' m')+
  meter('Condition',r.health+'%');
  if(d.output){
@@ -468,22 +469,36 @@ function roomMarkupPanel(r){
  return html;
 }
 function sideContent(){
- if(panel==='tutorial')return ['FIRST STEPS',tutorialMarkup()];
- if(panel==='build')return ['ROOM BLUEPRINTS',buildMarkup()];
+ if(panel==='tutorial')return ['YOUR FIRST STEPS',tutorialMarkup()];
+ if(panel==='build')return ['ROOM CONSTRUCTION',buildMarkup()];
  if(panel==='support')return ['TUNNEL SUPPORTS',supportMarkup()];
- if(panel==='roster')return ['VAULT RESIDENTS',rosterMarkup()];
+ if(panel==='roster')return ['PEOPLE & JOBS',rosterMarkup()];
  if(panel==='person'){const p=D.person(s,panelId);return p?[p.name.toUpperCase(),personMarkupPanel(p)]:['RESIDENT MISSING',rosterMarkup()];}
  if(panel==='room'){const r=s.rooms.find(r=>r.id===panelId);return r?[D.ROOMS[r.type].name.toUpperCase(),roomMarkupPanel(r)]:['ROOM MISSING',buildMarkup()];}
- if(panel==='demolish')return ['DEMOLITION','<p class="panel-intro">Remove a built room or a structural support by clicking it on the map. Some materials will be recovered. You cannot remove the main entrance.</p>'+button('showBuild','VIEW AVAILABLE ROOMS')];
- if(panel==='inspect')return ['SECTOR SURVEY','<p class="panel-intro">Select any tunnel, room or resident to see its details. Rooms do not appear magically: they must be dug out and reinforced first.</p>'];
+ if(panel==='supplies')return ['STOCKPILE & PRODUCTION',suppliesMarkup()];
+ if(panel==='security')return ['SECURITY & GUARDS',securityMarkup()];
+ if(panel==='explore')return ['SURFACE EXPLORATION',exploreMarkup()];
+ if(panel==='research')return ['RESEARCH TREE',researchMarkup()];
+ if(panel==='journal')return ['VAULT EVENT LOG',journalMarkup()];
+ if(panel==='demolish')return ['DEMOLITION','<p class="panel-intro">Remove a built room or structural support by clicking it. Some materials are recovered. The hatch cannot be demolished.</p>'+button('showBuild','BACK TO BUILDING')];
+ if(panel==='inspect')return ['SECTOR SURVEY','<p class="panel-intro">Click a tunnel, room or resident to inspect. Research and supports matter at greater depth.</p>'];
  return ['VAULT DIRECTIVE',tutorialMarkup()];
 }
 function showPanel(){
  if(!s)return;
- const [title,content]=sideContent();$('sideTitle').textContent=title;
+ const [title,content]=sideContent();
+ $('sideTitle').textContent=title;
  $('sideEyebrow').textContent=panel==='person'?'RESIDENT PERSONNEL FILE':panel==='room'?'FACILITY OPERATIONS':'OVERSEER TERMINAL';
- $('sideContent').innerHTML=content;
+ const body=$('sideContent'),same=body.dataset.panel===panel;
+ const scroll=same?body.scrollTop:0;
+ if(body.innerHTML!==content)body.innerHTML=content;
+ body.dataset.panel=panel;
+ body.scrollTop=scroll;
+ const active=panel==='person'?'roster':['support','room','demolish'].includes(panel)?'build':panel==='inspect'?'tutorial':panel;
+ for(const b of document.querySelectorAll('.panel-tab'))b.classList.toggle('active',b.dataset.panel===active);
 }
+function setPanel(type,id){panel=type;panelId=id??null;showPanel();}
+
 function renderAll(){
  if(!s)return;
  renderTerrain();renderRooms();renderPeople();renderVisitors();updateHud();renderCoach();renderSurface();showPanel();save();
@@ -494,6 +509,8 @@ function renderAll(){
 function setPanel(type,id){panel=type;panelId=id??null;showPanel();}
 function openModal(type){
  if(!s)return;
+ if(type==='scavenge'){setSurface(true);return;}
+ if(type==='tech'){setPanel('research');return;}
  modalType=type;const host=$('modalContents');let html='<button class="modal-x" data-command="closeModal" aria-label="Close">×</button>';
  if(type==='scavenge'){
   html+='<span class="eyebrow">SURFACE OPERATIONS</span><h2>SCAVENGE THE WASTELAND</h2>'+
@@ -563,10 +580,17 @@ function onCommand(node){
   else selectTool(target==='timber'?'timber':target);
   return;
  }
- if(command==='scavenge'){openModal('scavenge');return;}
+ if(command==='scavenge'||command==='openSurface'){setSurface(true);return;}
+ if(command==='siteSelect'){if(D.SITES.some(x=>x.id===value)){selectedSite=value;setPanel('explore');renderSurface();}return;}
+ if(command==='resourcesPanel'){setPanel('supplies');return;}
+ if(command==='researchPanel'){setPanel('research');return;}
+ if(command==='peoplePanel'){setPanel('roster');return;}
+ if(command==='showSupport'){selectTool('timber');setPanel('support');return;}
+ if(command==='activateBuild'){selectTool('build');setPanel('build');return;}
+ if(command==='inspectRoom'){setPanel('room',id);return;}
  if(command==='search'){
   const r=D.start(s,'scavenge',null,value);
-  closeModal();tell(r);return;
+  if(r.ok){selectedSite=value;setSurface(true);}else toast(r.message,true);tell(r);return;
  }
  if(command==='visitors'){openModal('visitors');return;}
  if(command==='check'){tell(D.check(s,id));openModal('visitors');return;}
@@ -592,10 +616,11 @@ function onCommand(node){
  if(command==='shift'){tell(D.shift(s,id));setPanel('person',id);return;}
  if(command==='equip'){tell(D.equip(s,id,value));setPanel('person',id);return;}
  if(command==='collect'){tell(D.collect(s,id));setPanel('room',id);return;}
- if(command==='tech'){openModal('tech');return;}
- if(command==='research'){tell(D.research(s,value));openModal('tech');return;}
- if(command==='journal'){openModal('journal');return;}
- if(command==='skip'){s.skipTutorial=true;toast('Tutorial skipped. Your vault is yours to run.');renderAll();return;}
+ if(command==='tech'){setPanel('research');return;}
+ if(command==='research'){tell(D.research(s,value));setPanel('research');return;}
+ if(command==='journal'){setPanel('journal');return;}
+ if(command==='skip'){s.skipTutorial=true;toast('Guided objectives hidden. Reopen them in the GUIDE panel.');renderAll();return;}
+ if(command==='resumeGuide'){s.skipTutorial=false;renderAll();toast('Guided objectives restored.');return;}
  if(command==='save'){save();toast('Vault safely saved on this device.');closeModal();return;}
  if(command==='pause'){s.speed=s.speed?0:1;closeModal();renderAll();return;}
  if(command==='confirmNewPrompt'){openModal('confirmNew');return;}
