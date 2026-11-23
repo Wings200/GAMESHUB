@@ -59,11 +59,23 @@ function runUI(initialFiles={}){
   const n={dataset:{room:String(id)}};
   document.onclick({target:{closest:q=>q==='.room[data-room]'?n:null},preventDefault(){},stopPropagation(){}});
  };
+ const dragToRoom=(pid,rid)=>{
+  const source=new FakeElement('drag-source');source.dataset.dragPerson=String(pid);
+  const destination=new FakeElement('drag-room');destination.dataset.room=String(rid);
+  let payload='';
+  const dataTransfer={setData(_type,v){payload=String(v);},getData(){return payload;},effectAllowed:'',dropEffect:''};
+  document.ondragstart({target:{closest:q=>q==='[data-drag-person]'?source:null},dataTransfer,preventDefault(){}});
+  const target={closest:q=>q==='.room[data-room]'?destination:null};
+  document.ondragover({target,dataTransfer,preventDefault(){}});
+  document.ondrop({target,dataTransfer,preventDefault(){}});
+  document.ondragend({target,preventDefault(){}});
+ };
+
  const panel=name=>{
   const b=panels.find(x=>x.dataset.panel===name);
   document.onclick({target:{closest:q=>q==='[data-panel]'?b:null},preventDefault(){},stopPropagation(){}});
  };
- return {el,actions,step,command,clickTile,clickRoom,state,errors,panel,panels};
+ return {el,actions,step,command,clickTile,clickRoom,dragToRoom,state,errors,panel,panels};
 }
 test('browser UI boots, draws 63 real HTML sectors, scavenges and builds first room',()=>{
  const h=runUI();
@@ -160,5 +172,31 @@ test('Remove tool actually demolishes a clicked visual room rather than just ope
  h.clickRoom(id);h.step(2);
  assert.equal(h.state().rooms.length,0,'room should really be removed');
  assert.equal(h.state().grid[5].kind,'open');
+ assert.deepEqual(h.errors,[]);
+});
+
+
+test('dragging a resident to a workplace assigns the job; dragging to quarters sets home and ends shift',()=>{
+ const environment={window:{},Math,Date};
+ vm.runInNewContext(core,environment);
+ const D=environment.window.VDCore,s=D.create('DRAG DROP TEST');
+ const quarters={id:20,type:'quarters',cells:[5,6],workers:[],progress:0,ready:false,cycles:0,health:100};
+ const reactor={id:21,type:'power',cells:[7,8],workers:[],progress:0,ready:false,cycles:0,health:100};
+ s.grid[5]={kind:'room',support:'timber',room:20};s.grid[6]={kind:'room',support:null,room:20};
+ s.grid[7]={kind:'room',support:'timber',room:21};s.grid[8]={kind:'room',support:null,room:21};
+ s.rooms=[quarters,reactor];s.nextId=22;
+ const resident=D.actor('Taylor Test',s);resident.sick=false;resident.hunger=85;resident.thirst=85;
+ s.people=[resident];
+ const h=runUI({'gameshub-vault-directive-rebuild-v3':JSON.stringify(s)});
+ h.el('continueRun').click();
+ h.panel('roster');
+ assert.match(h.el('sideContent').innerHTML,/draggable="true"/);
+ h.dragToRoom(resident.id,reactor.id);
+ assert.equal(h.state().people[0].job,reactor.id,'dragging to reactor assigns work');
+ assert.equal(h.state().rooms.find(r=>r.id===reactor.id).workers[0],resident.id);
+ h.dragToRoom(resident.id,quarters.id);
+ assert.equal(h.state().people[0].job,null,'dragging to home ends their current shift');
+ assert.equal(h.state().people[0].homeRoomId,quarters.id,'housing selection persists in save');
+ assert.equal(h.state().rooms.find(r=>r.id===reactor.id).workers.length,0);
  assert.deepEqual(h.errors,[]);
 });
