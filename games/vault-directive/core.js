@@ -165,7 +165,7 @@ function routine(s,p){
  }
  if(p.sick||p.health<25)return {phase:"sick",roomId:medical?.id??bed?.id??null,label:medical?"In medical care":"Resting while ill"};
  if(needsSleep)return {phase:"sleep",roomId:bed?.id??null,label:"Sleeping — "+p.shift+" shift"};
- if(p.hunger<22||p.thirst<22)return {phase:"meal",roomId:lounge?.id??bed?.id??null,label:"Taking a food/water break"};
+ if((p.hunger<22&&s.res.food>.25)||(p.thirst<22&&s.res.water>.25))return {phase:"meal",roomId:lounge?.id??bed?.id??null,label:"Eating or drinking"};
  const workplace=s.rooms.find(r=>r.id===p.job);
  if(workplace&&workplace.workers.includes(p.id)){
   return {phase:workplace.type==="security"?"guarding":"working",roomId:workplace.id,label:"On duty: "+ROOMS[workplace.type].name};
