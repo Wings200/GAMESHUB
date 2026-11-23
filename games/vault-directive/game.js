@@ -383,7 +383,6 @@
   function updateProjectWorkers(dt){
     for(const r of state.survivors){
       if(r.dead){r.state='dead';r.path=[];continue;}
-      if(r.child){r.state='child';r.path=[];continue;}
       if((state.expedition && state.expedition.crew.includes(r.id)) || (state.discovery && state.discovery.crewId===r.id))continue;
       r.hunger=Math.max(0,r.hunger-dt*.047);
       r.thirst=Math.max(0,r.thirst-dt*.063);
@@ -399,6 +398,7 @@
         continue;
       }
       if(r.dead){r.state='dead';r.path=[];continue;}
+      if(r.child){r.state='child';r.path=[];continue;}
       if(r.striking){r.state='strike';r.path=[];continue;}
       if(r.trapped){r.state='trapped';r.path=[];continue;}
       if(r.defending){r.state='defending';continue;}
