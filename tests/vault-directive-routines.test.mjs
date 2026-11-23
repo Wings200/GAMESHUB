@@ -120,3 +120,27 @@ test('pause, resume and resource consumption leave state coherent',()=>{
  assert.ok(s.res.food>=0&&s.res.water>=0);
  assert.ok(p.health>0);
 });
+
+test('multi-day simulation stress: inventories, health, logs and scheduled staffing remain bounded',()=>{
+ const {D,s,p,beds,reactor}=setup();
+ s.res.food=30;s.res.water=35;s.res.power=30;
+ p.weapon=1;p.armor=1;p.sick=false;
+ const another=D.actor('Alex Vale',s);another.sick=false;
+ s.people.push(another);assert.ok(D.assign(s,another.id,reactor.id).ok);
+ const initial=s.day;
+ for(let i=0;i<720;i++){
+  D.simulate(s,1);
+  if(reactor.ready)D.collect(s,reactor.id);
+  for(const resource of Object.values(s.res))assert.ok(Number.isFinite(resource)&&resource>=0);
+  for(const resident of s.people){
+   for(const value of [resident.health,resident.hunger,resident.thirst,resident.energy,resident.mood,resident.loyalty])
+    assert.ok(Number.isFinite(value)&&value>=0&&value<=100);
+   const placed=s.rooms.flatMap(r=>D.residentsIn(s,r).filter(x=>x.person.id===resident.id));
+   assert.ok(placed.length<=1,'one resident cannot physically occupy two facilities');
+  }
+  assert.ok(s.visitors.length<=3);
+  assert.ok(s.log.length<=90);
+  assert.ok(s.clock>=0&&s.clock<1440);
+ }
+ assert.ok(s.day>initial,'day/night cycle continues across multiple days');
+});
