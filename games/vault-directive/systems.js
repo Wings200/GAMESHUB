@@ -42,6 +42,7 @@
     state.resources.meds=Number.isFinite(state.resources.meds)?state.resources.meds:2;
     state.resourceRate={food:0,water:0,fuel:0};
     state.doors=state.doors||[];
+    state.ladders=state.ladders||[];
     state.arrivals=state.arrivals||[];
     state.threat=state.threat||null;
     state.incidents=state.incidents||[];
@@ -296,7 +297,7 @@
     state.resources.food=min(200,state.resources.food+foodIn);
     state.resources.water=min(200,state.resources.water+waterIn);
     state.resources.meds=min(50,state.resources.meds+medIn);
-    state.resourceRate={food:(foodIn/dt-consum*0)*60,water:(waterIn/dt)*60,fuel:-(fuelOut/dt)*60};
+    state.resourceRate={food:0,water:0,fuel:0};
     state.resourceRate.food=round((foodIn-foodOut)/dt*60);
     state.resourceRate.water=round((waterIn-waterOut)/dt*60);
     state.resourceRate.fuel=round(-fuelOut/dt*60);
