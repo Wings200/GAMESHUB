@@ -529,8 +529,11 @@
             barrier.hp=max(0,barrier.hp-dt*1.1);
             if(barrier.hp===0){barrier.closed=false;emit(hooks,'A blast door was breached!',true);}
           }else{
-            const p=ideal?.[0];
-            if(p&&!(p.x===barrier.x&&p.y===barrier.y)){
+            const first=ideal?.[0];
+            // Rounding to a tile during animation must never strand an attacker
+            // halfway between a corridor tile and its closed blast door.
+            const p=first?.x===barrier.x&&first?.y===barrier.y?origin:first;
+            if(p){
               const dx=p.x-raid.x,dy=p.y-raid.y,dist=Math.hypot(dx,dy),step=min(dist,dt*.56);
               if(dist>.002){raid.x+=dx/dist*step;raid.y+=dy/dist*step;}
             }
