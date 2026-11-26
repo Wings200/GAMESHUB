@@ -1,9 +1,10 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BUILD &amp; SELL | GAMESHUB</title><link rel="icon" href="/logo.png"><script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script><style>
 :root{font:14px system-ui,sans-serif;color:#f2f5f1;color-scheme:dark;--panel:#182724f4;--green:#c6f17c;--muted:#a9bcb2}*{box-sizing:border-box}body{margin:0;overflow:hidden;background:#91b1bf}canvas{width:100vw;height:100dvh;display:block;touch-action:none}button{font:inherit;color:#f2f5f1;background:#263b33;border:1px solid #52685a;border-radius:7px;padding:9px 12px;cursor:pointer;font-weight:650}button:hover{background:#3d5948}button:disabled{opacity:.45;cursor:default}.active,.primary{background:var(--green);color:#213221;border-color:var(--green)}.hud{position:absolute;top:14px;left:14px;right:14px;display:flex;justify-content:space-between;pointer-events:none;gap:10px}.panel{background:var(--panel);border:1px solid #ffffff28;border-radius:12px;padding:12px 15px;box-shadow:0 6px 24px #0003;pointer-events:auto}.tag{font-size:10px;letter-spacing:.15em;color:var(--green);font-weight:800}h1,h2,h3{margin:5px 0}h1{font-size:21px}h2{font-size:23px}a{color:#d1e7d1}.money{font-size:22px;color:var(--green);font-weight:800}.muted{color:var(--muted);font-size:12px;line-height:1.5}.bar{position:absolute;bottom:14px;left:14px;right:14px;display:grid;gap:8px;pointer-events:none}.tabs,.toolrow,.actions{display:flex;gap:6px;flex-wrap:wrap}.toolrow{margin-top:8px}.toolrow button small{display:block;font-size:10px;opacity:.75;margin-top:2px}.toolrow button{min-width:82px}.status{min-height:20px;font-size:13px;color:#e7dbab}.hint{position:absolute;top:100px;right:14px;max-width:250px;pointer-events:none}.overlay{position:absolute;inset:0;display:grid;place-items:center;background:#0c181bbb;z-index:10;padding:12px}.modal{width:min(690px,95vw);max-height:90dvh;overflow:auto;background:#172724;border:1px solid #597366;border-radius:14px;padding:22px;box-shadow:0 20px 60px #0008}.modal p{line-height:1.5;color:#c2d1c8}.diagram{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:55px;margin:20px 0;min-height:140px}.ports{display:grid;gap:10px;z-index:1}.ports button{min-height:44px;position:relative}.ports button.done{background:#285244;border-color:#83d3a1}.ports button.selected{outline:2px solid #e7dc8a}.wireCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}.guide{background:#101d19;border-radius:8px;padding:10px;display:grid;gap:5px;font-size:12px}.inspection{display:grid;gap:8px;margin:14px 0}.inspection div{background:#22372d;padding:9px;border-radius:6px}.pass{color:#a5e8b5}.fail{color:#f3c5a1}.hidden{display:none!important}.topright{text-align:right}.cross{position:absolute;top:50%;left:50%;width:5px;height:5px;border-radius:50%;background:#fff;pointer-events:none;display:none}.touch{display:none}@media(max-width:700px){.hud{top:7px;left:7px;right:7px}.panel{padding:8px}.hint{display:none}.bar{bottom:6px;left:6px;right:6px}.toolrow button{min-width:65px;padding:6px}.tabs button,.actions button{padding:6px 8px;font-size:12px}.touch{display:flex;gap:4px;justify-content:center;pointer-events:auto}.touch button{touch-action:none}.modal{padding:14px}.diagram{gap:28px}.ports button{font-size:12px}h1{font-size:15px}}
- .workbench{margin:12px 0;border:1px solid #506b63;border-radius:12px;overflow:hidden}.workTarget{cursor:pointer;touch-action:none}.workTarget:hover{filter:brightness(1.3)}.workProgress{height:7px;background:#101b1d}.workProgress i{display:block;height:100%;width:0;background:#c6f17c}.modal{width:min(830px,96vw)} .jobStageBar{display:flex;gap:3px;margin:10px 0}.jobStageBar i{height:5px;background:#40544d;flex:1;border-radius:3px}.jobStageBar .done{background:#8bcf9b}.jobStageBar .current{background:#eacb82}.jobChoices,.jobChecks{display:grid;gap:7px;margin:12px 0}.jobChecks button{display:flex;justify-content:space-between;gap:12px;text-align:left}.jobChecks button span{font-size:10px;color:#b9e6bd}.jobTarget{cursor:grab}.jobTarget:hover{filter:brightness(1.2)}.jobGauge,.jobLabel{display:grid;gap:6px;margin:10px 0}.jobGauge span{display:flex;justify-content:space-between}.gaugeTrack{position:relative}.gaugeTrack i{position:absolute;left:45%;width:10%;top:0;bottom:0;background:#8bcf9b66;border-radius:5px;pointer-events:none}.gaugeTrack input{width:100%;position:relative;margin:0;accent-color:#d9eebd}.jobLabel input{padding:9px;color:#f1f3e8;background:#101c19;border:1px solid #68867b;border-radius:6px}.modal details{margin-top:14px;color:#b3c7ba}.modal details li{margin:4px 0}.workbench svg{max-height:37vh}.jobGauge small{color:#a9bcb2}.panel-work{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);width:min(650px,95vw);z-index:5;text-align:left}.panel-work p{margin:5px 0;font-size:13px;line-height:1.4}.panel-work button{margin-top:7px}.panel-work .workProgress{margin-top:8px}.panel-working .bar,.panel-working .hint{display:none}.panel-working .hud{opacity:.78;pointer-events:none}.panel-working .hud a{pointer-events:none}</style></head><body><canvas id="world" aria-label="Walkable 3D construction lot"></canvas><div class="hud"><div class="panel"><a href="/" class="tag">← GAMESHUB / IN DEV</a><h1>BUILD &amp; SELL</h1><span class="muted">FREE BUILD / v0.6</span></div><div class="panel topright"><div class="tag">CASH</div><div class="money" id="cash"></div><div class="muted" id="homes"></div></div></div><div class="hint panel"><b>On-site controls</b><div class="muted">WASD · walk<br>Shift · run<br>Right-drag · rotate camera<br>Scroll · zoom<br>Click ground or wall edge · build<br>G · toggle snap<br>Q/E · rotate view<br>Work within reach of your character.</div></div><div class="bar"><div class="touch"><button data-move="w">↑</button><button data-move="a">←</button><button data-move="s">↓</button><button data-move="d">→</button></div><div class="panel"><div id="status" class="status">Choose a foundation tile, then walk over and build.</div><div class="tabs" id="tabs"></div><div id="toolrow" class="toolrow"></div></div><div class="panel actions"><button id="undo">Undo</button><button id="snap" aria-pressed="true">Snap: ON</button><button id="roofView">Roof: hidden</button><button id="inspect">Property inspection</button><button id="reset">Reset camera</button><span class="muted" id="summary"></span></div></div><div id="panelWork" class="panel panel-work hidden"><div class="tag">ON-SITE · 3D TRADE INSTALLATION</div><div data-panel-progress class="muted"></div><h3 data-panel-tool></h3><p data-panel-text></p><div class="workProgress"><i data-panel-fill></i></div><button data-panel-cancel>Leave work · Esc</button></div><div class="overlay hidden" id="dialog"><div class="modal" id="modal"></div></div>
+ .workbench{margin:12px 0;border:1px solid #506b63;border-radius:12px;overflow:hidden}.workTarget{cursor:pointer;touch-action:none}.workTarget:hover{filter:brightness(1.3)}.workProgress{height:7px;background:#101b1d}.workProgress i{display:block;height:100%;width:0;background:#c6f17c}.modal{width:min(830px,96vw)} .jobStageBar{display:flex;gap:3px;margin:10px 0}.jobStageBar i{height:5px;background:#40544d;flex:1;border-radius:3px}.jobStageBar .done{background:#8bcf9b}.jobStageBar .current{background:#eacb82}.jobChoices,.jobChecks{display:grid;gap:7px;margin:12px 0}.jobChecks button{display:flex;justify-content:space-between;gap:12px;text-align:left}.jobChecks button span{font-size:10px;color:#b9e6bd}.jobTarget{cursor:grab}.jobTarget:hover{filter:brightness(1.2)}.jobGauge,.jobLabel{display:grid;gap:6px;margin:10px 0}.jobGauge span{display:flex;justify-content:space-between}.gaugeTrack{position:relative}.gaugeTrack i{position:absolute;left:45%;width:10%;top:0;bottom:0;background:#8bcf9b66;border-radius:5px;pointer-events:none}.gaugeTrack input{width:100%;position:relative;margin:0;accent-color:#d9eebd}.jobLabel input{padding:9px;color:#f1f3e8;background:#101c19;border:1px solid #68867b;border-radius:6px}.modal details{margin-top:14px;color:#b3c7ba}.modal details li{margin:4px 0}.workbench svg{max-height:37vh}.jobGauge small{color:#a9bcb2}.panel-work{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);width:min(650px,95vw);z-index:5;text-align:left}.panel-work p{margin:5px 0;font-size:13px;line-height:1.4}.panel-work button{margin-top:7px}.panel-work .workProgress{margin-top:8px}.panel-working .bar,.panel-working .hint{display:none}.panel-working .hud{opacity:.78;pointer-events:none}.panel-working .hud a{pointer-events:none}</style></head><body><canvas id="world" aria-label="Walkable 3D construction lot"></canvas><div class="hud"><div class="panel"><a href="/" class="tag">← GAMESHUB / IN DEV</a><h1>BUILD &amp; SELL</h1><span class="muted">FREE BUILD / v0.7</span></div><div class="panel topright"><div class="tag">CASH</div><div class="money" id="cash"></div><div class="muted" id="homes"></div></div></div><div class="hint panel"><b>On-site controls</b><div class="muted">WASD · walk<br>Shift · run<br>Right-drag · rotate camera<br>Scroll · zoom<br>Click ground or wall edge · build<br>G · toggle snap<br>R · rotate floor fixtures<br>Q/E · rotate view<br>Work within reach of your character.</div></div><div class="bar"><div class="touch"><button data-move="w">↑</button><button data-move="a">←</button><button data-move="s">↓</button><button data-move="d">→</button></div><div class="panel"><div id="status" class="status">Choose a foundation tile, then walk over and build.</div><div class="tabs" id="tabs"></div><div id="toolrow" class="toolrow"></div></div><div class="panel actions"><button id="undo">Undo</button><button id="snap" aria-pressed="true">Snap: ON</button><button id="rotateFixture">Rotate fixture · R</button><button id="roofView">Roof: hidden</button><button id="inspect">Property inspection</button><button id="reset">Reset camera</button><span class="muted" id="summary"></span></div></div><div id="panelWork" class="panel panel-work hidden"><div class="tag">ON-SITE · 3D TRADE INSTALLATION</div><div data-panel-progress class="muted"></div><h3 data-panel-tool></h3><p data-panel-text></p><div class="workProgress"><i data-panel-fill></i></div><button data-panel-cancel>Leave work · Esc</button></div><div class="overlay hidden" id="dialog"><div class="modal" id="modal"></div></div>
 <script type="module">
 import {GameEngine,THREE} from "../../engine/core.js";
-import {startPanelWork,finishedBreaker,finishedTrade,tradeSpec} from "./panel-3d.js?v=06";
+import {startPanelWork,fixtureAssembly,tradeSpec} from "./panel-3d.js?v=07";
+import {studMount,floorOffset,faceSide} from "./placement.js?v=07";
 import {resolveXZ} from "../../engine/collision.js";
 
 const N=8,S=2,OFFSET=-N*S/2;
@@ -40,7 +41,7 @@ function check(j,id,k){
  if(!["x","z"].includes(axis)||!edgeCells(axis,x,z).some(([a,b])=>validCell(a,b)&&j.floors[cell(a,b)]))return "Build on the edge of a foundation.";
  if(["frame","door","window"].includes(id))return w?"A wall already occupies this edge.":"";
  if(id==="finish")return !w?"Frame the wall first.":w.finished?"Wall already finished.":"";
- if(electrical.includes(id))return !w?"Install a wall frame first.":w.finished?"Install electrical before finishing the wall.":f?"A fixture is already here.":"";
+ if(electrical.includes(id))return !w?"Install a wall frame first.":w.type!=="frame"?"Choose a solid framed wall bay, not a door or window opening.":w.finished?"Install electrical before finishing the wall.":f?"A fixture is already here.":"";
  return "Invalid location.";
 }
 function commit(j,id,k,passed=false,pos=null){
@@ -58,7 +59,7 @@ function commit(j,id,k,passed=false,pos=null){
  else if(["frame","door","window"].includes(id))j.walls[k]={type:id,finished:false};
  else if(id==="finish")j.walls[k].finished=true;
  else if(id==="roof")j.roofs[k]=true;
- else {j.fixtures[k]=id;if(pos)j.fixturePos[k]={x:pos.x||0,z:pos.z||0,side:pos.side||1};}
+ else {j.fixtures[k]=id;if(pos)j.fixturePos[k]={...pos,x:pos.x||0,z:pos.z||0,side:pos.side||1};}
  return true;
 }
 function undo(j){if(j.sold||!j.history.length)return false;Object.assign(j,JSON.parse(j.history.pop()));return true}
@@ -84,7 +85,7 @@ const puzzles={
 function match(id,left,right){return puzzles[id]?.pairs[left]?.[1]===right}
 
 const $=id=>document.getElementById(id),money=n=>"$"+n.toLocaleString("en-US"),canvas=$("world");
-let snap=true,siteGrid,previewBounds=null,previewSignature="",hoverPos=null;let job=blank(),selected="floor",category="Structure",engine,root,avatar,limbs=[],worldMeshes=[],obstacles=[],hoverKey=null,preview,roofVisible=false,modalOpen=false,puzzleState=null,keys=new Set(),yaw=0,zoom=7,pitch=.83,drag=null,down=null,lastMove=0,stepCycle=0;
+let fixtureRotation=0,hitNormal=null,fixtureBoundsCache=new Map();let snap=true,siteGrid,previewBounds=null,previewSignature="",hoverPos=null;let job=blank(),selected="floor",category="Structure",engine,root,avatar,limbs=[],worldMeshes=[],obstacles=[],hoverKey=null,preview,roofVisible=false,modalOpen=false,puzzleState=null,keys=new Set(),yaw=0,zoom=7,pitch=.83,drag=null,down=null,lastMove=0,stepCycle=0;
 const groups={"Structure":["floor","frame","door","window"],"Electrical":electrical,"Plumbing":wet,"HVAC":hvac,"Finish":["finish","roof"],"Demolish":["remove"]};
 const materials={};let ghostMaterial;
 function status(s){$("status").textContent=s}
@@ -109,8 +110,9 @@ function boot(){
  function pick(e){const r=canvas.getBoundingClientRect();ndc.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ndc,engine.camera);
  const edgeTool=["frame","door","window","finish",...electrical].includes(selected);
  const objects=ray.intersectObjects(worldMeshes,false).filter(h=>h.object.userData.key);
- const direct=objects.find(h=>{const k=h.object.userData.key;return selected==="remove"||edgeTool&&k.includes(":")||[...wet,...hvac].includes(selected)&&!k.includes(":")});
- if(direct&&direct.distance<30){hoverPos=direct.point.clone();return direct.object.userData.key;}
+ const direct=objects.find(h=>{const k=h.object.userData.key;return selected==="remove"||edgeTool&&k.includes(":")||[...wet,...hvac].includes(selected)&&!k.includes(":")&&h.object.userData.kind==="floor"});
+ if(direct&&direct.distance<30){hoverPos=direct.point.clone();hitNormal=direct.face?.normal.clone().transformDirection(direct.object.matrixWorld)||null;return direct.object.userData.key;}
+ if(electrical.includes(selected))return null;hitNormal=null;
  const p=new THREE.Vector3();if(!ray.ray.intersectPlane(plane,p))return null;hoverPos=p.clone();const fx=(p.x-OFFSET-job.origin.x)/S,fz=(p.z-OFFSET-job.origin.z)/S,x=Math.floor(fx),z=Math.floor(fz);
  if(!edgeTool)return validCell(x,z)?cell(x,z):null;
  const xx=Math.round(fx),zz=Math.round(fz);return Math.abs(fx-xx)<Math.abs(fz-zz)?edge("z",xx,z):edge("x",x,zz);
@@ -124,61 +126,97 @@ function boot(){
  const target=new THREE.Vector3(avatar.position.x,avatar.position.y+1.2,avatar.position.z);const cp=target.clone().add(new THREE.Vector3(Math.sin(yaw)*Math.cos(pitch)*zoom,Math.sin(pitch)*zoom,Math.cos(yaw)*Math.cos(pitch)*zoom));engine.camera.position.copy(cp);engine.camera.lookAt(target);
  });engine.start();
 }
-function addKey(o,k){o.traverse(v=>{if(v.isMesh){v.userData.key=k;worldMeshes.push(v)}})}
+function addKey(o,k,kind){o.traverse(v=>{if(v.isMesh){v.userData.key=k;v.userData.kind=kind||"structure";worldMeshes.push(v)}})}
 function wallGeometry(g,w){
  const wood=materials.wood;box(g,2,.11,.15,0,2.55,0,wood);for(const x of [-.95,.95])box(g,.10,2.45,.15,x,1.28,0,wood);
  if(w.type==="frame"){box(g,2,.11,.15,0,.05,0,wood);for(const x of [-.47,0,.47])box(g,.085,2.44,.13,x,1.28,0,wood);}
  if(w.type==="door"){box(g,1.8,.12,.15,0,2.06,0,wood);for(const x of [-.48,.48])box(g,.10,2,.15,x,1,0,wood);}
  if(w.type==="window"){box(g,2,.11,.15,0,.05,0,wood);box(g,1.75,.12,.15,0,.85,0,wood);box(g,1.75,.12,.15,0,1.86,0,wood);for(const x of [-.64,.64])box(g,.09,2.44,.14,x,1.28,0,wood);}
- if(w.finished){const m=materials.wall;if(w.type==="frame")box(g,2,2.55,.19,0,1.28,0,m);if(w.type==="door"){box(g,2,.48,.19,0,2.32,0,m);for(const x of [-.76,.76])box(g,.48,2.05,.19,x,1.025,0,m);}if(w.type==="window"){box(g,2,.85,.19,0,.425,0,m);box(g,2,.68,.19,0,2.2,0,m);for(const x of [-.82,.82])box(g,.36,1.05,.19,x,1.37,0,m);box(g,1.25,.97,.07,0,1.35,0,materials.glass);}}
+ if(w.finished){const m=materials.wall;if(w.type==="frame"){const k=g.userData.wallKey,fixture=k&&job.fixtures[k],f=k&&job.fixturePos[k];if(fixture&&electrical.includes(fixture)&&f){const localU=g.rotation.y? -f.z:f.x,half=fixture==="breaker"?.43*.82/2:fixture==="three"?.153:.061,halfY=fixture==="breaker"?.31:.094,lo=Math.max(-1,localU-half),hi=Math.min(1,localU+half),bottom=Math.max(0,f.y-halfY),top=Math.min(2.55,f.y+halfY);const add=(x0,x1,y0,y1,z)=>{if(x1-x0>.001&&y1-y0>.001)box(g,x1-x0,y1-y0,.02,(x0+x1)/2,(y0+y1)/2,z,m)};add(-1,1,0,2.55,-.085*f.side);const z=.085*f.side;add(-1,lo,0,2.55,z);add(hi,1,0,2.55,z);add(lo,hi,0,bottom,z);add(lo,hi,top,2.55,z);}else box(g,2,2.55,.19,0,1.28,0,m);}if(w.type==="door"){box(g,2,.48,.19,0,2.32,0,m);for(const x of [-.76,.76])box(g,.48,2.05,.19,x,1.025,0,m);}if(w.type==="window"){box(g,2,.85,.19,0,.425,0,m);box(g,2,.68,.19,0,2.2,0,m);for(const x of [-.82,.82])box(g,.36,1.05,.19,x,1.37,0,m);box(g,1.25,.97,.07,0,1.35,0,materials.glass);}}
 }
-function fixtureGeometry(g,t,k){if(t==="breaker"){finishedBreaker(g,job.fixturePos[k]?.side||1);return;}finishedTrade(g,t,job.fixturePos[k]?.side||1);}
+
+function rawBounds(id,rot=0){
+ const key=id+":"+rot;if(fixtureBoundsCache.has(key))return fixtureBoundsCache.get(key);
+ const q=new THREE.Group(),part=fixtureAssembly(q,id);q.rotation.y=rot*Math.PI/2;
+ if(id==="vent")part.rotation.x=-Math.PI/2;
+ q.updateMatrixWorld(true);const b=new THREE.Box3().setFromObject(q,true);
+ const result={minX:b.min.x,maxX:b.max.x,minY:b.min.y,maxY:b.max.y,minZ:b.min.z,maxZ:b.max.z};
+ disposeGeometry(q);fixtureBoundsCache.set(key,result);return result;
+}
+function disposeGeometry(o){o.traverse(v=>{v.geometry?.dispose();if(v.material?.userData?.owned){v.material.map?.dispose();v.material.dispose()}});}
+function transformFixture(parent,id,k,pos){
+ const p=center(k),wall=electrical.includes(id),side=pos.side||1;
+ const angle=(p.axis==="z"?Math.PI/2:0)+(wall&&side<0?Math.PI:0)+(wall?0:(pos.rot||0)*Math.PI/2);
+ const q=group(parent,p.x+pos.x,.15+(pos.y||0),p.z+pos.z);
+ q.rotation.y=angle;if(id==="vent")q.rotation.x=-Math.PI/2;
+ if(wall){q.translateZ(pos.depth??-.050);if(id==="breaker")q.scale.x=.82;}
+ return q;
+}
+function fixtureGeometry(parent,id,k,pos){const q=transformFixture(parent,id,k,pos);fixtureAssembly(q,id);}
+
 function rebuild(){
  if(preview)preview.visible=false;if(previewBounds)previewBounds.visible=false;
  siteGrid.position.x=job.origin.x;siteGrid.position.z=job.origin.z;siteGrid.visible=snap;previewSignature="";
  for(const o of [...root.children]){o.traverse(v=>{if(v.geometry)v.geometry.dispose()});root.remove(o)}worldMeshes=[];obstacles=[];
- for(const k of Object.keys(job.floors)){const p=center(k);addKey(box(root,1.99,.12,1.99,p.x,.09,p.z,materials.concrete),k);}
+ for(const k of Object.keys(job.floors)){const p=center(k);addKey(box(root,1.99,.12,1.99,p.x,.09,p.z,materials.concrete),k,"floor");}
  for(const [k,w] of Object.entries(job.walls)){const p=center(k),g=group(root,p.x,.15,p.z);if(p.axis==="z")g.rotation.y=Math.PI/2;
- wallGeometry(g,w);
+ g.userData.wallKey=k;wallGeometry(g,w);
  addKey(g,k);if(w.type!=="door"){const a=p.axis==="x";obstacles.push({minX:p.x-(a?1:.12),maxX:p.x+(a?1:.12),minZ:p.z-(a?.12:1),maxZ:p.z+(a?.12:1)});}else{for(const d of [-.76,.76]){const x=p.x+(p.axis==="x"?d:0),z=p.z+(p.axis==="z"?d:0);obstacles.push({minX:x-(p.axis==="x"?.24:.12),maxX:x+(p.axis==="x"?.24:.12),minZ:z-(p.axis==="z"?.24:.12),maxZ:z+(p.axis==="z"?.24:.12)});}}
  }
- for(const [k,t] of Object.entries(job.fixtures)){const p=center(k),f=job.fixturePos[k]||{x:0,z:0},g=group(root,p.x+f.x,.15,p.z+f.z);if(p.axis==="z")g.rotation.y=Math.PI/2;
- fixtureGeometry(g,t,k);
- addKey(g,k);
- }
+ for(const [k,t] of Object.entries(job.fixtures)){const g=group(root),f=job.fixturePos[k]||{x:0,z:0,y:electrical.includes(t)?(t==="breaker"?1.45:tradeSpec(t).height):0};fixtureGeometry(g,t,k,f);addKey(g,k,"fixture");if(!electrical.includes(t)&&t!=="vent"){g.updateMatrixWorld(true);const b=new THREE.Box3().setFromObject(g,true);obstacles.push({minX:b.min.x,maxX:b.max.x,minZ:b.min.z,maxZ:b.max.z});}}
  for(const k of Object.keys(job.roofs)){const p=center(k);const o=box(root,2.02,.14,2.02,p.x,2.85,p.z,materials.roof);o.visible=roofVisible;addKey(o,k);}
 }
 
+
 function placementOffset(id,k,point){
- const p=center(k);if(!point||snap)return {x:0,z:0};
- const dx=point.x-p.x,dz=point.z-p.z;
- const limit=(v,max)=>Math.max(-max,Math.min(max,v));
- if(id==="floor"&&!Object.keys(job.floors).length){const x=limit(dx,.96),z=limit(dz,.96);return {x,z,origin:{x:job.origin.x+x,z:job.origin.z+z}}}
- if(electrical.includes(id)){const max=id==="breaker"?.73:id==="three"?.69:.88;return {x:p.axis==="x"?limit(dx,max):0,z:p.axis==="z"?limit(dz,max):0};}
- if(wet.includes(id)||hvac.includes(id)){const radii={sink:[.37,.35],toilet:[.34,.36],vent:[.25,.16],air:[.55,.36]}[id];return {x:limit(dx,1-radii[0]),z:limit(dz,1-radii[1])};}
+ const p=center(k),dx=point?point.x-p.x:0,dz=point?point.z-p.z:0;
+ if(id==="floor"&&!snap&&!Object.keys(job.floors).length){const x=Math.max(-.96,Math.min(.96,dx)),z=Math.max(-.96,Math.min(.96,dz));return {x,z,origin:{x:job.origin.x+x,z:job.origin.z+z}}}
+ if(electrical.includes(id)){
+ const side=faceSide(p.axis,p,point,engine.camera.position,hitNormal),u=p.axis==="z"?-dz:dx;
+ const normalAlong=hitNormal?(p.axis==="z"?-hitNormal.z:hitNormal.x):0;
+ const m=studMount(job.walls[k]?.type,id,u,Math.abs(normalAlong)>.75?Math.sign(normalAlong):0,side);
+ const y=id==="breaker"?1.45:tradeSpec(id).height;
+ if(!m)return {x:0,z:0,y,side,invalid:true};
+ return {x:p.axis==="x"?m.u:0,z:p.axis==="z"?-m.u:0,y,side,depth:-.050,stud:m.stud,edge:m.edge};
+ }
+ if(wet.includes(id)||hvac.includes(id)){
+ const bounds=rawBounds(id,fixtureRotation),o=floorOffset(dx,dz,bounds,snap);
+ return o?{...o,rot:fixtureRotation,y:-bounds.minY}:{x:0,z:0,rot:fixtureRotation,y:0,invalid:true};
+ }
  return {x:0,z:0};
+}
+function placementError(id,k,pos){
+ const error=check(job,id,k);if(error)return error;
+ if(pos.invalid)return "No suitable mounting position.";
+ if(trade.includes(id)&&!electrical.includes(id)){
+ const p=center(k),b=rawBounds(id,pos.rot||0),x=p.x+pos.x,z=p.z+pos.z;
+ const candidate={minX:x+b.minX,maxX:x+b.maxX,minZ:z+b.minZ,maxZ:z+b.maxZ};
+ const overlaps=o=>candidate.minX<o.maxX-.003&&candidate.maxX>o.minX+.003&&candidate.minZ<o.maxZ-.003&&candidate.maxZ>o.minZ+.003;
+ if(obstacles.some(overlaps))return "Fixture overlaps a wall or another installed object.";
+ }
+ return "";
 }
 function refreshPreview(k,point){
  if(!preview)return;preview.visible=!!k&&!modalOpen;previewBounds.visible=preview.visible;if(!preview.visible)return;
- const offset=placementOffset(selected,k,point),p=center(k),sig=selected+"|"+k+"|"+offset.x.toFixed(3)+"|"+offset.z.toFixed(3);
+ const offset=placementOffset(selected,k,point),p=center(k),sig=selected+"|"+k+"|"+JSON.stringify(offset);
  if(sig!==previewSignature){
  previewSignature=sig;for(const o of [...preview.children]){o.traverse(v=>{if(v.geometry)v.geometry.dispose()});preview.remove(o);}
  if(!ghostMaterial)ghostMaterial=new THREE.MeshBasicMaterial({color:0xc9ff91,transparent:true,opacity:.36,depthWrite:false});
  const type=selected==="remove"?(job.fixtures[k]|| (job.roofs[k]?"roof":job.walls[k]?.type||"floor")):selected;
  const actualOffset=selected==="remove"&&job.fixtures[k]?job.fixturePos[k]||offset:offset;
- const g=group(preview,p.x+actualOffset.x,.15,p.z+actualOffset.z);if(p.axis==="z")g.rotation.y=Math.PI/2;
+ const g=trade.includes(type)?group(preview):group(preview,p.x+actualOffset.x,.15,p.z+actualOffset.z);if(!trade.includes(type)&&p.axis==="z")g.rotation.y=Math.PI/2;
  if(type==="floor")box(g,1.99,.12,1.99,0,-.06,0,materials.concrete);
  else if(type==="roof")box(g,2.02,.14,2.02,0,2.7,0,materials.roof);
- else if(["frame","door","window","finish"].includes(type))wallGeometry(g,{type:type==="finish"?job.walls[k]?.type||"frame":type,finished:type==="finish"||selected==="remove"&&!!job.walls[k]?.finished});
- else if(trade.includes(type))fixtureGeometry(g,type,k);
+ else if(["frame","door","window","finish"].includes(type)){g.userData.wallKey=k;wallGeometry(g,{type:type==="finish"?job.walls[k]?.type||"frame":type,finished:type==="finish"||selected==="remove"&&!!job.walls[k]?.finished});}
+ else if(trade.includes(type))fixtureGeometry(g,type,k,actualOffset);
  g.traverse(v=>{if(v.isMesh){v.material=ghostMaterial;v.castShadow=false;v.receiveShadow=false}});
  preview.updateMatrixWorld(true);previewBounds.box.setFromObject(preview);previewBounds.updateMatrixWorld(true);
  }
- const error=check(job,selected,k)||reach(k);ghostMaterial.color.set(error?"#ed8b79":"#c9ff91");previewBounds.material.color.set(error?"#ed8b79":"#c9ff91");
+ const error=placementError(selected,k,offset)||reach(k);ghostMaterial.color.set(error?"#ed8b79":"#c9ff91");previewBounds.material.color.set(error?"#ed8b79":"#c9ff91");
 }
 
 function reach(k){const b=previewBounds?.visible?previewBounds.box:null,p=center(k);const x=b?Math.max(b.min.x,Math.min(avatar.position.x,b.max.x)):p.x,z=b?Math.max(b.min.z,Math.min(avatar.position.z,b.max.z)):p.z;return Math.hypot(x-avatar.position.x,z-avatar.position.z)>3.4?"Walk closer to the work area (WASD).":""}
-function attempt(k,point){const pos=placementOffset(selected,k,point);if(job.sold)return;const error=check(job,selected,k)||reach(k);if(error){status(error);return}if(["frame","window","door"].includes(selected)){const p=center(k);if(Math.hypot(p.x-avatar.position.x,p.z-avatar.position.z)<.55){status("Step away from the wall before building.");return;}}if(trade.includes(selected)){openPuzzle(selected,k,pos);return}if(commit(job,selected,k,false,pos)){rebuild();updateUI();status(toolMap[selected].name+" installed.");}}
+function attempt(k,point){const pos=placementOffset(selected,k,point);if(job.sold)return;const error=placementError(selected,k,pos)||reach(k);if(error){status(error);return}if(["frame","window","door"].includes(selected)){const p=center(k);if(Math.hypot(p.x-avatar.position.x,p.z-avatar.position.z)<.55){status("Step away from the wall before building.");return;}}if(trade.includes(selected)){openPuzzle(selected,k,pos);return}if(commit(job,selected,k,false,pos)){rebuild();updateUI();status(toolMap[selected].name+" installed.");}}
 function show(content){modalOpen=true;keys.clear();preview.visible=false;previewBounds.visible=false;$("modal").innerHTML=content;$("dialog").classList.remove("hidden")}
 function close(){activeTrade?.dispose();activeTrade=null;modalOpen=false;puzzleState=null;$("dialog").classList.add("hidden");keys.clear()}
 function shuffle(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b}
@@ -186,18 +224,15 @@ function shuffle(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.fl
 let activeTrade=null,panelWork=null;
 function exitPanel(){panelWork=null;avatar.visible=true;document.body.classList.remove("panel-working");modalOpen=false;keys.clear();hoverKey=null;previewSignature="";}
 function openPuzzle(id,k,pos){
- const p=center(k),spec=tradeSpec(id),wall=id==="breaker"||spec?.wall;
- const rot=p.axis==="z"?Math.PI/2:0;
- const side=wall&&(p.axis==="z"?avatar.position.x-p.x:avatar.position.z-p.z)<0?-1:1;
- pos={...pos,side};modalOpen=true;keys.clear();avatar.visible=false;preview.visible=false;previewBounds.visible=false;document.body.classList.add("panel-working");
- const origin=new THREE.Vector3(p.x+pos.x,.15+(id==="breaker"?1.45:spec.height),p.z+pos.z);
- if(wall)origin.add(new THREE.Vector3(0,0,.10*side).applyAxisAngle(new THREE.Vector3(0,1,0),rot));
- panelWork=startPanelWork({id,engine,canvas,origin,rotation:rot,side,hud:$("panelWork"),onComplete:()=>{if(commit(job,id,k,true,pos)){rebuild();updateUI();status(toolMap[id].name+" installed and checked.");}exitPanel()},onCancel:()=>{exitPanel();status("Work canceled; no materials charged.")}});
+ const transform=transformFixture(engine.scene,id,k,pos);transform.updateMatrixWorld(true);const origin=transform.getWorldPosition(new THREE.Vector3()),orientation=transform.quaternion.clone(),scale=transform.scale.clone();transform.removeFromParent();modalOpen=true;keys.clear();avatar.visible=false;preview.visible=false;previewBounds.visible=false;document.body.classList.add("panel-working");
+ panelWork=startPanelWork({id,engine,canvas,origin,orientation,scale,hud:$("panelWork"),onComplete:()=>{if(commit(job,id,k,true,pos)){rebuild();updateUI();status(toolMap[id].name+" installed and checked.");}exitPanel()},onCancel:()=>{exitPanel();status("Work canceled; no materials charged.")}});
 }
 function openInspection(){const items=inspection(job),ok=items.every(x=>x.ok);show('<div class="tag">PROPERTY / INSPECTION</div><h2>Ready for sale?</h2><p>Estimated sale price '+money(price(job))+' · construction cost '+money(job.spent)+'</p><div class="inspection">'+items.map(i=>'<div class="'+(i.ok?"pass":"fail")+'">'+(i.ok?"✓ ":"○ ")+i.name+'</div>').join("")+'</div><div class="actions"><button id="cancel">Back to work</button><button class="primary" id="sell" '+(ok?"":"disabled")+'>Sell property</button></div>');$("cancel").onclick=close;$("sell").onclick=()=>{if(sell(job)){updateUI();show('<div class="tag">PROPERTY SOLD</div><h2>Sale completed</h2><p>Cash: '+money(job.cash)+' · '+job.homes+' homes sold.</p><button id="new" class="primary">Start a new custom home</button>');$("new").onclick=()=>{next(job);avatar.position.set(0,0,9.2);rebuild();updateUI();close();status("New lot ready.")}}}}
 function toggleSnap(){snap=!snap;siteGrid.visible=snap;$("snap").textContent="Snap: "+(snap?"ON":"OFF");$("snap").setAttribute("aria-pressed",String(snap));previewSignature="";status(snap?"Grid snap enabled.":"Free fixture positioning enabled. Structural modules attach to their foundation; the first tile sets the layout origin.");if(hoverKey)refreshPreview(hoverKey,hoverPos)}
 $("snap").onclick=toggleSnap;
+function rotateFixture(){fixtureRotation=(fixtureRotation+1)%4;previewSignature="";if(hoverKey)refreshPreview(hoverKey,hoverPos);status("Floor fixture rotation: "+fixtureRotation*90+"°");}
+$("rotateFixture").onclick=rotateFixture;
 $("undo").onclick=()=>{if(!modalOpen&&undo(job)){rebuild();updateUI();status("Last change undone.")}};$("roofView").onclick=()=>{roofVisible=!roofVisible;$("roofView").textContent="Roof: "+(roofVisible?"visible":"hidden");rebuild()};$("inspect").onclick=openInspection;$("reset").onclick=()=>{yaw=0;zoom=7;pitch=.83};
-window.addEventListener("keydown",e=>{if(modalOpen){if(e.key==="Escape"&&!job.sold)close();return}const k=e.key.toLowerCase();if(k==="g"&&!e.repeat){e.preventDefault();toggleSnap();return}if(["w","a","s","d","q","e","shift"].includes(k)){e.preventDefault();keys.add(k)}});window.addEventListener("keyup",e=>keys.delete(e.key.toLowerCase()));window.addEventListener("blur",()=>keys.clear());for(const b of document.querySelectorAll("[data-move]")){b.onpointerdown=e=>{b.setPointerCapture(e.pointerId);keys.add(b.dataset.move)};b.onpointerup=b.onpointercancel=b.onlostpointercapture=()=>keys.delete(b.dataset.move)}
+window.addEventListener("keydown",e=>{if(modalOpen){if(e.key==="Escape"&&!job.sold)close();return}const k=e.key.toLowerCase();if(k==="r"&&!e.repeat){e.preventDefault();rotateFixture();return}if(k==="g"&&!e.repeat){e.preventDefault();toggleSnap();return}if(["w","a","s","d","q","e","shift"].includes(k)){e.preventDefault();keys.add(k)}});window.addEventListener("keyup",e=>keys.delete(e.key.toLowerCase()));window.addEventListener("blur",()=>keys.clear());for(const b of document.querySelectorAll("[data-move]")){b.onpointerdown=e=>{b.setPointerCapture(e.pointerId);keys.add(b.dataset.move)};b.onpointerup=b.onpointercancel=b.onlostpointercapture=()=>keys.delete(b.dataset.move)}
 try{boot()}catch(e){console.error(e);show('<h2>Unable to start the 3D site</h2><p>WebGL initialization failed. Check browser graphics acceleration.</p><a href="/">Return to GAMESHUB</a>');}
 </script></body></html>

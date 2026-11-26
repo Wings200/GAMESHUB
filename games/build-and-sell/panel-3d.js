@@ -113,7 +113,7 @@ const placeAt=(p,fac,xyz)=>{const o=fac(p);o.position.set(...xyz);return o};
 const paint=(p,w,h,d,x,y,z,m)=>round(p,w,h,d,x,y,z,m,.006);
 const porcelain=M("#e9e7df",.08,.27),chrome=M("#c3ccce",.8,.2),pvc=M("#d5d7d0"),hot=M("#ba7557",.45),cold=M("#7b9cb6",.35),gasket=M("#77736b"),cabwood=M("#aa9477"),duct=M("#8c9ea2",.5,.42);
 const wallbox=p=>{const q=g(p);b(q,.095,.15,.025,0,0,.005,blue);for(const x of [-.045,.045])b(q,.006,.15,.065,x,0,.038,blue);for(const y of [-.072,.072])b(q,.095,.007,.065,0,y,.038,blue);return q};
-const plate=p=>{const q=g(p);round(q,.118,.186,.008,0,0,0,plastic,.008);return q};
+const plate=p=>{const q=g(p);for(const x of [-.048,.048])round(q,.022,.186,.008,x,0,0,plastic,.003);for(const y of [-.079,.079])round(q,.074,.028,.008,0,y,0,plastic,.003);return q};
 function receptacle(p){const q=g(p);round(q,.074,.13,.035,0,0,0,plastic,.008);for(const y of [-.033,.033]){round(q,.058,.054,.007,0,y,.021,white,.007);for(const x of [-.012,.012])b(q,.007,.016,.003,x,y+.006,.026,black);const a=cy(q,.004,.004,0,y-.015,.026,black);a.rotation.x=Math.PI/2;}return q}
 function lightSwitch(p){const q=g(p);round(q,.07,.116,.028,0,0,0,plastic,.006);round(q,.039,.067,.016,0,0,.023,white,.006);b(q,.039,.003,.004,0,0,.033,dark);return q}
 function bracket(p){const q=g(p);b(q,.10,.018,.035,0,0,0,steel);for(const x of [-.04,.04])placeAt(q,screw,[x,0,.025]);return q}
@@ -145,7 +145,7 @@ const put=(title,tool,targets,parts,hint,sources)=>dragPart(title,tool,targets,p
 const markHoles=(q,i,p)=>b(q,.013,.005,.003,p[0],p[1],p[2],black);
 const mounted=(q,i,p)=>placeAt(q,screw,p);
 function electricalSpec(id){
- const isThree=id==="three",isOutlet=id==="outlet",xs=isThree?[-.19,.19]:[0],device=isOutlet?receptacle:lightSwitch;
+ const isThree=id==="three",isOutlet=id==="outlet",xs=isThree?[-.09,.09]:[0],device=isOutlet?receptacle:lightSwitch;
  const boxes=xs.map(x=>PT(x,0,.02)),screws=xs.flatMap(x=>[PT(x,.08,.072),PT(x,-.08,.072)]);
  const jacket=xs.map((x,i)=>[[x,.39,.04],[x,.21,.04],[x,.075,.05]]);
  const wiring=isThree?[
@@ -161,8 +161,9 @@ function electricalSpec(id){
  [[-.04,.085,.06],[-.055,.035,.075],[-.035,.025,.085]],
  [[.04,.085,.06],[.055,-.03,.075],[.035,-.025,.085]]
  ];
+ if(isThree)for(const path of wiring)for(const p of path)p[0]*=.09/.19;
  const terminals=wiring.map(p=>p.at(-1)),coverTargets=xs.map(x=>PT(x,0,.108));
- const backing=q=>{for(const x of xs)b(q,.085,.55,.05,x-.09,0,-.028,wood)};
+ const backing=q=>{};
  const sequence=[
  hold("Isolate the simulated lighting/receptacle circuit","Lockout tag",[PT(-.32,.31,.04)],"Tag the isolated game circuit.",(q)=>note(q,"ISOLATED",-.32,.31,.05)),
  hold("Verify isolation","Voltage tester",[PT(-.32,.21,.04)],"Check the isolated simulation before work.",(q)=>note(q,"VERIFIED",-.32,.21,.05)),
@@ -179,7 +180,7 @@ function electricalSpec(id){
  hold("Secure faceplate screws","Screwdriver",xs.flatMap(x=>[PT(x,.079,.118),PT(x,-.079,.118)]),"Fasten the cover plates.",mounted),
  hold(isThree?"Check both isolated control stations":isOutlet?"Check the isolated receptacle":"Check the isolated switch","Continuity tester",xs.map(x=>PT(x,0,.14)),"Run the game's simulated device check, with no live voltage.",()=>{})
  ];
- const final=q=>{for(let i=0;i<xs.length;i++){const x=xs[i];placeAt(q,wallbox,boxes[i]);placeAt(q,plate,coverTargets[i]);placeAt(q,device,[x,0,.122]);for(const y of [-.079,.079])placeAt(q,screw,[x,y,.121]);}jacket.forEach(p=>tube(q,p,black,.009));};
+ const final=q=>{for(let i=0;i<xs.length;i++){const x=xs[i];placeAt(q,wallbox,boxes[i]);placeAt(q,plate,coverTargets[i]);placeAt(q,device,[x,0,.079]);for(const y of [-.079,.079])placeAt(q,screw,[x,y,.121]);}jacket.forEach(p=>tube(q,p,black,.009));};
  return {id,stages:sequence,backing,final,height:isOutlet?.55:1.2,wall:true,distance:isThree?1.25:1.03,focus:[0,.06,.04],sourceX:-.48};
 }
 function sinkSpec(){
@@ -235,7 +236,7 @@ function ventSpec(){
  hold("Secure register hardware","Screwdriver",[PT(-.20,0,.096),PT(.20,0,.096)],"Secure the grille fasteners.",mounted),
  hold("Verify simulated airflow","Airflow meter",[PT(0,0,.12)],"Check the virtual register airflow.",()=>{})
  ];
- const final=q=>{placeAt(q,reg,[0,0,.027]);};
+ const final=q=>{placeAt(q,reg,[0,0,.075]);};
  return {id:"vent",stages:seq,backing:()=>{},final,height:.045,wall:false,distance:1.10,focus:[0,0,0],floorFace:true};
 }
 function airSpec(){
@@ -266,17 +267,18 @@ function airSpec(){
 const specs=Object.fromEntries([electricalSpec("outlet"),electricalSpec("switch"),electricalSpec("three"),sinkSpec(),toiletSpec(),ventSpec(),airSpec()].map(s=>[s.id,s]));
 export const tradeStageCounts=Object.fromEntries(Object.entries(specs).map(([id,s])=>[id,s.stages.map(a=>a.targets.length)]));
 export function tradeSpec(id){return specs[id]}
+export function fixtureAssembly(parent,id){const q=g(parent);if(id==="breaker")installed(q);else specs[id].final(q);return q}
 export function finishedTrade(parent,id,side=1){const s=specs[id];if(!s)return null;const q=g(parent,0,s.height,s.wall?.10*side:0);if(side<0&&s.wall)q.rotation.y=Math.PI;if(s.floorFace)q.rotation.x=-Math.PI/2;s.final(q);return q}
 
 export const panelStageCounts=stages.map(s=>s.targets.length);
 export function createPanelState(){return {stage:0,done:[]}}
 export function panelAction(s,i){const a=stages[s.stage];if(!a||!Number.isInteger(i)||i<0||i>=a.targets.length||s.done.includes(i))return false;s.done.push(i);return true}
 export function panelAdvance(s){const a=stages[s.stage];if(!a||s.done.length!==a.targets.length)return false;s.stage++;s.done=[];return true}
-export function startPanelWork({id="breaker",engine,canvas,origin,rotation,side=1,hud,onComplete,onCancel}){
+export function startPanelWork({id="breaker",engine,canvas,origin,orientation,scale,rotation=0,side=1,hud,onComplete,onCancel}){
  const spec=specs[id]||null,jobStages=spec?.stages||stages;
  const canAdvance=s=>{const a=jobStages[s.stage];if(!a||s.done.length!==a.targets.length)return false;s.stage++;s.done=[];return true};
  const perform=(s,i)=>{const a=jobStages[s.stage];if(!a||!Number.isInteger(i)||i<0||i>=a.targets.length||s.done.includes(i))return false;s.done.push(i);return true};
- const root=g(engine.scene,origin.x,origin.y,origin.z);root.rotation.y=rotation+(side<0?Math.PI:0);if(spec?.floorFace)root.rotation.x=-Math.PI/2;
+ const root=g(engine.scene,origin.x,origin.y,origin.z);if(orientation)root.quaternion.copy(orientation);else{root.rotation.y=rotation+(side<0?Math.PI:0);if(spec?.floorFace)root.rotation.x=-Math.PI/2;}if(scale)root.scale.copy(scale);
  const oldCamera=engine.camera.position.clone(),oldRotation=engine.camera.quaternion.clone();const state=createPanelState(),ray=new THREE.Raycaster(),plane=new THREE.Plane(),ndc=new THREE.Vector2();let live=true,stageRoot,markers=[],sources=[],active=null,hover=null,clock=0,raf=0;
  const hudText=hud.querySelector("[data-panel-text]"),progress=hud.querySelector("[data-panel-progress]"),tool=hud.querySelector("[data-panel-tool]"),bar=hud.querySelector("[data-panel-fill]"),cancel=hud.querySelector("[data-panel-cancel]");
  const glow=new THREE.MeshBasicMaterial({color:"#e9cf79",transparent:true,opacity:.8,depthTest:false});
@@ -291,9 +293,9 @@ export function startPanelWork({id="breaker",engine,canvas,origin,rotation,side=
  const r=canvas.getBoundingClientRect();ndc.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ndc,engine.camera);
  const n=V(0,0,1).applyQuaternion(root.quaternion);plane.setFromNormalAndCoplanarPoint(n,root.localToWorld(V(0,0,.15)));const p=ray.ray.intersectPlane(plane,V());return p?root.worldToLocal(p):null
  }
- const d2=(a,p)=>Math.hypot(a.x-p[0],a.y-p[1]);
+ const markerPoint=p=>V(p[0],p[1],p[2]+.026);const screen=p=>{const v=root.localToWorld(p.clone()).project(engine.camera),r=canvas.getBoundingClientRect();return {x:(v.x+1)*r.width/2,y:(1-v.y)*r.height/2}};const pointer=e=>{const r=canvas.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top}};const d2=(a,p)=>{const q=screen(markerPoint(p));return Math.hypot(a.x-q.x,a.y-q.y)};
  function nearest(a,pts,r,exclude=[]){let hit=-1,best=r;pts.forEach((p,i)=>{const d=d2(a,p);if(!exclude.includes(i)&&d<best){best=d;hit=i}});return hit}
- function ring(p,done=false,r=.015){const o=mesh(stageRoot,new THREE.RingGeometry(r*.66,r,28),done?doneGlow:glow,p[0],p[1],Math.max(p[2]+.018,.16));o.renderOrder=10;return o}
+ function ring(p,done=false,r=.015){const o=mesh(stageRoot,new THREE.RingGeometry(r*.66,r,28),done?doneGlow:glow,p[0],p[1],p[2]+.026);o.renderOrder=10;return o}
  function buildTool(name){for(const o of [...toolModel.children])disposeObj(o);handTool(toolModel,name)}
  function prior(n){return state.stage>n}
  function stageDone(n,i){return prior(n)||state.stage===n&&state.done.includes(i)}
@@ -302,7 +304,7 @@ export function startPanelWork({id="breaker",engine,canvas,origin,rotation,side=
  const st=jobStages[state.stage];
  if(spec){spec.backing(stageRoot);for(let n=0;n<=state.stage;n++){const a=jobStages[n];if(a.after)for(let i=0;i<a.targets.length;i++)if(stageDone(n,i))a.after(stageRoot,i,a.targets[i]);}}else{
  // Backing exists in the room, not in a detached workbench.
- b(stageRoot,.50,.69,.018,0,0,-.01,wood);
+ // Actual framed wall remains visible behind the cabinet.
  if(stageDone(0,0)){const t=b(stageRoot,.064,.088,.013,-.31,.32,.03,red);note(stageRoot,"LOCKED",-.31,.32,.039);}
  if(stageDone(1,0))note(stageRoot,"ISOLATED",-.31,.21,.037);
  if(!prior(4)){for(let i=0;i<mounts.length;i++){const [x,y]=mounts[i];if(stageDone(2,i))b(stageRoot,.012,.003,.002,x,y,.003,black);if(stageDone(3,i))cy(stageRoot,.006,.004,x,y,.005,dark).rotation.x=Math.PI/2;}}
@@ -322,31 +324,31 @@ export function startPanelWork({id="breaker",engine,canvas,origin,rotation,side=
  if(st.mode==="route") {
  // Work one conductor at a time; overlapping starts cannot steal a different route.
  const i=st.targets.findIndex((_,n)=>!state.done.includes(n));if(i>=0){
- const pts=st.paths[i];const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts.map(p=>V(p[0],p[1],.17))),guideMat);line.computeLineDistances();line.renderOrder=9;stageRoot.add(line);pts.forEach((p,n)=>ring(p,false,n===0?.018:.009));
+ const pts=st.paths[i];const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts.map(p=>markerPoint(p))),guideMat);line.computeLineDistances();line.renderOrder=9;stageRoot.add(line);pts.forEach((p,n)=>ring(p,false,n===0?.018:.009));
  }
  } else st.targets.forEach((p,i)=>ring(p,state.done.includes(i),st.mode==="drag"?.022:.014));
  buildTool(st.tool);hudText.textContent=st.title+" — "+st.hint;tool.textContent=st.tool;progress.textContent=(state.stage+1)+" / "+jobStages.length+" · "+state.done.length+" / "+st.targets.length;bar.style.width=100*(state.stage+state.done.length/st.targets.length)/jobStages.length+"%";
  }
  function success(i){if(!perform(state,i))return;if(liveRoute){disposeObj(liveRoute);liveRoute=null;}active=null;toolModel.visible=false;cursor.visible=false;if(canAdvance(state)){if(state.stage===jobStages.length){cleanup();onComplete();return}}draw()}
  function stop(){if(liveRoute){disposeObj(liveRoute);liveRoute=null;}active=null;cancelAnimationFrame(raf);raf=0;toolModel.visible=false;cursor.visible=false}
- function down(e){if(!live||e.button!==0)return;e.preventDefault();e.stopImmediatePropagation();const st=jobStages[state.stage],p=localFromPointer(e);if(!p)return;const i=st.mode==="drag"?nearest(p,st.sources,.095,state.done):st.mode==="route"?st.targets.findIndex((_,n)=>!state.done.includes(n)):nearest(p,st.targets,.033,state.done);if(i<0||st.mode==="route"&&d2(p,st.paths[i][0])>.038)return;
+ function down(e){if(!live||e.button!==0)return;e.preventDefault();e.stopImmediatePropagation();const st=jobStages[state.stage],p=localFromPointer(e),s=pointer(e);if(!p)return;const i=st.mode==="drag"?nearest(s,st.sources,52,state.done):st.mode==="route"?st.targets.findIndex((_,n)=>!state.done.includes(n)):nearest(s,st.targets,25,state.done);if(i<0||st.mode==="route"&&d2(s,st.paths[i][0])>30)return;
  canvas.setPointerCapture(e.pointerId);
  if(st.mode==="click"){success(i);return}
- active={i,pointer:e.pointerId,start:performance.now(),last:p.clone(),next:1};
+ active={i,pointer:e.pointerId,start:performance.now(),last:p.clone(),lastScreen:s,next:1};
  if(st.mode==="hold"){toolModel.visible=true;toolModel.position.set(st.targets[i][0],st.targets[i][1]-.02,.205);const loop=t=>{if(!live||!active)return;const f=Math.min(1,(t-active.start)/750);toolModel.rotation.z=Math.sin(f*30)*.15;if(f===1){success(i)}else raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop)}
  else if(st.mode==="drag"){active.obj=sources[i];active.original=active.obj.position.clone()}
  }
  function move(e){if(!live)return;e.stopImmediatePropagation();const st=jobStages[state.stage],p=localFromPointer(e);if(!p)return;cursor.visible=true;cursor.position.set(p.x,p.y,.21);
  if(!active)return;if(st.mode==="drag"){active.obj.position.set(p.x,p.y,.20)}
- else if(st.mode==="hold"&&d2(p,st.targets[active.i])>.046)stop();
- else if(st.mode==="route"){const pts=st.paths[active.i],a=active.last;const len=a.distanceTo(p);for(let j=1,n=Math.max(1,Math.ceil(len/.008));j<=n;j++){const q=a.clone().lerp(p,j/n);if(active.next<pts.length&&d2(q,pts[active.next])<.024)active.next++}active.last=p.clone();if(liveRoute)disposeObj(liveRoute);const drawn=[...pts.slice(0,active.next).map(q=>[q[0],q[1],.18]),[p.x,p.y,.18]];if(drawn.length>1&&drawn.some(q=>Math.hypot(q[0]-drawn[0][0],q[1]-drawn[0][1])>.002))liveRoute=tube(root,drawn,toolOrange,.005);if(active.next===pts.length){const i=active.i;success(i)}}
+ else if(st.mode==="hold"&&d2(pointer(e),st.targets[active.i])>40)stop();
+ else if(st.mode==="route"){const pts=st.paths[active.i],a=active.lastScreen,b=pointer(e);const len=Math.hypot(a.x-b.x,a.y-b.y);for(let j=1,n=Math.max(1,Math.ceil(len/5));j<=n;j++){const q={x:a.x+(b.x-a.x)*j/n,y:a.y+(b.y-a.y)*j/n};if(active.next<pts.length&&d2(q,pts[active.next])<19)active.next++}active.lastScreen=b;active.last=p.clone();if(liveRoute)disposeObj(liveRoute);const drawn=[...pts.slice(0,active.next).map(q=>[q[0],q[1],q[2]+.026]),[p.x,p.y,.15]];if(drawn.length>1&&drawn.some(q=>Math.hypot(q[0]-drawn[0][0],q[1]-drawn[0][1])>.002))liveRoute=tube(root,drawn,toolOrange,.005);if(active.next===pts.length){const i=active.i;success(i)}}
  }
- function up(e){if(!live)return;e.stopImmediatePropagation();if(!active)return;const st=jobStages[state.stage],a=active,p=localFromPointer(e);if(st.mode==="drag"){if(p&&d2(p,st.targets[a.i])<.055){success(a.i);return}a.obj.position.copy(a.original)}stop()}
+ function up(e){if(!live)return;e.stopImmediatePropagation();if(!active)return;const st=jobStages[state.stage],a=active,p=localFromPointer(e);if(st.mode==="drag"){if(p&&d2(pointer(e),st.targets[a.i])<38){success(a.i);return}a.obj.position.copy(a.original)}stop()}
  function wheel(e){if(live){e.preventDefault();e.stopImmediatePropagation()}}
  function key(e){if(live&&e.key==="Escape"){e.preventDefault();e.stopImmediatePropagation();cleanup();onCancel()}}
  function cleanup(){if(!live)return;live=false;stop();for(const [n,f] of [["pointerdown",down],["pointermove",move],["pointerup",up],["pointercancel",up],["wheel",wheel]])canvas.removeEventListener(n,f,true);window.removeEventListener("keydown",key,true);disposeObj(root);glow.dispose();doneGlow.dispose();guideMat.dispose();hud.classList.add("hidden");engine.camera.position.copy(oldCamera);engine.camera.quaternion.copy(oldRotation);}
  for(const [n,f] of [["pointerdown",down],["pointermove",move],["pointerup",up],["pointercancel",up],["wheel",wheel]])canvas.addEventListener(n,f,{capture:true,passive:false});window.addEventListener("keydown",key,true);
  cancel.onclick=()=>{cleanup();onCancel()};hud.classList.remove("hidden");draw();
- function frame(){if(!live)return;root.updateMatrixWorld(true);const f=spec?.focus||[-.04,.015,.05],distance=(spec?.distance||1.18)*Math.max(1,1.15/engine.camera.aspect),tilt=0;const target=root.localToWorld(V(f[0],f[1]-.045,f[2]));const camera=root.localToWorld(V(f[0],f[1]+tilt*distance,f[2]+distance));engine.camera.position.copy(camera);engine.camera.lookAt(target)}
+ function frame(){if(!live)return;root.updateMatrixWorld(true);const f=spec?.focus||[-.04,.015,.05],distance=(spec?.distance||1.18)*Math.max(1,1.15/engine.camera.aspect),tilt=spec?.tilt||0;const target=root.localToWorld(V(f[0],f[1]-.045,f[2]));const camera=root.localToWorld(V(f[0],f[1]+tilt*distance,f[2]+distance));engine.camera.position.copy(camera);engine.camera.lookAt(target)}
  frame();return {frame,dispose:cleanup,state};
 }
