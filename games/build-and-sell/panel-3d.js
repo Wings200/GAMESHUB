@@ -144,6 +144,14 @@ const applyPart=(parts,targets)=>(q,i)=>placeAt(q,parts[i],targets[i]);
 const put=(title,tool,targets,parts,hint,sources)=>dragPart(title,tool,targets,parts,hint,applyPart(parts,targets),sources);
 const markHoles=(q,i,p)=>b(q,.013,.005,.003,p[0],p[1],p[2],black);
 const mounted=(q,i,p)=>placeAt(q,screw,p);
+function terminalDevice(parent,device,terminals){
+ const q=g(parent);
+ const xs=[...new Set(terminals.map(p=>p[0]<-.065?-.09:p[0]>.065?.09:0))];
+ // Back of the game mechanism is exposed while working on it.
+ for(const x of xs){const d=device(q);d.position.set(x,0,.11);d.rotation.y=Math.PI;}
+ for(const p of terminals){const [x,y,z]=p;round(q,.023,.025,.012,x,y,z,steel,.003);const s=screw(q);s.position.set(x,y,z+.01);}
+ return q;
+}
 function electricalSpec(id){
  const isThree=id==="three",isOutlet=id==="outlet",xs=isThree?[-.09,.09]:[0],device=isOutlet?receptacle:lightSwitch;
  const boxes=xs.map(x=>PT(x,0,.02)),screws=xs.flatMap(x=>[PT(x,.08,.072),PT(x,-.08,.072)]);
@@ -163,17 +171,17 @@ function electricalSpec(id){
  ];
  if(isThree)for(const path of wiring)for(const p of path)p[0]*=.09/.19;
  const terminals=wiring.map(p=>p.at(-1)),coverTargets=xs.map(x=>PT(x,0,.108));
- const backing=q=>{};
+ const backing=(q,state)=>{if(state&&state.stage>=7&&state.stage<=8)terminalDevice(q,device,terminals);};
  const sequence=[
- hold("Isolate the simulated lighting/receptacle circuit","Lockout tag",[PT(-.32,.31,.04)],"Tag the isolated game circuit.",(q)=>note(q,"ISOLATED",-.32,.31,.05)),
- hold("Verify isolation","Voltage tester",[PT(-.32,.21,.04)],"Check the isolated simulation before work.",(q)=>note(q,"VERIFIED",-.32,.21,.05)),
+ hold("Isolate the simulated lighting/receptacle circuit","Lockout tag",[PT(-.32,.31,.04)],"Tag the isolated game circuit.",(q)=>{round(q,.05,.075,.025,-.32,.31,.025,red,.004);note(q,"ISOLATED",-.32,.31,.041)}),
+ hold("Verify isolation","Voltage tester",[PT(-.32,.21,.04)],"Check the isolated simulation before work.",()=>{}),
  click("Mark the wall-box positions","Pencil",screws.map(p=>[p[0],p[1],.003]),"Mark the mounting positions.",markHoles),
  put(isThree?"Mount both switch boxes":"Position the wall box","Wall box",boxes,boxes.map(()=>wallbox),"Fit the wall box into the prepared framing."),
  hold("Fasten the box hardware","Impact driver",screws,"Secure the box to the support.",mounted),
  route(isThree?"Pull cable to both control stations":"Pull the cable into the box","Cable",jacket,jacket.map(()=>black),"Guide the cable through the marked route.",jacket.map(()=>.009)),
  hold("Prepare the isolated cable ends","Cable stripper",jacket.map(p=>p.at(-1)),"Use the virtual cable stripper; no real stripping dimensions.",(q,i,p)=>{for(let n=0;n<3;n++)tube(q,[p,[p[0]+(n-1)*.014,p[1]-.024,.07]],[lead,white,ground][n],.003)}),
  route(isThree?"Route the two-station control conductors":isOutlet?"Route receptacle conductors":"Route switch conductors","Needle-nose pliers",wiring,wiring.map((_,i)=>[lead,white,ground,red][i%4]),"Guide each lead along the fictional isolated circuit's highlighted path.",wiring.map(()=>.0035)),
- hold("Secure the simulated device terminals","Torque screwdriver",terminals,"Seat each connection with the virtual driver.",mounted),
+ hold("Secure the simulated device terminals","Torque screwdriver",terminals,"Hold the driver on each numbered terminal until it turns green.",()=>{}),
  put(isThree?"Fit both control mechanisms":isOutlet?"Seat the duplex receptacle":"Seat the switch mechanism","Device",xs.map(x=>PT(x,0,.079)),xs.map(()=>device),"Fit the device into its own wall box."),
  hold("Secure device yokes","Screwdriver",screws,"Secure both mounting points for each device.",mounted),
  put("Fit the faceplates","Faceplate",coverTargets,xs.map(()=>plate),"Fit the plates flush over the boxes."),
@@ -279,7 +287,7 @@ export function startPanelWork({id="breaker",engine,canvas,origin,orientation,sc
  const canAdvance=s=>{const a=jobStages[s.stage];if(!a||s.done.length!==a.targets.length)return false;s.stage++;s.done=[];return true};
  const perform=(s,i)=>{const a=jobStages[s.stage];if(!a||!Number.isInteger(i)||i<0||i>=a.targets.length||s.done.includes(i))return false;s.done.push(i);return true};
  const root=g(engine.scene,origin.x,origin.y,origin.z);if(orientation)root.quaternion.copy(orientation);else{root.rotation.y=rotation+(side<0?Math.PI:0);if(spec?.floorFace)root.rotation.x=-Math.PI/2;}if(scale)root.scale.copy(scale);root.updateMatrixWorld(true);
- const oldCamera=engine.camera.position.clone(),oldRotation=engine.camera.quaternion.clone();const state=createPanelState(),ray=new THREE.Raycaster(),plane=new THREE.Plane(),ndc=new THREE.Vector2();let live=true,stageRoot,markers=[],sources=[],active=null,hover=null,clock=0,raf=0;
+ const oldCamera=engine.camera.position.clone(),oldRotation=engine.camera.quaternion.clone();let workZoom=1,workAngle=0,lookDrag=null;const state=createPanelState(),ray=new THREE.Raycaster(),plane=new THREE.Plane(),ndc=new THREE.Vector2();let live=true,stageRoot,markers=[],sources=[],active=null,hover=null,clock=0,raf=0;
  const hudText=hud.querySelector("[data-panel-text]"),progress=hud.querySelector("[data-panel-progress]"),tool=hud.querySelector("[data-panel-tool]"),bar=hud.querySelector("[data-panel-fill]"),cancel=hud.querySelector("[data-panel-cancel]");
  const glow=new THREE.MeshBasicMaterial({color:"#e9cf79",transparent:true,opacity:.8,depthTest:false});
  const doneGlow=new THREE.MeshBasicMaterial({color:"#9ee0a0",transparent:true,opacity:.7,depthTest:false});
@@ -302,7 +310,7 @@ export function startPanelWork({id="breaker",engine,canvas,origin,orientation,sc
  function draw(){
  if(stageRoot)disposeObj(stageRoot);stageRoot=g(root);markers=[];sources=[];
  const st=jobStages[state.stage];
- if(spec){spec.backing(stageRoot);for(let n=0;n<=state.stage;n++){const a=jobStages[n];if(a.after)for(let i=0;i<a.targets.length;i++)if(stageDone(n,i))a.after(stageRoot,i,a.targets[i]);}}else{
+ if(spec){spec.backing(stageRoot,state);for(let n=0;n<=state.stage;n++){const a=jobStages[n];if(a.after)for(let i=0;i<a.targets.length;i++)if(stageDone(n,i))a.after(stageRoot,i,a.targets[i]);}}else{
  // Backing exists in the room, not in a detached workbench.
  // Actual framed wall remains visible behind the cabinet.
  if(stageDone(0,0)){const t=b(stageRoot,.064,.088,.013,-.31,.32,.03,red);note(stageRoot,"LOCKED",-.31,.32,.039);}
@@ -326,29 +334,29 @@ export function startPanelWork({id="breaker",engine,canvas,origin,orientation,sc
  const i=st.targets.findIndex((_,n)=>!state.done.includes(n));if(i>=0){
  const pts=st.paths[i];const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts.map(p=>markerPoint(p))),guideMat);line.computeLineDistances();line.renderOrder=9;stageRoot.add(line);pts.forEach((p,n)=>ring(p,false,n===0?.018:.009));
  }
- } else st.targets.forEach((p,i)=>ring(p,state.done.includes(i),st.mode==="drag"?.022:.014));
- buildTool(st.tool);hudText.textContent=st.title+" — "+st.hint;tool.textContent=st.tool;progress.textContent=(state.stage+1)+" / "+jobStages.length+" · "+state.done.length+" / "+st.targets.length;bar.style.width=100*(state.stage+state.done.length/st.targets.length)/jobStages.length+"%";
+ } else {const next=st.targets.findIndex((_,i)=>!state.done.includes(i));st.targets.forEach((p,i)=>{if(state.done.includes(i))ring(p,true,.009);else if(st.mode==="hold"||st.mode==="click"){if(i===next)ring(p,false,.021);}else ring(p,false,.022)});}
+ buildTool(st.tool);hudText.textContent=st.title+" — "+st.hint;tool.textContent=st.tool;progress.textContent="Stage "+(state.stage+1)+" / "+jobStages.length+" · "+state.done.length+" / "+st.targets.length+" completed";bar.style.width=100*(state.stage+state.done.length/st.targets.length)/jobStages.length+"%";
  }
  function success(i){if(!perform(state,i))return;if(liveRoute){disposeObj(liveRoute);liveRoute=null;}active=null;toolModel.visible=false;cursor.visible=false;if(canAdvance(state)){if(state.stage===jobStages.length){cleanup();onComplete();return}}draw()}
  function stop(){if(liveRoute){disposeObj(liveRoute);liveRoute=null;}active=null;cancelAnimationFrame(raf);raf=0;toolModel.visible=false;cursor.visible=false}
- function down(e){if(!live||e.button!==0)return;e.preventDefault();e.stopImmediatePropagation();const st=jobStages[state.stage],p=localFromPointer(e),s=pointer(e);if(!p)return;const i=st.mode==="drag"?nearest(s,st.sources,52,state.done):st.mode==="route"?st.targets.findIndex((_,n)=>!state.done.includes(n)):nearest(s,st.targets,25,state.done);if(i<0||st.mode==="route"&&d2(s,st.paths[i][0])>30)return;
+ function down(e){if(!live)return;if(e.button===2){e.preventDefault();e.stopImmediatePropagation();lookDrag={x:e.clientX};canvas.setPointerCapture(e.pointerId);return;}if(e.button!==0)return;e.preventDefault();e.stopImmediatePropagation();const st=jobStages[state.stage],p=localFromPointer(e),s=pointer(e);if(!p)return;const next=st.targets.findIndex((_,n)=>!state.done.includes(n));const i=st.mode==="drag"?nearest(s,st.sources,62,state.done):next;if(i<0)return;const target=st.mode==="route"?st.paths[i][0]:st.targets[i];if(st.mode!=="drag"&&d2(s,target)>(st.mode==="route"?38:48)){hudText.textContent=st.title+" — Aim at the highlighted "+(st.mode==="route"?"route start":"work point")+".";return;}
  canvas.setPointerCapture(e.pointerId);
  if(st.mode==="click"){success(i);return}
  active={i,pointer:e.pointerId,start:performance.now(),last:p.clone(),lastScreen:s,next:1};
- if(st.mode==="hold"){toolModel.visible=true;toolModel.position.set(st.targets[i][0],st.targets[i][1]-.02,.205);const loop=t=>{if(!live||!active)return;const f=Math.min(1,(t-active.start)/750);toolModel.rotation.z=Math.sin(f*30)*.15;if(f===1){success(i)}else raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop)}
- else if(st.mode==="drag"){active.obj=sources[i];active.original=active.obj.position.clone()}
+ if(st.mode==="hold"){toolModel.visible=true;toolModel.position.set(st.targets[i][0],st.targets[i][1]-.02,.205);const loop=t=>{if(!live||!active)return;const f=Math.min(1,(t-active.start)/750);bar.style.width=100*(state.stage+(state.done.length+f)/st.targets.length)/jobStages.length+"%";toolModel.rotation.z=Math.sin(f*30)*.15;if(f===1){success(i)}else raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop)}
+ else if(st.mode==="drag"){active.obj=sources[i];active.original=active.obj.position.clone();active.grab=active.original.clone().sub(p)}
  }
- function move(e){if(!live)return;e.stopImmediatePropagation();const st=jobStages[state.stage],p=localFromPointer(e);if(!p)return;cursor.visible=true;cursor.position.set(p.x,p.y,.21);
- if(!active)return;if(st.mode==="drag"){active.obj.position.set(p.x,p.y,.20)}
- else if(st.mode==="hold"&&d2(pointer(e),st.targets[active.i])>40)stop();
+ function move(e){if(!live)return;e.stopImmediatePropagation();if(lookDrag){workAngle=THREE.MathUtils.clamp(workAngle+(e.clientX-lookDrag.x)*.004,-.40,.40);lookDrag.x=e.clientX;return;}const st=jobStages[state.stage],p=localFromPointer(e);if(!p)return;cursor.visible=true;cursor.position.set(p.x,p.y,.21);
+ if(!active)return;if(st.mode==="drag"){active.obj.position.set(p.x+active.grab.x,p.y+active.grab.y,active.original.z)}
+ else if(st.mode==="hold"&&d2(pointer(e),st.targets[active.i])>64){stop();hudText.textContent=st.title+" — Keep holding on the highlighted work point.";bar.style.width=100*(state.stage+state.done.length/st.targets.length)/jobStages.length+"%";}
  else if(st.mode==="route"){const pts=st.paths[active.i],a=active.lastScreen,b=pointer(e);const len=Math.hypot(a.x-b.x,a.y-b.y);for(let j=1,n=Math.max(1,Math.ceil(len/5));j<=n;j++){const q={x:a.x+(b.x-a.x)*j/n,y:a.y+(b.y-a.y)*j/n};if(active.next<pts.length&&d2(q,pts[active.next])<19)active.next++}active.lastScreen=b;active.last=p.clone();if(liveRoute)disposeObj(liveRoute);const drawn=[...pts.slice(0,active.next).map(q=>[q[0],q[1],q[2]+.026]),[p.x,p.y,.15]];if(drawn.length>1&&drawn.some(q=>Math.hypot(q[0]-drawn[0][0],q[1]-drawn[0][1])>.002))liveRoute=tube(root,drawn,toolOrange,.005);if(active.next===pts.length){const i=active.i;success(i)}}
  }
- function up(e){if(!live)return;e.stopImmediatePropagation();if(!active)return;const st=jobStages[state.stage],a=active,p=localFromPointer(e);if(st.mode==="drag"){if(p&&d2(pointer(e),st.targets[a.i])<38){success(a.i);return}a.obj.position.copy(a.original)}stop()}
- function wheel(e){if(live){e.preventDefault();e.stopImmediatePropagation()}}
+ function up(e){if(!live)return;e.stopImmediatePropagation();if(lookDrag){lookDrag=null;return;}if(!active)return;const st=jobStages[state.stage],a=active,p=localFromPointer(e);if(st.mode==="drag"){if(p&&d2(pointer(e),st.targets[a.i])<38){success(a.i);return}a.obj.position.copy(a.original)}stop()}
+ function wheel(e){if(live){e.preventDefault();e.stopImmediatePropagation();workZoom=THREE.MathUtils.clamp(workZoom*Math.exp(e.deltaY*.0015),.55,1.65)}}
  function key(e){if(live&&e.key==="Escape"){e.preventDefault();e.stopImmediatePropagation();cleanup();onCancel()}}
  function cleanup(){if(!live)return;live=false;stop();for(const [n,f] of [["pointerdown",down],["pointermove",move],["pointerup",up],["pointercancel",up],["wheel",wheel]])canvas.removeEventListener(n,f,true);window.removeEventListener("keydown",key,true);disposeObj(root);glow.dispose();doneGlow.dispose();guideMat.dispose();hud.classList.add("hidden");engine.camera.position.copy(oldCamera);engine.camera.quaternion.copy(oldRotation);}
  for(const [n,f] of [["pointerdown",down],["pointermove",move],["pointerup",up],["pointercancel",up],["wheel",wheel]])canvas.addEventListener(n,f,{capture:true,passive:false});window.addEventListener("keydown",key,true);
  cancel.onclick=()=>{cleanup();onCancel()};hud.classList.remove("hidden");draw();
- function frame(){if(!live)return;root.updateMatrixWorld(true);const f=spec?.focus||[-.04,.015,.05],distance=(spec?.distance||1.18)*Math.max(1,1.15/engine.camera.aspect),tilt=spec?.tilt||0;const target=root.localToWorld(V(f[0],f[1]-.045,f[2]));const camera=root.localToWorld(V(f[0],f[1]+tilt*distance,f[2]+distance));engine.camera.position.copy(camera);engine.camera.lookAt(target);engine.camera.updateMatrixWorld(true)}
+ function frame(){if(!live)return;root.updateMatrixWorld(true);const st=jobStages[state.stage],precision=spec?.wall&&state.stage>=7&&state.stage<=10,base=spec?.focus||[-.04,.015,.05],f=precision?[0,.015,.06]:base,distance=(spec?.distance||1.18)*(precision?.64:1)*workZoom*Math.max(1,1.15/engine.camera.aspect),tilt=spec?.tilt||0;const target=root.localToWorld(V(f[0],f[1]-.025,f[2]));const camera=root.localToWorld(V(f[0]+Math.sin(workAngle)*distance,f[1]+tilt*distance,f[2]+Math.cos(workAngle)*distance));engine.camera.position.copy(camera);engine.camera.lookAt(target);engine.camera.updateMatrixWorld(true)}
  frame();return {frame,dispose:cleanup,state};
 }
