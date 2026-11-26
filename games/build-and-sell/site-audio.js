@@ -7,7 +7,7 @@ const foot=i=>ROOT+"footstep_concrete_"+String(i%5).padStart(3,"0")+".ogg";
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 function media(url,loop=false){const a=new Audio();a.preload="auto";a.src=url;a.loop=loop;return a;}
 export function createSiteAudio(){
- let enabled=false,active=false,volume=.65,stepDistance=0,wasGround=true,lastAnim=null,lastMachine=null,wind=null,engine=null,tracks=null,plateMotor=null,plateLevel=0,context=null,windNode=null,windGain=null;
+ let enabled=false,active=false,volume=.65,stepDistance=0,wasGround=true,lastAnim=null,lastMachine=null,wind=null,engine=null,tracks=null,plateMotor=null,pump=null,plateLevel=0,context=null,windNode=null,windGain=null;
  const steps=Array.from({length:5},(_,i)=>media(foot(i))),oneShots=new Map(),lastPeerSteps=new Map();
  try{volume=clamp(Number(localStorage.getItem("build-sfx-volume")??.65),0,1);}catch{}
  if(!Number.isFinite(volume))volume=.65;
@@ -20,21 +20,21 @@ export function createSiteAudio(){
   if(name==="gravel")rate=.83+Math.random()*.18;if(name==="barrier")rate=.75;if(name==="rebar")rate=1.12;const a=bank.find(x=>x.paused||x.ended)||bank[0];try{a.currentTime=0;}catch{}a.volume=clamp(level*volume,0,1);a.playbackRate=rate;safePlay(a);
  }
  function unlock(){if(enabled)return;enabled=true;
-  wind=media(remote.wind,true);engine=media(remote.engine,true);tracks=media(remote.tracks,true);plateMotor=media(PLATE_RECORDING,true);
+  wind=media(remote.wind,true);engine=media(remote.engine,true);tracks=media(remote.tracks,true);plateMotor=media(PLATE_RECORDING,true);pump=media("https://upload.wikimedia.org/wikipedia/commons/3/3c/WWS_Pneumaticpump.ogg",true);
   // Never substitute failed REDLINE audio for construction equipment.
   plateMotor.addEventListener("error",()=>{console.warn("Plate compactor recording unavailable; no car-engine fallback.");});
   wind.addEventListener("error",()=>{if(!context)return;try{const n=context.createBufferSource(),g=context.createGain(),b=context.createBuffer(1,context.sampleRate*4,context.sampleRate),a=b.getChannelData(0);let s=0;for(let i=0;i<a.length;i++){s=.985*s+.015*(Math.random()*2-1);a[i]=s*4*Math.sin(Math.PI*i/a.length)**2;}n.buffer=b;n.loop=true;n.connect(g).connect(context.destination);g.gain.value=0;n.start();windNode=n;windGain=g;}catch{}});
   try{const C=window.AudioContext||window.webkitAudioContext;if(C){context=new C();context.resume().catch(()=>{});}}catch{}
   // Prime playback inside the user's click; browsers otherwise block sound.
-  for(const a of [wind,engine,tracks,plateMotor,...steps]){a.volume=0;safePlay(a);}
-  loop(wind,active?.20:0);loop(engine,0);loop(tracks,0);loop(plateMotor,0);
+  for(const a of [wind,engine,tracks,plateMotor,pump,...steps]){a.volume=0;safePlay(a);}
+  loop(wind,active?.20:0);loop(engine,0);loop(tracks,0);loop(plateMotor,0);loop(pump,0);
  }
  function start(){plateLevel=0;active=true;stepDistance=0;wasGround=true;lastMachine=null;lastAnim=null;}
- function stop(){plateLevel=0;active=false;loop(wind,0);loop(engine,0);loop(tracks,0);loop(plateMotor,0);if(windGain)windGain.gain.value=0;for(const bank of oneShots.values())for(const a of bank)a.pause();for(const a of steps)a.pause();lastPeerSteps.clear();}
- function update(dt,{p,driving,machine,digAnim,peers,listener,plate,plateOperating}){
+ function stop(){plateLevel=0;active=false;loop(wind,0);loop(engine,0);loop(tracks,0);loop(plateMotor,0);loop(pump,0);if(windGain)windGain.gain.value=0;for(const bank of oneShots.values())for(const a of bank)a.pause();for(const a of steps)a.pause();lastPeerSteps.clear();}
+ function update(dt,{p,driving,machine,digAnim,peers,listener,plate,plateOperating,pumping}){
   if(!active||!enabled)return;const dist=Math.hypot(listener.x-machine.x,listener.z-machine.z);
   const moving=lastMachine?Math.hypot(machine.x-lastMachine.x,machine.z-lastMachine.z)/Math.max(dt,.016):0;lastMachine={x:machine.x,z:machine.z};
-  const plateDistance=plate?Math.hypot(listener.x-plate.x,listener.z-plate.z):Infinity;const plateTarget=plate?.driver?(plateOperating?.26:.28/(1+plateDistance*.28)):0;plateLevel+=(plateTarget-plateLevel)*(1-Math.exp(-10*Math.max(0,dt)));loop(plateMotor,plateLevel,1);loop(wind,driving?.095:.22);if(windGain)windGain.gain.setTargetAtTime(volume*(driving?.045:.09),context.currentTime,.3);
+  loop(pump,pumping?.28:0,1);const plateDistance=plate?Math.hypot(listener.x-plate.x,listener.z-plate.z):Infinity;const plateTarget=plate?.driver?(plateOperating?.26:.28/(1+plateDistance*.28)):0;plateLevel+=(plateTarget-plateLevel)*(1-Math.exp(-10*Math.max(0,dt)));loop(plateMotor,plateLevel,1);loop(wind,driving?.095:.22);if(windGain)windGain.gain.setTargetAtTime(volume*(driving?.045:.09),context.currentTime,.3);
   loop(engine,machine.driver?(driving?.48:.48/(1+dist*.17)):0,clamp(.89+moving*.035+(digAnim&&performance.now()-digAnim.start<800?.07:0),.85,1.15));
   loop(tracks,machine.driver&&moving>.2?(driving?.19:.19/(1+dist*.2)):0,1);
   if(!driving){if(p.grounded&&p.speed>.22){stepDistance+=p.speed*dt;const gap=p.crouch?.65:p.mode==="run"?1.05:.79;if(stepDistance>=gap){stepDistance%=gap;one("step",p.crouch?.19:.38,Math.floor(Math.random()*5),.92+Math.random()*.13);}}else stepDistance=0;if(p.grounded&&!wasGround)one("step",.52,2,.85);wasGround=p.grounded;}
