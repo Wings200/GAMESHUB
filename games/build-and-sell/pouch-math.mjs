@@ -19,7 +19,8 @@ export const TOOLS=[
 ["electric","Box mounting kit","Electrical","T type · R/F height · LMB mount"],
 ["cable","Cable spool & drill","Electrical","T cable type · R/F height · hold LMB route"],
 ["outlet","Device wiring kit","Electrical","Outlets, switches & lights · hold to work · T mode/seat"],
-["panel","Breaker panel kit","Electrical","T rating · R/F cable · LMB work"]
+["panel","Breaker panel kit","Electrical","T rating · R/F cable · LMB work"],
+["heater","Water heater kit","Plumbing","LMB place/select/connect · T port · R disconnect"]
 ].map(([id,name,category,controls])=>({id,name,category,controls}));
 export function cleanPouch(input){const seen=new Set(),arr=Array.isArray(input)?input:[];return Array.from({length:3},(_,i)=>{const id=arr[i];if(!TOOLS.some(t=>t.id===id)||seen.has(id))return null;seen.add(id);return id;});}
 export function putTool(pouch,slot,id){const p=cleanPouch(pouch);if(!Number.isInteger(slot)||slot<0||slot>2||id!==null&&!TOOLS.some(t=>t.id===id))return p;const previous=p.indexOf(id);if(id!==null&&previous>=0&&previous!==slot)p[previous]=p[slot];p[slot]=id;return p;}
