@@ -5,7 +5,7 @@ import {AnimationController} from "../../engine/animation.js";
 import {RoundedBoxGeometry} from "three/addons/geometries/RoundedBoxGeometry.js";
 import {playerState,step,snapshot,sanitizePose,angleMix,clamp,STAND} from "./movement.mjs";
 const $=id=>document.getElementById(id),canvas=$("world"),keys=new Set(),peers=new Map();
-let engine,asset=null,session=null,playing=false,p=playerState(0,5),lastSync=0,inFlight=false,failures=0,generation=0,hands,stepPhase=0,lastStatus=0,localBody;
+let engine,asset=null,session=null,playing=false,p=playerState(0,5),lastSync=0,inFlight=false,failures=0,generation=0,hands,stepPhase=0,lastStatus=0,localBody,saveMeta=null,saveReady=false,menuBusy=false,leaving=false,noticeUntil=0;
 const mat=(color,roughness=.8)=>new THREE.MeshStandardMaterial({color,roughness});
 const dirt=mat("#b39d7d"),grass=mat("#799258"),wood=mat("#a58b63"),dark=mat("#34414a"),glove=mat("#3c494c"),sleeve=mat("#5a6766"),road=mat("#777f80");
 function box(parent,w,h,d,x,y,z,m,rounded=false){const o=new THREE.Mesh(rounded?new RoundedBoxGeometry(w,h,d,3,Math.min(w,h,d)*.20):new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o}
@@ -39,27 +39,64 @@ function drawPeers(dt){for(const a of peers.values()){if(!a.target)continue;cons
  }}
 async function post(payload){const ac=new AbortController(),timer=setTimeout(()=>ac.abort(),7000);try{const response=await fetch("/api/build-and-sell/session",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),signal:ac.signal});const data=await response.json();if(!response.ok||!data.ok){const e=new Error(data.error||"Session request failed");e.status=response.status;throw e;}return data;}finally{clearTimeout(timer)}}
 async function sync(){if(!session||inFlight||!playing)return;const s=session,g=generation;inFlight=true;
- try{const d=await post({action:"sync",...s,pose:snapshot(p)});if(g!==generation)return;failures=0;updatePeers(d.players);$("net").textContent="Connected · state updates";}
- catch(e){if(g!==generation)return;failures++;$("net").textContent=e.status===410?"Session expired · leave and rejoin":"Connection interrupted · retrying";if(e.status===410){for(const id of peers.keys())removePeer(id);}}
+ try{const d=await post({action:"sync",...s,pose:snapshot(p)});if(g!==generation)return;failures=0;updatePeers(d.players);if(performance.now()>noticeUntil)$("net").textContent=session.host?"Connected · autosave active":"Connected · guest";}
+ catch(e){if(g!==generation)return;failures++;$("net").textContent=e.status===410?"Session expired · leave and rejoin":"Connection interrupted · retrying";if(e.status===410){returnToMenu("Session ended. Load your world or ask for a fresh code.");}}
  finally{if(g===generation)inFlight=false;}
 }
-function begin(s=null){session=s;generation++;inFlight=false;failures=0;lastSync=0;playing=true;p=playerState(s?(Math.random()-.5)*3:0,4+Math.random()*1.2);keys.clear();$("menu").classList.add("hidden");for(const id of ["hud","cross","help","pause"])$(id).classList.remove("hidden");$("session").textContent=s?"SESSION "+s.code:"SOLO";$("copy").classList.toggle("hidden",!s);$("net").textContent=s?"Connecting…":"Local movement test";$("roster").textContent=s?"1 / 8 builders":"1 builder";hands.root.visible=true;localBody.q.visible=true;if(s)sync();}
-function leave(){const s=session;generation++;playing=false;session=null;keys.clear();inFlight=false;document.exitPointerLock?.();for(const id of peers.keys())removePeer(id);hands.root.visible=false;localBody.q.visible=false;for(const id of ["hud","cross","help","pause"])$(id).classList.add("hidden");$("menu").classList.remove("hidden");if(s)post({action:"leave",...s}).catch(()=>{});}
-async function online(action){if(playing)return;const buttons=[$("solo"),$("host"),$("join")];buttons.forEach(b=>b.disabled=true);$("error").textContent="Connecting…";try{if(!asset)throw Error("Character asset must load before multiplayer.");const s=await post({action,name:$("name").value,code:$("code").value.trim().toUpperCase()});$("error").textContent="";begin({code:s.code,id:s.id,token:s.token});}catch(e){$("error").textContent=e.message||"Could not connect."}finally{buttons.forEach(b=>b.disabled=false)}}
+
+function notice(message){noticeUntil=performance.now()+4000;$("net").textContent=message;}
+async function refreshSaves(){
+ saveReady=false;$("host").disabled=true;$("host").textContent="Checking saves…";
+ try{const d=await post({action:"list"});saveMeta=d.save;saveReady=true;$("host").textContent=saveMeta?"Load & Host":"NEW";$("saveInfo").textContent=saveMeta?"Saved "+new Date(saveMeta.updated).toLocaleString():"No saved world. NEW creates your first world.";if(d.username)$("name").value=d.username;}
+ catch(e){$("host").textContent="Check saves";$("saveInfo").textContent=e.message;saveMeta=null;}
+ finally{$("host").disabled=menuBusy;}
+}
+function begin(s){
+ if(!s?.code||!s.id||!s.token)throw Error("Missing session credentials.");
+ session={code:s.code,id:s.id,token:s.token,host:!!s.host};generation++;inFlight=false;failures=0;lastSync=0;playing=true;
+ const spawn=s.host&&sanitizePose(s.pose);p=spawn?playerState(spawn.x,spawn.z):playerState((Math.random()-.5)*3,4+Math.random()*1.2);
+ if(spawn){p.yaw=spawn.yaw;p.pitch=spawn.pitch;}
+ keys.clear();$("menu").classList.add("hidden");for(const id of ["hud","cross","help","pause"])$(id).classList.remove("hidden");
+ $("session").textContent="SESSION "+s.code;$("copy").classList.remove("hidden");$("save").classList.toggle("hidden",!s.host);$("leave").textContent=s.host?"Save & Exit":"Leave session";
+ $("net").textContent="Connecting…";$("roster").textContent="1 / 8 builders";hands.root.visible=true;localBody.q.visible=true;sync();
+}
+function returnToMenu(message=""){
+ generation++;playing=false;session=null;keys.clear();inFlight=false;document.exitPointerLock?.();for(const id of peers.keys())removePeer(id);hands.root.visible=false;localBody.q.visible=false;
+ for(const id of ["hud","cross","help","pause"])$(id).classList.add("hidden");$("menu").classList.remove("hidden");$("error").textContent=message;refreshSaves();
+}
+async function saveNow(){
+ if(!session?.host||leaving)return;const s=session,g=generation;$("save").disabled=true;
+ try{const d=await post({action:"save",...s,pose:snapshot(p)});if(g===generation)notice(d.saved?"World saved.":"Save could not be confirmed.");}
+ catch(e){if(g===generation)notice("Save failed: "+e.message);}
+ finally{$("save").disabled=false;}
+}
+async function leave(){
+ if(!session||leaving)return;const s=session;leaving=true;$("leave").disabled=true;keys.clear();document.exitPointerLock?.();
+ try{const d=await post({action:"leave",...s,pose:snapshot(p)});returnToMenu(s.host&&d.saved?"World saved. Previous code is closed.":"Session left.");}
+ catch(e){if(e.status===410)returnToMenu("Session already closed. Last autosave retained.");else notice("Could not exit safely. Try Save & Exit again.");}
+ finally{leaving=false;$("leave").disabled=false;}
+}
+async function online(action){
+ if(playing||menuBusy)return;if(action==="host"&&!saveReady){await refreshSaves();return;}
+ const buttons=[$("host"),$("join")];menuBusy=true;buttons.forEach(b=>b.disabled=true);$("error").textContent="Connecting…";
+ try{if(!asset)throw Error("Character asset must load before multiplayer.");const s=await post({action:action==="host"?(saveMeta?"load":"new"):"join",name:$("name").value,code:$("code").value.trim().toUpperCase()});$("error").textContent="";begin(s);}
+ catch(e){$("error").textContent=e.message||"Could not connect.";if(action==="host"&&e.status===409)await refreshSaves();}
+ finally{menuBusy=false;buttons.forEach(b=>b.disabled=false);}
+}
 function boot(){engine=new GameEngine(canvas,{fov:76});site();engine.scene.add(engine.camera);hands=makeHands();localBody=makeLegs();localBody.q.visible=false;
  engine.camera.rotation.order="YXZ";engine.camera.position.set(0,STAND,5);
  canvas.addEventListener("click",()=>{if(playing&&document.pointerLockElement!==canvas){try{canvas.requestPointerLock()?.catch?.(()=>{})}catch{}}});
  document.addEventListener("pointerlockchange",()=>{keys.clear();$("pause").classList.toggle("hidden",!playing||document.pointerLockElement===canvas)});
  document.addEventListener("mousemove",e=>{if(playing&&document.pointerLockElement===canvas){p.yaw-=e.movementX*.0021;p.pitch=clamp(p.pitch-e.movementY*.0021,-1.44,1.44);}});
  document.addEventListener("keydown",e=>{if(playing&&document.pointerLockElement===canvas&&/^(Key[WASDC]|ShiftLeft|ShiftRight|ControlLeft|ControlRight|Space)$/.test(e.code)){e.preventDefault();keys.add(e.code);}});document.addEventListener("keyup",e=>keys.delete(e.code));window.addEventListener("blur",()=>keys.clear());
- $("solo").onclick=()=>begin();$("host").onclick=()=>online("create");$("join").onclick=()=>online("join");$("leave").onclick=leave;$("copy").onclick=async()=>{if(session){try{await navigator.clipboard.writeText(session.code);$("net").textContent="Session code copied."}catch{$("net").textContent="Share code "+session.code}}};
- window.addEventListener("pagehide",()=>{if(session)navigator.sendBeacon("/api/build-and-sell/session",new Blob([JSON.stringify({action:"leave",...session})],{type:"application/json"}))});
+ $("host").onclick=()=>online("host");$("save").onclick=saveNow;$("join").onclick=()=>online("join");$("leave").onclick=leave;$("copy").onclick=async()=>{if(session){try{await navigator.clipboard.writeText(session.code);notice("Session code copied.")}catch{notice("Share code "+session.code)}}};
+ window.addEventListener("pagehide",()=>{if(session)navigator.sendBeacon("/api/build-and-sell/session",new Blob([JSON.stringify({action:"leave",...session,pose:snapshot(p)})],{type:"application/json"}))});
  engine.onFrame((dt,elapsed)=>{if(!playing)return;try{
  if(document.pointerLockElement!==canvas)keys.clear();step(p,keys,dt);engine.camera.position.set(p.x,p.y+p.eye,p.z);engine.camera.rotation.set(p.pitch,p.yaw,0,"YXZ");
  stepPhase+=p.speed*dt*2.7;const swing=Math.min(1,p.speed/3.25);for(const a of hands.arms){a.g.rotation.x=Math.sin(stepPhase)*.14*swing*a.side;a.g.position.y=-.46+Math.cos(stepPhase)*.023*swing;}
  localBody.q.position.set(p.x,p.y,p.z);localBody.q.rotation.y=p.yaw;localBody.q.scale.y=p.crouch?.74:1;for(const l of localBody.limbs){l.a.rotation.x=Math.sin(stepPhase)*.45*swing*l.side;l.knee.rotation.x=Math.max(0,-l.a.rotation.x)*.9;}
- drawPeers(dt);const now=performance.now();if(session&&!inFlight&&now-lastSync>(failures?1500:250)){lastSync=now;sync()}if(now-lastStatus>250){lastStatus=now;$("motion").textContent=p.mode.toUpperCase();$("fps").textContent=engine.fps+" FPS";}
- }catch(e){console.error("Movement frame",e);keys.clear();$("net").textContent="Frame error; controls cleared.";}});engine.start();
- loadCharacterAsset(engine.assets,"./assets/quaternius-animated-human.glb",{splitJump:true}).then(a=>{asset=a;$("assetStatus").textContent="Character asset ready."}).catch(e=>{$("assetStatus").textContent="Character model failed to load; solo remains available.";console.error(e)});
+ drawPeers(dt);const now=performance.now();if(session&&!leaving&&!inFlight&&now-lastSync>(failures?1500:250)){lastSync=now;sync()}if(now-lastStatus>250){lastStatus=now;$("motion").textContent=p.mode.toUpperCase();$("fps").textContent=engine.fps+" FPS";}
+ }catch(e){console.error("Movement frame",e);keys.clear();$("net").textContent="Frame error; controls cleared.";}});engine.start();refreshSaves();
+ loadCharacterAsset(engine.assets,"./assets/quaternius-animated-human.glb",{splitJump:true}).then(a=>{asset=a;$("assetStatus").textContent="Character asset ready."}).catch(e=>{$("assetStatus").textContent="Character model failed to load. Refresh to retry.";console.error(e)});
 }
-try{boot()}catch(e){console.error(e);$("error").textContent="3D startup failed: "+e.message;[$("solo"),$("host"),$("join")].forEach(b=>b.disabled=true);}
+try{boot()}catch(e){console.error(e);$("error").textContent="3D startup failed: "+e.message;[$("host"),$("join")].forEach(b=>b.disabled=true);}
