@@ -5,3 +5,5 @@
 - themightyglider / RavenWolfProds, [Shovel Sound](https://opengameart.org/content/shovel-sound), CC0, direct .ogg asset. Short soil contact cue.
 
 Browser autoplay is unlocked on input. External sources should be vendored locally after audition; direct downloads were not available to the developer in this session. Do not claim real recorded machinery quality until auditioned.
+
+- [Excavator, displacement](https://bigsoundbank.com/excavator-displacement-s2149.html), Joseph Sardin / BigSoundBank, CC0: moving tracks layer.
