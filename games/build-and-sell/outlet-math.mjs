@@ -10,3 +10,7 @@ export function terminalTip(k){return {x:k==="brass"?.125:k==="silver"?.057:.073
 export function screwTip(i){return {x:0,y:i===0?.047:-.047,z:.018};}
 export function targetWorld(w,d,t){const q=deviceWorld(w,d),c=Math.cos(q.yaw),s=Math.sin(q.yaw);return {x:q.x+t.x*c+t.z*s,y:q.y+t.y,z:q.z-t.x*s+t.z*c};}
 export function aimWork(o,dir,w,d,targets){let hit=null,best=.018;for(const target of targets){const q=targetWorld(w,d,target.point),x=q.x-o.x,y=q.y-o.y,z=q.z-o.z,t=x*dir.x+y*dir.y+z*dir.z;if(t<0||t>1.4)continue;const e=Math.hypot(x-t*dir.x,y-t*dir.y,z-t*dir.z);if(e<best){best=e;hit=target.id;}}return hit;}
+
+export function workAction(j,hit){if(!j||!hit)return null;if(j.seated)return ["s0","s1"].includes(hit)&&!j.screws.includes(Number(hit[1]))?"screw":null;if(CONDUCTORS.includes(hit)){if(j.connected[hit])return null;return hit==="ground"||j.stripped.includes(hit)?"select":"strip";}if(TERMINALS.includes(hit)&&j.selected&&!Object.values(j.connected).includes(hit))return PAIR[j.selected]===hit?"connect":"wrong";return null;}
+export function applyWork(j,hit,action){if(workAction(j,hit)!==action||!action)return false;if(action==="strip"){j.stripped.push(hit);return true;}if(action==="select"){j.selected=j.selected===hit?null:hit;return true;}if(action==="connect"){j.connected[j.selected]=hit;j.selected=null;return true;}if(action==="screw"){j.screws.push(Number(hit[1]));return true;}return false;}
+export function wireCut(k,end=wireTip(k)){return {x:end.x+.022,y:end.y+.002,z:end.z};}
