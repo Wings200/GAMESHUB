@@ -1,5 +1,6 @@
 
 import {LIMIT} from "./movement.mjs";
+import {groundHeight,aimGround} from "./terrain.mjs";
 export const MAX_TAPE=30,ANCHOR_REACH=4;
 export const EMPTY_TAPE=()=>({equipped:false,anchor:null,units:"imperial"});
 export function sanitizeTape(value){
@@ -8,17 +9,11 @@ export function sanitizeTape(value){
  const anchor=a&&typeof a.x==="number"&&typeof a.z==="number"&&Number.isFinite(a.x)&&Number.isFinite(a.z)&&Math.abs(a.x)<=LIMIT&&Math.abs(a.z)<=LIMIT?{x:a.x,z:a.z}:null;
  return {equipped:true,anchor,units};
 }
-export function groundTarget(origin,direction){
- if(direction.y>=-.025)return null;
- const t=-origin.y/direction.y;
- if(!Number.isFinite(t)||t<=0||t>ANCHOR_REACH)return null;
- const x=origin.x+direction.x*t,z=origin.z+direction.z*t;
- return Math.abs(x)<=LIMIT&&Math.abs(z)<=LIMIT?{x,z}:null;
-}
+export function groundTarget(origin,direction){return aimGround(origin,direction,ANCHOR_REACH);}
 export function tapeDistances(anchor,end){
  if(!anchor||!end)return null;
  const horizontal=Math.hypot(end.x-anchor.x,end.z-anchor.z);
- return {horizontal,length:Math.hypot(horizontal,end.y-.025)};
+ return {horizontal,length:Math.hypot(horizontal,end.y-groundHeight(anchor.x,anchor.z)-.025)};
 }
 export function formatDistance(m,units){
  if(!Number.isFinite(m)||m<0)return "—";

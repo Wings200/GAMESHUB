@@ -1,7 +1,8 @@
 
 import {THREE} from "../../engine/core.js";
 import {RoundedBoxGeometry} from "three/addons/geometries/RoundedBoxGeometry.js";
-import {MAX_TAPE,tapeDistances,groundTarget} from "./tape-math.mjs?v=4";
+import {MAX_TAPE,tapeDistances,groundTarget} from "./tape-math.mjs?v=5";
+import {groundHeight} from "./terrain.mjs";
 const up=new THREE.Vector3(0,1,0),axis=new THREE.Vector3(0,1,0),dir=new THREE.Vector3(),side=new THREE.Vector3(),normal=new THREE.Vector3(),basis=new THREE.Matrix4(),parentQ=new THREE.Quaternion(),q=new THREE.Quaternion(),delta=new THREE.Quaternion(),current=new THREE.Vector3(),target=new THREE.Vector3(),temp=new THREE.Vector3(),camDir=new THREE.Vector3();
 const rubber=new THREE.MeshStandardMaterial({color:0x262d2d,roughness:.83}),yellow=new THREE.MeshStandardMaterial({color:0xeab839,roughness:.48}),steel=new THREE.MeshStandardMaterial({color:0xaab3b4,metalness:.78,roughness:.35});
 const markerMat=new THREE.MeshBasicMaterial({color:0xf4c65d,transparent:true,opacity:.85,depthWrite:false});
@@ -52,9 +53,9 @@ export function makeTapeVisual(scene,builder,{local=false}={}){
   if(!state.equipped)return null;
   hold(p);
   let candidate=null;
-  if(camera&&!state.anchor){camera.getWorldDirection(camDir);candidate=groundTarget(camera.position,camDir);if(candidate&&aim){aim.position.set(candidate.x,.039,candidate.z);aim.visible=true;}}
+  if(camera&&!state.anchor){camera.getWorldDirection(camDir);candidate=groundTarget(camera.position,camDir);if(candidate&&aim){aim.position.set(candidate.x,groundHeight(candidate.x,candidate.z)+.039,candidate.z);aim.visible=true;}}
   if(!state.anchor)return {candidate};
-  const a=state.anchor;origin.set(a.x,.025,a.z);
+  const a=state.anchor;origin.set(a.x,groundHeight(a.x,a.z)+.025,a.z);
   const dist=tapeDistances(a,end);
   if(dist.length>MAX_TAPE+.001)return {dist,over:true};
   if(dist.length>.001){
@@ -64,7 +65,7 @@ export function makeTapeVisual(scene,builder,{local=false}={}){
    if(lastUnits!==state.units){stripMat.map.dispose();stripMat.map=textures[state.units].clone();stripMat.map.needsUpdate=true;stripMat.needsUpdate=true;lastUnits=state.units;}
    stripMat.map.repeat.y=dist.length/(state.units==="metric"?1:.3048);stripMat.map.offset.y=0;
   }
-  hook.position.copy(origin);hook.visible=true;anchorMark.position.set(a.x,.039,a.z);anchorMark.visible=true;endMark.position.set(end.x,.039,end.z);endMark.visible=true;
+  hook.position.copy(origin);hook.visible=true;anchorMark.position.set(a.x,groundHeight(a.x,a.z)+.039,a.z);anchorMark.visible=true;endMark.position.set(end.x,groundHeight(end.x,end.z)+.039,end.z);endMark.visible=true;
   return {dist};
  }
  function dispose(){restore();for(const o of [group,strip,hook,endMark,anchorMark,aim])if(o){o.removeFromParent();o.traverse(n=>n.geometry?.dispose());}stripMat.map.dispose();stripMat.dispose();}
