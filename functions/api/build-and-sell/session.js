@@ -1,6 +1,7 @@
 
 import {readPlate,readCompaction,plateFromPlayer,compactPatch} from "../../../games/build-and-sell/compactor-math.mjs";
 import {readPipes,addPipe,removePipe,readSupply,addSupply,cleanKind,readRisers,setRiser,readElevated,addElevated,removeElevated,pruneElevated} from "../../../games/build-and-sell/plumbing-math.mjs";
+import {readPrep,applyPrep} from "../../../games/build-and-sell/prep-math.mjs";
 import {readForms,changeForm} from "../../../games/build-and-sell/formwork-math.mjs";
 import {readGravel,gravelPatch} from "../../../games/build-and-sell/gravel-math.mjs";
 import {cleanMachineVisual} from "../../../games/build-and-sell/machine-playback.mjs";
@@ -26,7 +27,7 @@ async function schema(db){await db.batch([
  db.prepare("CREATE TABLE IF NOT EXISTS build_players_v2 (id TEXT PRIMARY KEY, room TEXT NOT NULL, token TEXT NOT NULL, name TEXT NOT NULL, pose TEXT NOT NULL, updated INTEGER NOT NULL)"),
  db.prepare("CREATE INDEX IF NOT EXISTS build_players_v2_room ON build_players_v2(room,updated)")
 ]);}
-const worldData=(w,room)=>{const l=readLayout(w),d=readDig(w,l.layout),g=readGravel(w,l.layout,d.dug);return {...l,machine:readMachine(w,room),...d,...g,plate:readPlate(w,room),...readCompaction(w,l.layout,g.gravel),...readForms(w,l.layout),...readPipes(w,l.layout),...readSupply(w,l.layout),risers:readRisers(w,l.layout,{drain:readPipes(w,l.layout).pipes,...readSupply(w,l.layout).supply}),elevated:readElevated(w,l.layout)};};
+const worldData=(w,room)=>{const l=readLayout(w),d=readDig(w,l.layout),g=readGravel(w,l.layout,d.dug);return {...l,machine:readMachine(w,room),...d,...g,plate:readPlate(w,room),...readCompaction(w,l.layout,g.gravel),...readForms(w,l.layout),...readPipes(w,l.layout),...readSupply(w,l.layout),risers:readRisers(w,l.layout,{drain:readPipes(w,l.layout).pipes,...readSupply(w,l.layout).supply}),elevated:readElevated(w,l.layout),...readPrep(w,l.layout,readCompaction(w,l.layout,g.gravel).compacted)};};
 const active="EXISTS (SELECT 1 FROM build_sessions_v2 s WHERE s.code=build_players_v2.room AND s.closed=0 AND s.updated>?)";
 async function openWorld(db,user,action,username,now){
  let w=await db.prepare("SELECT id,state,updated FROM build_worlds_v2 WHERE owner=?").bind(user.id).first();
@@ -79,13 +80,21 @@ export async function onRequestPost(ctx){
  return j.meta?.changes?json({ok:true,code:room,id,token:secret,host:false}):json({ok:false,error:"Session is closed, expired, or full."},409);
  }
  if(!/^[A-Z0-9]{6}$/.test(room)||typeof b.id!=="string"||typeof b.token!=="string")return json({ok:false,error:"Invalid session credentials."},400);
- if(!["sync","save","leave","layout","vehicle","dig","gravel","plate","compact","form","pipe"].includes(b.action))return json({ok:false,error:"Unknown operation."},400);
+ if(!["sync","save","leave","layout","vehicle","dig","gravel","plate","compact","form","pipe","prep"].includes(b.action))return json({ok:false,error:"Unknown operation."},400);
  const auth=await db.prepare("SELECT s.world,s.host,s.closed,s.updated FROM build_players_v2 p JOIN build_sessions_v2 s ON s.code=p.room WHERE p.id=? AND p.room=? AND p.token=? AND p.updated>? AND s.closed=0 AND s.updated>?").bind(b.id,room,b.token,cutoff,cutoff).first();
  if(!auth)return json({ok:false,error:"Session closed or expired. Load the world or get a new code."},410);
  const host=auth.host===b.id;
  const guard="EXISTS(SELECT 1 FROM build_sessions_v2 s JOIN build_players_v2 p ON p.room=s.code WHERE s.code=? AND s.world=build_worlds_v2.id AND s.closed=0 AND s.updated>? AND p.id=? AND p.token=? AND p.updated>?)";
  const guardArgs=[room,cutoff,b.id,b.token,cutoff];
  const worldRow=async()=>JSON.parse((await db.prepare("SELECT state FROM build_worlds_v2 WHERE id=?").bind(auth.world).first())?.state||"{}");
+ if(b.action==="prep"){
+ const w=await worldRow(),l=readLayout(w),d=readDig(w,l.layout),g=readGravel(w,l.layout,d.dug),c=readCompaction(w,l.layout,g.gravel),f=readForms(w,l.layout),s=readPrep(w,l.layout,c.compacted),pose=sanitizePose(b.pose);
+ if(!pose||b.pose?.prepMode!==b.kind||readMachine(w,room).driver===b.id||readPlate(w,room).driver===b.id||b.revision!==l.revision||b.prepRevision!==s.prepRevision)return json({ok:false,error:"Material state changed. Try again."},409);
+ if(b.install&&f.forms.length!==4)return json({ok:false,error:"Finish formwork first."},400);
+ const next=applyPrep(l.layout,b.tile,b.kind,b.install,new Set(c.compacted),new Set(s.barrier),new Set(s.rebar),pose);if(!next)return json({ok:false,error:"No eligible material in this patch."},409);
+ const last={actor:b.id,kind:b.kind,tile:b.tile,install:b.install};const u=await db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,'$.barrier',json(?),'$.rebar',json(?),'$.prepRevision',?,'$.lastPrep',json(?)),updated=? WHERE id=? AND COALESCE(json_extract(state,'$.prepRevision'),0)=? AND COALESCE(json_extract(state,'$.layoutRevision'),0)=? AND "+guard).bind(JSON.stringify(next.barrier),JSON.stringify(next.rebar),s.prepRevision+1,JSON.stringify(last),now,auth.world,s.prepRevision,l.revision,...guardArgs).run();
+ if(!u.meta?.changes)return json({ok:false,error:"Material changed. Try again."},409);return json({ok:true,...worldData(await worldRow(),room)});
+ }
  if(b.action==="pipe"){
  const w=await worldRow(),l=readLayout(w),f=readForms(w,l.layout),s=readPipes(w,l.layout),supply=readSupply(w,l.layout).supply,kind=cleanKind(b.kind),lists={drain:s.pipes,...supply},list=lists[kind],risers=readRisers(w,l.layout,lists),elevated=readElevated(w,l.layout),pose=sanitizePose(b.pose);
  if(!pose||b.pose?.pipeMode!==true||readMachine(w,room).driver===b.id||readPlate(w,room).driver===b.id||b.revision!==l.revision||b.pipeRevision!==s.pipeRevision)return json({ok:false,error:"Pipe state changed. Try again."},409);
@@ -145,7 +154,7 @@ export async function onRequestPost(ctx){
  }
  if(b.action==="save"&&!host)return json({ok:false,error:"Only the host can save."},403);
  const p=sanitizePose(b.pose),save=savedPose(b.pose);
- if(p){p.driving=b.pose?.driving===true;p.pipeMode=!p.driving&&!b.pose?.plateOperating&&b.pose?.pipeMode===true;p.pipeKind=cleanKind(b.pose?.pipeKind);p.formMode=!p.driving&&!p.pipeMode&&!b.pose?.plateOperating&&b.pose?.formMode===true;p.gravelMode=!p.driving&&!p.pipeMode&&!p.formMode&&b.pose?.gravelMode===true;p.machineVisual=p.driving?cleanMachineVisual(b.pose?.machineVisual):null;p.tape=sanitizeTape(b.pose?.tape);p.survey=sanitizeSurvey(b.pose?.survey);if(p.survey.mode!=="none"&&p.tape.equipped)p.tape=sanitizeTape(null);if(p.gravelMode||p.formMode||p.pipeMode){p.tape=sanitizeTape(null);p.survey.mode="none";}}
+ if(p){p.driving=b.pose?.driving===true;p.prepMode=!p.driving&&!b.pose?.plateOperating&&["barrier","rebar"].includes(b.pose?.prepMode)?b.pose.prepMode:null;p.pipeMode=!p.prepMode&&!p.driving&&!b.pose?.plateOperating&&b.pose?.pipeMode===true;p.pipeKind=cleanKind(b.pose?.pipeKind);p.formMode=!p.prepMode&&!p.driving&&!p.pipeMode&&!b.pose?.plateOperating&&b.pose?.formMode===true;p.gravelMode=!p.prepMode&&!p.driving&&!p.pipeMode&&!p.formMode&&b.pose?.gravelMode===true;p.machineVisual=p.driving?cleanMachineVisual(b.pose?.machineVisual):null;p.tape=sanitizeTape(b.pose?.tape);p.survey=sanitizeSurvey(b.pose?.survey);if(p.survey.mode!=="none"&&p.tape.equipped)p.tape=sanitizeTape(null);if(p.gravelMode||p.formMode||p.pipeMode||p.prepMode){p.tape=sanitizeTape(null);p.survey.mode="none";}}
  if(b.action!=="leave"&&!p)return json({ok:false,error:"Invalid movement state."},400);
  const saveState=save?JSON.stringify(save):null;
  const saveSql="UPDATE build_worlds_v2 SET state=json_set(state,'$.hostPose',json(?)),updated=? WHERE id=? AND EXISTS(SELECT 1 FROM build_sessions_v2 WHERE code=? AND world=build_worlds_v2.id AND host=? AND closed=0 AND updated>?)";
