@@ -1,0 +1,97 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BUILD &amp; SELL | GAMESHUB</title><link rel="icon" href="/logo.png"><script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script><style>
+:root{font-family:Inter,system-ui,sans-serif;color:#f4f6f3;color-scheme:dark;--green:#c6f17c;--panel:#17231fee}*{box-sizing:border-box}body{margin:0;background:#819aa4;overflow:hidden}canvas{display:block;width:100vw;height:100dvh;touch-action:none}button,a{font:inherit}button{border:1px solid #738778;background:#24382e;color:#f5f8f4;border-radius:8px;padding:10px 14px;cursor:pointer;font-weight:700}button:hover:not(:disabled){background:#3d5544}button:disabled{opacity:.35;cursor:default}button.primary{background:var(--green);color:#1c3324;border:0}.top{position:absolute;inset:16px 18px auto;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;pointer-events:none}.brand,.wallet,.work,.tools,.tip,.modal{background:var(--panel);border:1px solid #ffffff25;box-shadow:0 8px 28px #0003;border-radius:12px;padding:13px 16px;backdrop-filter:blur(9px)}.brand a{color:#b9cabe;font-size:11px;text-decoration:none;letter-spacing:.12em;pointer-events:auto}.brand h1{font-size:22px;margin:3px 0 0;letter-spacing:.06em}.tag{font-size:10px;font-weight:800;letter-spacing:.15em;color:var(--green)}.wallet{text-align:right;min-width:135px}.wallet strong{display:block;font-size:23px;color:var(--green);font-variant-numeric:tabular-nums}.wallet small,.muted{color:#b5c3b9}.bottom{position:absolute;bottom:16px;left:18px;right:18px;display:flex;gap:12px;align-items:flex-end;justify-content:space-between;pointer-events:none}.work{width:min(430px,65vw);pointer-events:auto}.work h2{font-size:20px;margin:5px 0}.work p{font-size:13px;color:#c8d4c9;line-height:1.45;margin:5px 0 10px}.bar{height:7px;border-radius:6px;background:#0c1612;overflow:hidden;margin:8px 0}.bar i{height:100%;display:block;background:var(--green);transition:width .18s}.steps{display:flex;gap:4px;margin-top:10px}.steps i{flex:1;height:4px;border-radius:5px;background:#4d5b50}.steps .done{background:var(--green)}.steps .active{background:#f1c979}.tools{display:flex;gap:7px;pointer-events:auto;flex-wrap:wrap;max-width:320px}.tip{position:absolute;top:112px;right:18px;font-size:12px;line-height:1.65;color:#d2ddd5;pointer-events:none}.toast{position:absolute;top:23%;left:50%;transform:translateX(-50%);padding:9px 16px;background:#172a20e8;border-radius:9px;pointer-events:none;color:#d5f39f;font-weight:700;opacity:0;transition:opacity .15s}.modal{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:min(420px,90vw);padding:24px;text-align:center}.modal h2{margin:8px 0}.modal p{color:#cfdbd1;line-height:1.6}.hidden{display:none!important}@media(max-width:620px){.top{inset:8px 8px auto}.brand,.wallet,.work,.tools{padding:9px 11px}.brand h1{font-size:16px}.wallet strong{font-size:18px}.bottom{inset:auto 8px 8px;flex-direction:column;align-items:stretch;gap:6px}.work{width:100%}.work h2{font-size:16px}.tools{max-width:none}.tip{display:none}button{padding:8px 11px;font-size:12px}}
+</style></head><body><canvas id="world" aria-label="Interactive 3D construction site"></canvas><div class="top"><div class="brand"><a href="/">← GAMESHUB · IN DEV</a><h1>BUILD &amp; SELL</h1><div class="tag">STARTER HOME / CONSTRUCTION LAB</div></div><div class="wallet"><small>AVAILABLE CASH</small><strong id="cash">$18,000</strong><small id="homes">0 homes sold</small></div></div><div class="tip">Click a highlighted piece to install<br>Drag to orbit · Right-drag to pan<br>Scroll / pinch to zoom</div><div class="toast" id="toast"></div><div class="bottom"><section class="work"><div class="tag" id="stageLabel">STAGE 1 / 6</div><h2 id="title">Foundation</h2><p id="description"></p><div class="bar"><i id="bar"></i></div><small id="count" class="muted"></small><div class="steps" id="steps"></div></section><div class="tools"><button id="undo">↶ Undo</button><button id="camera">Reset view</button><button id="sell" class="primary hidden">Sell home · $24,500</button></div></div><section class="modal hidden" id="modal"><div class="tag">PROJECT COMPLETE</div><h2 id="modalTitle">Property sold</h2><p id="modalText"></p><button class="primary" id="next">Start another house</button></section><section class="modal hidden" id="error"><h2>3D renderer unavailable</h2><p id="errorText"></p><a href="/" style="color:#c6f17c">Back to GAMESHUB</a></section><script type="module">
+import {GameEngine,THREE} from "../../engine/core.js";
+import {OrbitControls} from "three/addons/controls/OrbitControls.js";
+
+const STAGES=[
+ {name:"Foundation",item:"Concrete section",tip:"Place each section of the foundation.",cost:180},
+ {name:"Wall framing",item:"Timber member",tip:"Install the individual studs, plates and headers. Rotate the camera to reach all sides.",cost:45},
+ {name:"Exterior",item:"Siding panel",tip:"Close the walls around the door and window openings.",cost:95},
+ {name:"Roof structure",item:"Roof member",tip:"Install each sloped rafter and the ridge beam.",cost:85},
+ {name:"Roof finish",item:"Roof panel",tip:"Cover the rafters with roof panels.",cost:140},
+ {name:"Finishing",item:"Door or window",tip:"Fit the openings, then sell the finished starter home.",cost:220}
+];
+function blueprint(){
+ const p=[];const add=(stage,x,y,z,w,h,d,mat,rx=0,ry=0)=>p.push({id:p.length,stage,x,y,z,w,h,d,mat,rx,ry});
+ for(let x=-2;x<=2;x+=2)for(const z of [-1,1])add(0,x,.15,z,1.99,.3,1.99,"concrete");
+ const walls=[{axis:"x",fixed:2,lo:-3,hi:3,open:{[-2]:"window",0:"door"}},{axis:"x",fixed:-2,lo:-3,hi:3,open:{0:"window"}},{axis:"z",fixed:-3,lo:-2,hi:2,open:{}},{axis:"z",fixed:3,lo:-2,hi:2,open:{0:"window"}}];
+ for(const a of walls){
+ const span=(u,y,width,height,mat,stage,thick=.12)=>a.axis==="x"?add(stage,u,y,a.fixed,width,height,thick,mat):add(stage,a.fixed,y,u,thick,height,width,mat);
+ span((a.lo+a.hi)/2,2.76,a.hi-a.lo,.12,"wood",1);
+ for(let u=a.lo;u<=a.hi;u++){if(a.axis==="z"&&(u===a.lo||u===a.hi))continue;span(u,1.53,.115,2.34,"wood",1);}
+ for(let u=a.lo;u<a.hi;u++){
+ const o=a.open[u];if(o!=="door")span(u+.5,.36,1,.12,"wood",1);
+ if(o){const h=o==="door"?2.25:2.02;span(u+.5,h,1,.16,"wood",1);if(o==="window")span(u+.5,1.02,1,.13,"wood",1);}
+ else span(u+.5,1.53,.09,2.34,"wood",1);
+ const panel=(y,h)=>span(u+.5,y,.99,h,"siding",2,.16);
+ if(o==="door"){panel(2.49,.42);span(u+.5,1.24,.88,1.88,"door",5,.19);}
+ else if(o==="window"){panel(.68,.76);panel(2.35,.7);span(u+.5,1.52,.88,.91,"glass",5,.19);}
+ else panel(1.53,2.43);
+ }
+ }
+ // A gable roof: ridge along X, rafters descend toward both eaves.
+ const run=2.2,rise=1.22,length=Math.hypot(run,rise),angle=Math.atan2(rise,run);
+ add(3,0,4.02,0,6.5,.17,.17,"wood");
+ for(const x of [-3,-2,-1,0,1,2,3])for(const s of [-1,1])add(3,x,3.41,s*run/2,.11,.15,length,"wood",s*angle);
+ for(const x of [-2.17,0,2.17])for(const s of [-1,1])add(4,x,3.53,s*run/2,2.16,.12,length+.08,"roof",s*angle);
+ // Triangular gable closure is visualized as a custom triangle mesh.
+ for(const x of [-3,3])add(4,x,3.38,0,.12,1.22,4,"gable");
+ return p;
+}
+const pieces=blueprint();
+function newJob(){return {built:[],cash:18000,sold:false,homes:0}}
+function activeStage(j){return STAGES.findIndex((s,i)=>pieces.some(p=>p.stage===i&&!j.built.includes(p.id)))}
+function install(j,id){const p=pieces[id];if(!p||j.sold||j.built.includes(id)||p.stage!==activeStage(j)||j.cash<STAGES[p.stage].cost)return false;j.built.push(id);j.cash-=STAGES[p.stage].cost;return true}
+function undo(j){if(j.sold||!j.built.length)return false;const id=j.built.pop();j.cash+=STAGES[pieces[id].stage].cost;return true}
+function sell(j){if(j.sold||activeStage(j)!==-1)return false;j.cash+=24500;j.sold=true;j.homes++;return true}
+function nextJob(j){if(!j.sold)return false;j.built=[];j.sold=false;return true}
+
+const $=id=>document.getElementById(id),money=n=>"$"+n.toLocaleString("en-US");
+let job=newJob(),engine,orbit,meshes=[],hover=null,down=null,toastTimer,placements=[],audio;
+function texture(kind){
+ const c=document.createElement("canvas");c.width=c.height=128;const g=c.getContext("2d");let seed=31;const random=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};
+ g.fillStyle=({wood:"#caa16c",concrete:"#b8b8ac",grass:"#718f53",siding:"#e5e0cc",roof:"#424b53"})[kind]||"#ffffff";g.fillRect(0,0,128,128);
+ for(let i=0;i<1500;i++){const x=random()*128,y=random()*128;g.fillStyle=random()>.5?"#ffffff13":"#25281716";g.fillRect(x,y,kind==="wood"?1+random()*55:1+random()*3,kind==="wood"?1:1+random()*3)}
+ if(kind==="siding"){for(let y=0;y<128;y+=16){g.fillStyle="#6d716944";g.fillRect(0,y,128,2);g.fillStyle="#ffffff55";g.fillRect(0,y+2,128,1)}}if(kind==="roof"){for(let y=0;y<128;y+=20){g.fillStyle="#10182088";g.fillRect(0,y,128,2);for(let x=(y%40?12:0);x<128;x+=25)g.fillRect(x,y,1,20)}}
+ const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;return t
+}
+function boot(){
+ engine=new GameEngine($("world"),{fov:49});const scene=engine.scene;
+ scene.background=new THREE.Color("#b7d3df");scene.fog=new THREE.Fog("#b7d3df",35,105);
+ engine.renderer.toneMappingExposure=1.12;engine.renderer.shadowMap.enabled=true;
+ scene.add(new THREE.HemisphereLight("#e7f4ff","#8d8a60",2.2));const sun=new THREE.DirectionalLight("#fff1d7",3.1);sun.position.set(-9,17,11);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-16,right:16,top:16,bottom:-16,near:.5,far:55});sun.shadow.bias=-.00015;scene.add(sun);
+ const mat=(color,map)=>new THREE.MeshStandardMaterial({color,map,roughness:.88});
+ const grass=texture("grass");grass.repeat.set(45,45);
+ const materials={wood:mat("#ffffff",texture("wood")),concrete:mat("#ffffff",texture("concrete")),siding:mat("#ffffff",texture("siding")),roof:mat("#ffffff",texture("roof")),door:mat("#846142"),glass:new THREE.MeshPhysicalMaterial({color:"#789da8",metalness:.1,roughness:.18,transparent:true,opacity:.77}),gable:mat("#e1dbca")};
+ const ghost=new THREE.MeshStandardMaterial({color:"#d5f49a",transparent:true,opacity:.26,depthWrite:false,roughness:.8});const lit=new THREE.MeshStandardMaterial({color:"#c9ff7c",transparent:true,opacity:.7,depthWrite:false,emissive:"#6f9d2c",emissiveIntensity:.35});const ground=new THREE.Mesh(new THREE.PlaneGeometry(150,150),mat("#ffffff",grass));ground.rotation.x=-Math.PI/2;ground.position.y=-.025;ground.receiveShadow=true;scene.add(ground);
+ const box=(w,h,d,x,y,z,m)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;scene.add(o);return o};
+ const dirt=mat("#a89573"),road=mat("#727c81"),path=mat("#c9c9bf"),trunk=mat("#716047"),leaf=mat("#5d8855");
+ box(10,.045,8,0,0,0,dirt);box(35,.04,4,0,.004,10,road);box(35,.045,.65,0,.008,7.7,path);box(2,.04,4,0,.015,5,path);
+ for(let k=0;k<12;k++){const x=k<6?-11+k*4.5:-13+(k-6)*5,z=k<6?-9:15;box(.25,2.3,.25,x,1.15,z,trunk);for(let n=0;n<3;n++){const l=new THREE.Mesh(new THREE.IcosahedronGeometry(1.05-n*.14,1),leaf);l.position.set(x+(n-1)*.38,2.3+n*.35,z);l.castShadow=true;scene.add(l);}}
+ for(let k=0;k<7;k++)box(2.5,.12,.2,-5.2,.12+k*.13,-2.8,materials.wood);
+ // Site stakes and layout strings.
+ for(const x of [-3.2,3.2])for(const z of [-2.2,2.2])box(.07,.55,.07,x,.275,z,materials.wood);
+ const lineMat=new THREE.LineBasicMaterial({color:"#f3e4a0"});const border=new THREE.BufferGeometry().setFromPoints([[-3.2,-2.2],[3.2,-2.2],[3.2,2.2],[-3.2,2.2],[-3.2,-2.2]].map(([x,z])=>new THREE.Vector3(x,.1,z)));scene.add(new THREE.Line(border,lineMat));
+ for(const p of pieces){
+ let geo;
+ if(p.mat==="gable"){const shape=new THREE.Shape();shape.moveTo(-2,-.61);shape.lineTo(2,-.61);shape.lineTo(0,.61);shape.closePath();geo=new THREE.ExtrudeGeometry(shape,{depth:.12,bevelEnabled:false});geo.translate(0,0,-.06);geo.rotateY(Math.PI/2);}
+ else geo=new THREE.BoxGeometry(p.w,p.h,p.d);
+ const o=new THREE.Mesh(geo,materials[p.mat]);o.position.set(p.x,p.y,p.z);o.rotation.set(p.rx,p.ry,0);o.castShadow=true;o.receiveShadow=true;o.userData={piece:p,solid:materials[p.mat]};
+ const edge=new THREE.LineSegments(new THREE.EdgesGeometry(geo),new THREE.LineBasicMaterial({color:"#d7ff9d",transparent:true,opacity:.82,depthTest:false}));edge.renderOrder=2;o.add(edge);o.userData.edge=edge;scene.add(o);meshes.push(o);
+ }
+ orbit=new OrbitControls(engine.camera,$("world"));orbit.enableDamping=true;orbit.dampingFactor=.12;orbit.minDistance=5;orbit.maxDistance=30;orbit.maxPolarAngle=Math.PI*.49;resetCamera();
+ const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();function hit(e){const r=$("world").getBoundingClientRect();pointer.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(pointer,engine.camera);const hits=ray.intersectObjects(meshes.filter(o=>o.visible),false);const first=hits.find(h=>!job.built.includes(h.object.userData.piece.id)&&h.object.userData.piece.stage===activeStage(job));return first?.object||null}
+ const canvas=$("world");canvas.addEventListener("pointerdown",e=>{if(e.button===0)down={x:e.clientX,y:e.clientY}});canvas.addEventListener("pointermove",e=>{if(down&&Math.hypot(e.clientX-down.x,e.clientY-down.y)>7)down=null;const h=hit(e);if(h!==hover){hover=h;refreshMeshes()}canvas.style.cursor=hover?"crosshair":"grab"});canvas.addEventListener("pointerleave",()=>{hover=null;down=null;refreshMeshes()});canvas.addEventListener("pointerup",e=>{if(e.button===0&&down&&Math.hypot(e.clientX-down.x,e.clientY-down.y)<7){const o=hit(e);if(o&&install(job,o.userData.piece.id)){const p=o.userData.piece;placements.push({o,t:0,y:p.y});hover=null;playSound(p.stage);flash("Installed · "+STAGES[p.stage].item);refresh();}}down=null});canvas.addEventListener("pointercancel",()=>down=null);
+ function refreshMeshes(){const stage=activeStage(job);for(const o of meshes){const p=o.userData.piece,built=job.built.includes(p.id);o.visible=built||p.stage===stage;o.material=built?o.userData.solid:o===hover?lit:ghost;o.castShadow=built;o.userData.edge.visible=!built&&o.visible;}}
+ function refresh(){refreshMeshes();ui()}
+ function reset(){placements=[];hover=null;for(const o of meshes)o.position.y=o.userData.piece.y;refresh();}
+ $("undo").onclick=()=>{if(undo(job)){reset();flash("Piece returned")}};$("camera").onclick=resetCamera;$("sell").onclick=()=>{if(sell(job)){refresh();$("modalText").textContent="Sold for $24,500. Your available cash is now "+money(job.cash)+". The next starter lot uses the same blueprint."; $("modal").classList.remove("hidden");playSound(5)}};$("next").onclick=()=>{if(nextJob(job)){$("modal").classList.add("hidden");reset();resetCamera()}};
+ engine.onFrame(dt=>{orbit.update();for(const a of placements){a.t+=dt;a.o.position.y=a.y+Math.max(0,1-a.t/.23)**2*.45;}placements=placements.filter(a=>a.t<.25);});refresh();engine.start();
+}
+function resetCamera(){engine.camera.position.set(10,8,12);orbit.target.set(0,1.15,0);orbit.update()}
+function flash(msg){$("toast").textContent=msg;$("toast").style.opacity=1;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$("toast").style.opacity=0,1000)}
+function playSound(stage){try{audio=audio||new (window.AudioContext||window.webkitAudioContext)();audio.resume();const t=audio.currentTime,o=audio.createOscillator(),g=audio.createGain();o.type="triangle";o.frequency.setValueAtTime(stage===0?95:210,t);o.frequency.exponentialRampToValueAtTime(52,t+.09);g.gain.setValueAtTime(.13,t);g.gain.exponentialRampToValueAtTime(.001,t+.12);o.connect(g).connect(audio.destination);o.start(t);o.stop(t+.13)}catch{}}
+function ui(){const s=activeStage(job),stage=STAGES[s];$("cash").textContent=money(job.cash);$("homes").textContent=job.homes+" home"+(job.homes===1?"":"s")+" sold";$("stageLabel").textContent=s<0?"ALL STAGES COMPLETE":"STAGE "+(s+1)+" / "+STAGES.length;$("title").textContent=s<0?"Ready to sell":stage.name;$("description").textContent=s<0?"Your first house is complete. Sell it to fund the next project.":stage.tip+" · "+money(stage.cost)+" per piece";const total=pieces.filter(p=>p.stage===s).length,done=pieces.filter(p=>p.stage===s&&job.built.includes(p.id)).length;$("bar").style.width=(s<0?100:done/total*100)+"%";$("count").textContent=(s<0?pieces.length+" / "+pieces.length+" pieces installed":done+" / "+total+" in this stage")+" · "+job.built.length+" / "+pieces.length+" overall";$("steps").innerHTML=STAGES.map((x,i)=>'<i class="'+(s<0||i<s?'done':i===s?'active':'')+'"></i>').join("");$("undo").disabled=job.sold||!job.built.length;$("sell").classList.toggle("hidden",s>=0||job.sold);}
+try{boot()}catch(e){console.error(e);$("errorText").textContent=e.message||"Could not start WebGL."; $("error").classList.remove("hidden")}
+</script></body></html>
