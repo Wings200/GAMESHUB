@@ -1,4 +1,5 @@
 
+import {cleanMachineVisual} from "../../../games/build-and-sell/machine-playback.mjs";
 import {readMachine,readDig,cleanDrive,targetTile} from "../../../games/build-and-sell/excavator-math.mjs";
 import {tileBounds} from "../../../games/build-and-sell/terrain.mjs";
 import {sanitizeLayout,readLayout} from "../../../games/build-and-sell/layout-math.mjs";
@@ -102,7 +103,7 @@ export async function onRequestPost(ctx){
  }
  if(b.action==="save"&&!host)return json({ok:false,error:"Only the host can save."},403);
  const p=sanitizePose(b.pose),save=savedPose(b.pose);
- if(p){p.driving=b.pose?.driving===true;p.tape=sanitizeTape(b.pose?.tape);p.survey=sanitizeSurvey(b.pose?.survey);if(p.survey.mode!=="none"&&p.tape.equipped)p.tape=sanitizeTape(null);}
+ if(p){p.driving=b.pose?.driving===true;p.machineVisual=p.driving?cleanMachineVisual(b.pose?.machineVisual):null;p.tape=sanitizeTape(b.pose?.tape);p.survey=sanitizeSurvey(b.pose?.survey);if(p.survey.mode!=="none"&&p.tape.equipped)p.tape=sanitizeTape(null);}
  if(b.action!=="leave"&&!p)return json({ok:false,error:"Invalid movement state."},400);
  const saveState=save?JSON.stringify(save):null;
  const saveSql="UPDATE build_worlds_v2 SET state=json_set(state,'$.hostPose',json(?)),updated=? WHERE id=? AND EXISTS(SELECT 1 FROM build_sessions_v2 WHERE code=? AND world=build_worlds_v2.id AND host=? AND closed=0 AND updated>?)";

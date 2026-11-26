@@ -26,15 +26,16 @@ export function makeExcavator(scene){
  const load=box(bucket,.53,.19,.40,dirt,0,-.025,-.08);load.visible=false;
  const aim=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({color:0x9cf4ae,transparent:true,opacity:.40,depthWrite:false,side:THREE.DoubleSide}));aim.rotation.x=-Math.PI/2;aim.visible=false;scene.add(aim);
  const border=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints([[-.5,-.5],[.5,-.5],[.5,.5],[-.5,.5]].map(([x,z])=>new THREE.Vector3(x,0,z))),new THREE.LineBasicMaterial({color:0xd2ffcf}));scene.add(border);border.visible=false;
- return {root,get cabinYaw(){return turret.rotation.y;},update(machine,target,anim,now,visible=true,viewYaw=null){
+ let networkVisual=null;return {root,get cabinYaw(){return turret.rotation.y;},get networkVisual(){return networkVisual;},update(machine,target,anim,now,visible=true,viewYaw=null,remoteVisual=null){
   root.visible=visible;if(!visible){aim.visible=border.visible=false;return;}const y=groundHeight(machine.x,machine.z);root.position.set(machine.x,y,machine.z);tracks.rotation.y=machine.yaw;
-  const active=anim&&now-anim.start<800?anim:null,focus=active?.target||target;turret.rotation.y=viewYaw??(focus?Math.atan2(-(focus.x-machine.x),-(focus.z-machine.z)):machine.yaw);
+  const active=anim&&now-anim.start<800?anim:null,focus=active?.target||target;turret.rotation.y=remoteVisual?.yaw??viewYaw??(focus?Math.atan2(-(focus.x-machine.x),-(focus.z-machine.z)):machine.yaw);
   const dist=focus?Math.hypot(focus.x-machine.x,focus.z-machine.z):3.2,t=active?Math.max(0,Math.min(1,(now-active.start)/800)):0;
-  const dip=active?Math.sin(Math.PI*t):0,reach=Math.max(1.45,Math.min(6.5,dist));
+  const dip=active?Math.sin(Math.PI*t):0,reach=remoteVisual?.reach??Math.max(1.45,Math.min(6.5,dist));
   const A=new THREE.Vector3(.45,1.48,-.72),C=new THREE.Vector3(.0,active?Math.max(PIT_Y-y+.22,.9-1.55*dip):1.03,-reach);
   if(active&&t>.52){C.y+=Math.sin((t-.52)/.48*Math.PI)*1.1;C.z+=Math.sin((t-.52)/.48*Math.PI)*.52;}
+  if(remoteVisual){C.y=remoteVisual.bucketY;C.z=remoteVisual.bucketZ;}
   const B=A.clone().lerp(C,.52);B.y+=Math.max(.58,1.65-reach*.14);
-  link(boom,A,B);link(stick,B,C);joint.position.copy(B);joint2.position.copy(C);link(hyd1,A.clone().add(new THREE.Vector3(0,-.18,.10)),B.clone().add(new THREE.Vector3(0,-.16,.10)));link(hyd2,B.clone().add(new THREE.Vector3(0,.18,.06)),C.clone().lerp(B,.35));bucket.position.copy(C);bucket.rotation.x=active?-.2+Math.sin(Math.PI*t)*1.2:.12;load.visible=!!active&&t>.45&&t<.91;
+  link(boom,A,B);link(stick,B,C);joint.position.copy(B);joint2.position.copy(C);link(hyd1,A.clone().add(new THREE.Vector3(0,-.18,.10)),B.clone().add(new THREE.Vector3(0,-.16,.10)));link(hyd2,B.clone().add(new THREE.Vector3(0,.18,.06)),C.clone().lerp(B,.35));bucket.position.copy(C);bucket.rotation.x=remoteVisual?.curl??(active?-.2+Math.sin(Math.PI*t)*1.2:.12);load.visible=remoteVisual?remoteVisual.load:!!active&&t>.45&&t<.91;networkVisual={yaw:turret.rotation.y,reach,bucketY:C.y,bucketZ:C.z,curl:bucket.rotation.x,load:load.visible};
   aim.visible=border.visible=!!target;if(target){const x=(target.x1+target.x2)/2,z=(target.z1+target.z2)/2,sy=baseGroundHeight(x,z)+.09;aim.position.set(x,sy,z);aim.scale.set(target.x2-target.x1,target.z2-target.z1,1);border.position.set(x,sy+.015,z);border.scale.set(target.x2-target.x1,1,target.z2-target.z1);}
  }};
 }
