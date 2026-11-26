@@ -36,3 +36,11 @@ export function faceSide(axis,center,hit,camera,normal){
  const delta=hit?hit[axisValue]-center[axisValue]:0;
  return Math.abs(delta)>.025?Math.sign(delta):Math.sign(camera[axisValue]-center[axisValue])||1;
 }
+
+/* Reach is measured against the selected fixture's actual world anchor.
+   The visual preview is never an input to this calculation. */
+export function workReach(player,anchor,normal=null,radius=2.15){
+ const dx=player.x-anchor.x,dz=player.z-anchor.z;
+ const distance=Math.hypot(dx,dz),sameSide=!normal||dx*normal.x+dz*normal.z>=-.035;
+ return {distance,sameSide,ok:distance<=radius&&sameSide};
+}
