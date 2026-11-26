@@ -3,7 +3,7 @@ import {readPlate,readCompaction,plateFromPlayer,compactPatch} from "../../../ga
 import {readPipes,addPipe,removePipe,readSupply,addSupply,cleanKind,readRisers,setRiser,readElevated,addElevated,removeElevated,pruneElevated} from "../../../games/build-and-sell/plumbing-math.mjs";
 import {readConcrete,applyConcrete,readHose,hoseDistance,PICKUP_REACH,concreteReady,slabTotal} from "../../../games/build-and-sell/concrete-math.mjs";
 import {readPanels,panelChange} from "../../../games/build-and-sell/panel-math.mjs";
-import {readOutlets,finishOutlet} from "../../../games/build-and-sell/outlet-math.mjs";
+import {readOutlets,finishOutlet,toggleInstalledSwitch} from "../../../games/build-and-sell/outlet-math.mjs";
 import {readCables,addCable,CABLE_TYPES,routeCable} from "../../../games/build-and-sell/cable-math.mjs";
 import {readElectrical,addDevice,deviceNear,validDevice,ELECTRIC_KINDS} from "../../../games/build-and-sell/electrical-math.mjs";
 import {readWalls,addWall,changeOpening,removeWall} from "../../../games/build-and-sell/wall-math.mjs";
@@ -101,8 +101,8 @@ export async function onRequestPost(ctx){
  if(b.action==="outlet"){
  const w=await worldRow(),l=readLayout(w),s=readWalls(w,l.layout),e=readElectrical(w,s.walls),c=readCables(w,s.walls,e.devices),o=readOutlets(w,e.devices,c.cables),pose=sanitizePose(b.pose);
  if(!pose||b.pose?.outletMode!==true||readMachine(w,room).driver===b.id||readPlate(w,room).driver===b.id||b.revision!==l.revision||b.wallRevision!==s.wallRevision||b.electricRevision!==e.electricRevision||b.cableRevision!==c.cableRevision||b.outletRevision!==o.outletRevision)return json({ok:false,error:"Outlet state changed. Try again."},409);
- if(!["add","remove"].includes(b.operation))return json({ok:false,error:"Invalid outlet operation."},400);
- const next=finishOutlet(s.walls,e.devices,c.cables,o.outlets,b.deviceId,b.work,pose,b.operation==="remove");if(next.error)return json({ok:false,error:next.error},400);
+ if(!["add","remove","toggle"].includes(b.operation))return json({ok:false,error:"Invalid outlet operation."},400);
+ const next=b.operation==="toggle"?toggleInstalledSwitch(s.walls,e.devices,o.outlets,b.deviceId,pose):finishOutlet(s.walls,e.devices,c.cables,o.outlets,b.deviceId,b.work,pose,b.operation==="remove");if(next.error)return json({ok:false,error:next.error},400);
  const last={actor:b.id,id:b.deviceId,operation:b.operation};const u=await db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,'$.outlets',json(?),'$.outletRevision',?,'$.lastOutlet',json(?)),updated=? WHERE id=? AND COALESCE(json_extract(state,'$.outletRevision'),0)=? AND COALESCE(json_extract(state,'$.cableRevision'),0)=? AND COALESCE(json_extract(state,'$.electricRevision'),0)=? AND COALESCE(json_extract(state,'$.wallRevision'),0)=? AND COALESCE(json_extract(state,'$.layoutRevision'),0)=? AND "+guard).bind(JSON.stringify(next.outlets),o.outletRevision+1,JSON.stringify(last),now,auth.world,o.outletRevision,c.cableRevision,e.electricRevision,s.wallRevision,l.revision,...guardArgs).run();if(!u.meta?.changes)return json({ok:false,error:"Outlet state changed. Try again."},409);return json({ok:true,...worldData(await worldRow(),room)});
  }
  if(b.action==="cable"){

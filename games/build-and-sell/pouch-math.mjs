@@ -18,7 +18,7 @@ export const TOOLS=[
 ["wall","Framing hammer","Structure","LMB endpoints · T mode · R/F size · G snap"],
 ["electric","Box mounting kit","Electrical","T type · R/F height · LMB mount"],
 ["cable","Cable spool & drill","Electrical","T cable type · R/F height · hold LMB route"],
-["outlet","Receptacle kit","Electrical","Hold strip/tighten · click select · T seat"],
+["outlet","Device wiring kit","Electrical","Outlets & switches · hold strip/tighten · T seat"],
 ["panel","Breaker panel kit","Electrical","T rating · R/F cable · LMB work"]
 ].map(([id,name,category,controls])=>({id,name,category,controls}));
 export function cleanPouch(input){const seen=new Set(),arr=Array.isArray(input)?input:[];return Array.from({length:3},(_,i)=>{const id=arr[i];if(!TOOLS.some(t=>t.id===id)||seen.has(id))return null;seen.add(id);return id;});}
