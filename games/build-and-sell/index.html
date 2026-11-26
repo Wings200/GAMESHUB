@@ -1,6 +1,6 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BUILD &amp; SELL | GAMESHUB</title><link rel="icon" href="/logo.png"><script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script><style>
 :root{font:14px system-ui,sans-serif;color:#f2f5f1;color-scheme:dark;--panel:#182724f4;--green:#c6f17c;--muted:#a9bcb2}*{box-sizing:border-box}body{margin:0;overflow:hidden;background:#91b1bf}canvas{width:100vw;height:100dvh;display:block;touch-action:none}button{font:inherit;color:#f2f5f1;background:#263b33;border:1px solid #52685a;border-radius:7px;padding:9px 12px;cursor:pointer;font-weight:650}button:hover{background:#3d5948}button:disabled{opacity:.45;cursor:default}.active,.primary{background:var(--green);color:#213221;border-color:var(--green)}.hud{position:absolute;top:14px;left:14px;right:14px;display:flex;justify-content:space-between;pointer-events:none;gap:10px}.panel{background:var(--panel);border:1px solid #ffffff28;border-radius:12px;padding:12px 15px;box-shadow:0 6px 24px #0003;pointer-events:auto}.tag{font-size:10px;letter-spacing:.15em;color:var(--green);font-weight:800}h1,h2,h3{margin:5px 0}h1{font-size:21px}h2{font-size:23px}a{color:#d1e7d1}.money{font-size:22px;color:var(--green);font-weight:800}.muted{color:var(--muted);font-size:12px;line-height:1.5}.bar{position:absolute;bottom:14px;left:14px;right:14px;display:grid;gap:8px;pointer-events:none}.tabs,.toolrow,.actions{display:flex;gap:6px;flex-wrap:wrap}.toolrow{margin-top:8px}.toolrow button small{display:block;font-size:10px;opacity:.75;margin-top:2px}.toolrow button{min-width:82px}.status{min-height:20px;font-size:13px;color:#e7dbab}.hint{position:absolute;top:100px;right:14px;max-width:250px;pointer-events:none}.overlay{position:absolute;inset:0;display:grid;place-items:center;background:#0c181bbb;z-index:10;padding:12px}.modal{width:min(690px,95vw);max-height:90dvh;overflow:auto;background:#172724;border:1px solid #597366;border-radius:14px;padding:22px;box-shadow:0 20px 60px #0008}.modal p{line-height:1.5;color:#c2d1c8}.diagram{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:55px;margin:20px 0;min-height:140px}.ports{display:grid;gap:10px;z-index:1}.ports button{min-height:44px;position:relative}.ports button.done{background:#285244;border-color:#83d3a1}.ports button.selected{outline:2px solid #e7dc8a}.wireCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}.guide{background:#101d19;border-radius:8px;padding:10px;display:grid;gap:5px;font-size:12px}.inspection{display:grid;gap:8px;margin:14px 0}.inspection div{background:#22372d;padding:9px;border-radius:6px}.pass{color:#a5e8b5}.fail{color:#f3c5a1}.hidden{display:none!important}.topright{text-align:right}.cross{position:absolute;top:50%;left:50%;width:5px;height:5px;border-radius:50%;background:#fff;pointer-events:none;display:none}.touch{display:none}@media(max-width:700px){.hud{top:7px;left:7px;right:7px}.panel{padding:8px}.hint{display:none}.bar{bottom:6px;left:6px;right:6px}.toolrow button{min-width:65px;padding:6px}.tabs button,.actions button{padding:6px 8px;font-size:12px}.touch{display:flex;gap:4px;justify-content:center;pointer-events:auto}.touch button{touch-action:none}.modal{padding:14px}.diagram{gap:28px}.ports button{font-size:12px}h1{font-size:15px}}
-</style></head><body><canvas id="world" aria-label="Walkable 3D construction lot"></canvas><div class="hud"><div class="panel"><a href="/" class="tag">← GAMESHUB / IN DEV</a><h1>BUILD &amp; SELL</h1><span class="muted">FREE BUILD / v0.2</span></div><div class="panel topright"><div class="tag">CASH</div><div class="money" id="cash"></div><div class="muted" id="homes"></div></div></div><div class="hint panel"><b>On-site controls</b><div class="muted">WASD · walk<br>Shift · run<br>Right-drag · rotate camera<br>Scroll · zoom<br>Click ground or wall edge · build<br>Q/E · rotate view<br>Work within reach of your character.</div></div><div class="bar"><div class="touch"><button data-move="w">↑</button><button data-move="a">←</button><button data-move="s">↓</button><button data-move="d">→</button></div><div class="panel"><div id="status" class="status">Choose a foundation tile, then walk over and build.</div><div class="tabs" id="tabs"></div><div id="toolrow" class="toolrow"></div></div><div class="panel actions"><button id="undo">Undo</button><button id="roofView">Roof: hidden</button><button id="inspect">Property inspection</button><button id="reset">Reset camera</button><span class="muted" id="summary"></span></div></div><div class="overlay hidden" id="dialog"><div class="modal" id="modal"></div></div>
+ .workbench{margin:12px 0;border:1px solid #506b63;border-radius:12px;overflow:hidden}.workTarget{cursor:pointer;touch-action:none}.workTarget:hover{filter:brightness(1.3)}.workProgress{height:7px;background:#101b1d}.workProgress i{display:block;height:100%;width:0;background:#c6f17c}.modal{width:min(830px,96vw)} </style></head><body><canvas id="world" aria-label="Walkable 3D construction lot"></canvas><div class="hud"><div class="panel"><a href="/" class="tag">← GAMESHUB / IN DEV</a><h1>BUILD &amp; SELL</h1><span class="muted">FREE BUILD / v0.3</span></div><div class="panel topright"><div class="tag">CASH</div><div class="money" id="cash"></div><div class="muted" id="homes"></div></div></div><div class="hint panel"><b>On-site controls</b><div class="muted">WASD · walk<br>Shift · run<br>Right-drag · rotate camera<br>Scroll · zoom<br>Click ground or wall edge · build<br>G · toggle snap<br>Q/E · rotate view<br>Work within reach of your character.</div></div><div class="bar"><div class="touch"><button data-move="w">↑</button><button data-move="a">←</button><button data-move="s">↓</button><button data-move="d">→</button></div><div class="panel"><div id="status" class="status">Choose a foundation tile, then walk over and build.</div><div class="tabs" id="tabs"></div><div id="toolrow" class="toolrow"></div></div><div class="panel actions"><button id="undo">Undo</button><button id="snap" aria-pressed="true">Snap: ON</button><button id="roofView">Roof: hidden</button><button id="inspect">Property inspection</button><button id="reset">Reset camera</button><span class="muted" id="summary"></span></div></div><div class="overlay hidden" id="dialog"><div class="modal" id="modal"></div></div>
 <script type="module">
 import {GameEngine,THREE} from "../../engine/core.js";
 import {resolveXZ} from "../../engine/collision.js";
@@ -18,7 +18,7 @@ const validCell=(x,z)=>Number.isInteger(x)&&Number.isInteger(z)&&x>=0&&z>=0&&x<N
 const edgeCells=(axis,x,z)=>axis==="x"?[[x,z-1],[x,z]]:[[x-1,z],[x,z]];
 const edgesOf=(x,z)=>[edge("x",x,z),edge("x",x,z+1),edge("z",x,z),edge("z",x+1,z)];
 const parse=k=>{const [a,b]=k.split(":");return b?[a,...b.split(",").map(Number)]:["cell",...a.split(",").map(Number)]};
-const blank=()=>({cash:18000,spent:0,homes:0,floors:{},walls:{},fixtures:{},roofs:{},history:[],sold:false});
+const blank=()=>({cash:18000,spent:0,homes:0,floors:{},walls:{},fixtures:{},fixturePos:{},origin:{x:0,z:0},roofs:{},history:[],sold:false});
 function connected(j){const keys=Object.keys(j.floors);if(!keys.length)return false;const seen=new Set([keys[0]]),queue=[keys[0]];while(queue.length){const [x,z]=queue.shift().split(",").map(Number);for(const [a,b] of [[x+1,z],[x-1,z],[x,z+1],[x,z-1]]){const k=cell(a,b);if(j.floors[k]&&!seen.has(k)){seen.add(k);queue.push(k)}}}return seen.size===keys.length}
 function check(j,id,k){
  if(j.sold)return "Property sold.";if(!toolMap[id])return "Unknown tool.";
@@ -42,22 +42,22 @@ function check(j,id,k){
  if(electrical.includes(id))return !w?"Install a wall frame first.":w.finished?"Install electrical before finishing the wall.":f?"A fixture is already here.":"";
  return "Invalid location.";
 }
-function commit(j,id,k,passed=false){
+function commit(j,id,k,passed=false,pos=null){
  if(check(j,id,k)||trade.includes(id)&&!passed)return false;
- j.history.push(JSON.stringify({cash:j.cash,spent:j.spent,floors:j.floors,walls:j.walls,fixtures:j.fixtures,roofs:j.roofs}));
+ j.history.push(JSON.stringify({cash:j.cash,spent:j.spent,floors:j.floors,walls:j.walls,fixtures:j.fixtures,fixturePos:j.fixturePos,origin:j.origin,roofs:j.roofs}));
  if(id==="remove"){
- if(j.fixtures[k])delete j.fixtures[k];
+ if(j.fixtures[k]){delete j.fixtures[k];delete j.fixturePos[k];}
  else if(j.roofs[k])delete j.roofs[k];
  else if(j.walls[k])delete j.walls[k];
  else delete j.floors[k];
  return true;
  }
  j.cash-=toolMap[id].cost;j.spent+=toolMap[id].cost;
- if(id==="floor")j.floors[k]=true;
+ if(id==="floor"){if(pos?.origin&&!Object.keys(j.floors).length)j.origin={...pos.origin};j.floors[k]=true;}
  else if(["frame","door","window"].includes(id))j.walls[k]={type:id,finished:false};
  else if(id==="finish")j.walls[k].finished=true;
  else if(id==="roof")j.roofs[k]=true;
- else j.fixtures[k]=id;
+ else {j.fixtures[k]=id;if(pos)j.fixturePos[k]={x:pos.x||0,z:pos.z||0};}
  return true;
 }
 function undo(j){if(j.sold||!j.history.length)return false;Object.assign(j,JSON.parse(j.history.pop()));return true}
@@ -83,9 +83,9 @@ const puzzles={
 function match(id,left,right){return puzzles[id]?.pairs[left]?.[1]===right}
 
 const $=id=>document.getElementById(id),money=n=>"$"+n.toLocaleString("en-US"),canvas=$("world");
-let job=blank(),selected="floor",category="Structure",engine,root,avatar,limbs=[],worldMeshes=[],obstacles=[],hoverKey=null,preview,roofVisible=false,modalOpen=false,puzzleState=null,keys=new Set(),yaw=0,zoom=7,pitch=.83,drag=null,down=null,lastMove=0,stepCycle=0;
+let snap=true,siteGrid,previewBounds=null,previewSignature="",hoverPos=null;let job=blank(),selected="floor",category="Structure",engine,root,avatar,limbs=[],worldMeshes=[],obstacles=[],hoverKey=null,preview,roofVisible=false,modalOpen=false,puzzleState=null,keys=new Set(),yaw=0,zoom=7,pitch=.83,drag=null,down=null,lastMove=0,stepCycle=0;
 const groups={"Structure":["floor","frame","door","window"],"Electrical":electrical,"Plumbing":wet,"HVAC":hvac,"Finish":["finish","roof"],"Demolish":["remove"]};
-const materials={};
+const materials={};let ghostMaterial;
 function status(s){$("status").textContent=s}
 function updateUI(){ $("cash").textContent=money(job.cash);$("homes").textContent=job.homes+" homes sold";$("summary").textContent=Object.keys(job.floors).length*4+" m² • "+money(job.spent)+" spent";$("undo").disabled=!job.history.length||job.sold;$("tabs").innerHTML=Object.keys(groups).map(g=>'<button class="'+(g===category?"active":"")+'" data-group="'+g+'">'+g+'</button>').join("");$("toolrow").innerHTML=groups[category].map(t=>'<button class="'+(t===selected?"active":"")+'" data-tool="'+t+'">'+toolMap[t].name+'<small>'+money(toolMap[t].cost)+'</small></button>').join("");}
 $("tabs").onclick=e=>{const g=e.target.closest("[data-group]")?.dataset.group;if(g){category=g;selected=groups[g][0];updateUI();status("Selected: "+toolMap[selected].name)}};
@@ -94,70 +94,143 @@ function material(c,roughness=.85){return new THREE.MeshStandardMaterial({color:
 function box(parent,w,h,d,x,y,z,m){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o}
 function sphere(parent,r,x,y,z,m){const o=new THREE.Mesh(new THREE.SphereGeometry(r,16,12),m);o.position.set(x,y,z);o.castShadow=true;parent.add(o);return o}
 function group(parent,x=0,y=0,z=0){const g=new THREE.Group();g.position.set(x,y,z);parent.add(g);return g}
-function center(k){const [a,x,z]=parse(k);return {x:OFFSET+(x+(a==="z"?0:.5))*S,z:OFFSET+(z+(a==="x"?0:.5))*S,axis:a}}
+function center(k){const [a,x,z]=parse(k);return {x:OFFSET+job.origin.x+(x+(a==="z"?0:.5))*S,z:OFFSET+job.origin.z+(z+(a==="x"?0:.5))*S,axis:a}}
 function makeAvatar(scene){const a=group(scene);const shirt=material("#d6973f"),pants=material("#334654"),skin=material("#c5916f"),boots=material("#302d29"),vest=material("#f2d45e");box(a,.49,.65,.28,0,1.16,0,shirt);box(a,.51,.48,.29,0,1.19,.015,vest);box(a,.48,.12,.31,0,.84,0,pants);sphere(a,.19,0,1.7,0,skin);const helmet=new THREE.Mesh(new THREE.SphereGeometry(.23,16,12,0,Math.PI*2,0,Math.PI/2),material("#f2c34a"));helmet.position.set(0,1.73,0);a.add(helmet);box(a,.52,.045,.4,0,1.73,0,vest);limbs=[];for(const side of [-1,1]){const arm=group(a,side*.33,1.43,0);box(arm,.15,.43,.16,0,-.20,0,shirt);sphere(arm,.085,0,-.46,0,skin);const leg=group(a,side*.15,.83,0);box(leg,.21,.65,.23,0,-.3,0,pants);box(leg,.23,.17,.36,0,-.68,-.06,boots);limbs.push({arm,leg,side});}a.position.set(0,0,9.2);return a}
 function boot(){
  engine=new GameEngine(canvas,{fov:57});const scene=engine.scene;scene.background=new THREE.Color("#b4cfdb");scene.fog=new THREE.Fog("#b4cfdb",30,95);scene.add(new THREE.HemisphereLight("#e6f3ff","#847c61",2.1));const sun=new THREE.DirectionalLight("#fff0d5",3.1);sun.position.set(-13,22,9);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-20,right:20,top:20,bottom:-20,near:.5,far:65});sun.shadow.bias=-.0002;scene.add(sun);
  Object.assign(materials,{grass:material("#769550"),dirt:material("#b3a080"),concrete:material("#b5b4ac"),wood:material("#bb8f59"),wall:material("#e6dec9"),glass:new THREE.MeshPhysicalMaterial({color:"#7ba4b9",transparent:true,opacity:.65,roughness:.18}),door:material("#70523b"),roof:material("#48525a"),white:material("#e7eae3"),dark:material("#4c595d"),pipe:material("#b56d4b"),wire:material("#d7b043"),blue:material("#5d91c0"),steel:material("#8e9b9f")});
- const ground=new THREE.Mesh(new THREE.PlaneGeometry(100,100),materials.grass);ground.rotation.x=-Math.PI/2;ground.position.y=-.03;ground.receiveShadow=true;scene.add(ground);box(scene,16,.05,16,0,0,0,materials.dirt);box(scene,60,.08,4,0,-.015,13,materials.dark);box(scene,60,.09,.8,0,.002,10.4,materials.concrete);
- const grid=new THREE.GridHelper(16,N,0xc7d0aa,0xb1a689);grid.position.y=.045;scene.add(grid);
+ const ground=new THREE.Mesh(new THREE.PlaneGeometry(100,100),materials.grass);ground.rotation.x=-Math.PI/2;ground.position.y=-.03;ground.receiveShadow=true;scene.add(ground);box(scene,18,.05,18,0,0,0,materials.dirt);box(scene,60,.08,4,0,-.015,13,materials.dark);box(scene,60,.09,.8,0,.002,10.4,materials.concrete);
+ siteGrid=new THREE.GridHelper(16,N,0xc7d0aa,0xb1a689);siteGrid.position.y=.045;scene.add(siteGrid);
  for(const x of [-12,12])for(let z=-13;z<=6;z+=5){box(scene,.25,2.4,.25,x,1.2,z,materials.wood);for(let y=0;y<3;y++){const o=new THREE.Mesh(new THREE.IcosahedronGeometry(1.05-y*.12,1),materials.grass);o.position.set(x+(y-1)*.4,2.1+y*.5,z);o.castShadow=true;scene.add(o)}}
- root=group(scene);avatar=makeAvatar(scene);preview=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshBasicMaterial({color:0xb9f17e,transparent:true,opacity:.42,depthWrite:false}));preview.visible=false;scene.add(preview);
+ root=group(scene);avatar=makeAvatar(scene);preview=group(scene);preview.visible=false;previewBounds=new THREE.Box3Helper(new THREE.Box3(),0xc9ff91);previewBounds.visible=false;scene.add(previewBounds);
  rebuild();updateUI();
  const ray=new THREE.Raycaster(),ndc=new THREE.Vector2(),plane=new THREE.Plane(new THREE.Vector3(0,1,0),-.05);
  function pick(e){const r=canvas.getBoundingClientRect();ndc.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ndc,engine.camera);
  const edgeTool=["frame","door","window","finish",...electrical].includes(selected);
  const objects=ray.intersectObjects(worldMeshes,false).filter(h=>h.object.userData.key);
- const direct=objects.find(h=>{const k=h.object.userData.key;return selected==="remove"||edgeTool&&k.includes(":")});
- if(direct&&direct.distance<30)return direct.object.userData.key;
- const p=new THREE.Vector3();if(!ray.ray.intersectPlane(plane,p))return null;const fx=(p.x-OFFSET)/S,fz=(p.z-OFFSET)/S,x=Math.floor(fx),z=Math.floor(fz);
+ const direct=objects.find(h=>{const k=h.object.userData.key;return selected==="remove"||edgeTool&&k.includes(":")||[...wet,...hvac].includes(selected)&&!k.includes(":")});
+ if(direct&&direct.distance<30){hoverPos=direct.point.clone();return direct.object.userData.key;}
+ const p=new THREE.Vector3();if(!ray.ray.intersectPlane(plane,p))return null;hoverPos=p.clone();const fx=(p.x-OFFSET-job.origin.x)/S,fz=(p.z-OFFSET-job.origin.z)/S,x=Math.floor(fx),z=Math.floor(fz);
  if(!edgeTool)return validCell(x,z)?cell(x,z):null;
  const xx=Math.round(fx),zz=Math.round(fz);return Math.abs(fx-xx)<Math.abs(fz-zz)?edge("z",xx,z):edge("x",x,zz);
  }
- function updatePreview(k){hoverKey=k;preview.visible=!!k&&!modalOpen;if(!k)return;const p=center(k),floor=p.axis==="cell";preview.position.set(p.x,floor?.09:1.35,p.z);preview.scale.set(floor?1.93:p.axis==="x"?1.95:.17,floor?.10:2.5,floor?1.93:p.axis==="x"?.17:1.95);const error=check(job,selected,k)||reach(k);preview.material.color.set(error?"#ed8b79":"#c9ff91")}
- canvas.oncontextmenu=e=>e.preventDefault();canvas.addEventListener("pointerdown",e=>{if(modalOpen)return;down={x:e.clientX,y:e.clientY,button:e.button};if(e.button===2||e.pointerType==="touch")drag={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId)});
+ function updatePreview(k){hoverKey=k;refreshPreview(k,hoverPos);}
+  canvas.oncontextmenu=e=>e.preventDefault();canvas.addEventListener("pointerdown",e=>{if(modalOpen)return;down={x:e.clientX,y:e.clientY,button:e.button};if(e.button===2||e.pointerType==="touch")drag={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId)});
  canvas.addEventListener("pointermove",e=>{if(modalOpen)return;if(drag){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;yaw-=dx*.008;pitch=THREE.MathUtils.clamp(pitch+dy*.006,.33,1.15);drag={x:e.clientX,y:e.clientY};if(down&&Math.hypot(e.clientX-down.x,e.clientY-down.y)>6)down=null;}else if(down&&Math.hypot(e.clientX-down.x,e.clientY-down.y)>6)down=null;updatePreview(pick(e))});
- canvas.addEventListener("pointerup",e=>{if(!modalOpen&&down&&down.button===0&&Math.hypot(e.clientX-down.x,e.clientY-down.y)<7){const k=pick(e);if(k)attempt(k)}down=null;drag=null;});
+ canvas.addEventListener("pointerup",e=>{if(!modalOpen&&down&&down.button===0&&Math.hypot(e.clientX-down.x,e.clientY-down.y)<7){const k=pick(e);if(k){updatePreview(k);attempt(k,hoverPos)}}down=null;drag=null;});
  canvas.addEventListener("pointercancel",()=>{down=null;drag=null});canvas.addEventListener("pointerleave",()=>{if(!drag)updatePreview(null)});canvas.addEventListener("wheel",e=>{e.preventDefault();zoom=THREE.MathUtils.clamp(zoom+e.deltaY*.008,3.2,14)},{passive:false});
- engine.onFrame(dt=>{if(!modalOpen){if(keys.has("q"))yaw+=dt*1.6;if(keys.has("e"))yaw-=dt*1.6;const x=(keys.has("d")?1:0)-(keys.has("a")?1:0),z=(keys.has("s")?1:0)-(keys.has("w")?1:0),len=Math.hypot(x,z);if(len){const speed=keys.has("shift")?5.7:3.5;const vx=(x*Math.cos(yaw)+z*Math.sin(yaw))/len*speed,vz=(-x*Math.sin(yaw)+z*Math.cos(yaw))/len*speed;const m=resolveXZ(avatar.position,{x:vx*dt,z:vz*dt},obstacles,{minX:-10,maxX:10,minZ:-10,maxZ:10},.23);const moved=Math.hypot(m.x-avatar.position.x,m.z-avatar.position.z);avatar.position.x=m.x;avatar.position.z=m.z;avatar.rotation.y=Math.atan2(-vx,-vz);stepCycle+=moved*5;lastMove=moved/dt;}else lastMove=0;for(const l of limbs){l.leg.rotation.x=lastMove>.05?Math.sin(stepCycle)*.5*l.side:0;l.arm.rotation.x=-l.leg.rotation.x*.7;}const fx=Math.floor((avatar.position.x-OFFSET)/S),fz=Math.floor((avatar.position.z-OFFSET)/S);avatar.position.y=job.floors[cell(fx,fz)]?.12:0;if(hoverKey)updatePreview(hoverKey);}
+ engine.onFrame(dt=>{if(!modalOpen){if(keys.has("q"))yaw+=dt*1.6;if(keys.has("e"))yaw-=dt*1.6;const x=(keys.has("d")?1:0)-(keys.has("a")?1:0),z=(keys.has("s")?1:0)-(keys.has("w")?1:0),len=Math.hypot(x,z);if(len){const speed=keys.has("shift")?5.7:3.5;const vx=(x*Math.cos(yaw)+z*Math.sin(yaw))/len*speed,vz=(-x*Math.sin(yaw)+z*Math.cos(yaw))/len*speed;const m=resolveXZ(avatar.position,{x:vx*dt,z:vz*dt},obstacles,{minX:-10,maxX:10,minZ:-10,maxZ:10},.23);const moved=Math.hypot(m.x-avatar.position.x,m.z-avatar.position.z);avatar.position.x=m.x;avatar.position.z=m.z;avatar.rotation.y=Math.atan2(-vx,-vz);stepCycle+=moved*5;lastMove=moved/dt;}else lastMove=0;for(const l of limbs){l.leg.rotation.x=lastMove>.05?Math.sin(stepCycle)*.5*l.side:0;l.arm.rotation.x=-l.leg.rotation.x*.7;}const fx=Math.floor((avatar.position.x-OFFSET-job.origin.x)/S),fz=Math.floor((avatar.position.z-OFFSET-job.origin.z)/S);avatar.position.y=job.floors[cell(fx,fz)]?.12:0;if(hoverKey)updatePreview(hoverKey);}
  const target=new THREE.Vector3(avatar.position.x,avatar.position.y+1.2,avatar.position.z);const cp=target.clone().add(new THREE.Vector3(Math.sin(yaw)*Math.cos(pitch)*zoom,Math.sin(pitch)*zoom,Math.cos(yaw)*Math.cos(pitch)*zoom));engine.camera.position.copy(cp);engine.camera.lookAt(target);
  });engine.start();
 }
 function addKey(o,k){o.traverse(v=>{if(v.isMesh){v.userData.key=k;worldMeshes.push(v)}})}
-function rebuild(){
- for(const o of [...root.children]){o.traverse(v=>{if(v.geometry)v.geometry.dispose()});root.remove(o)}worldMeshes=[];obstacles=[];
- for(const k of Object.keys(job.floors)){const p=center(k);addKey(box(root,1.99,.12,1.99,p.x,.09,p.z,materials.concrete),k);}
- for(const [k,w] of Object.entries(job.walls)){const p=center(k),g=group(root,p.x,.15,p.z);if(p.axis==="z")g.rotation.y=Math.PI/2;
+function wallGeometry(g,w){
  const wood=materials.wood;box(g,2,.11,.15,0,2.55,0,wood);for(const x of [-.95,.95])box(g,.10,2.45,.15,x,1.28,0,wood);
  if(w.type==="frame"){box(g,2,.11,.15,0,.05,0,wood);for(const x of [-.47,0,.47])box(g,.085,2.44,.13,x,1.28,0,wood);}
  if(w.type==="door"){box(g,1.8,.12,.15,0,2.06,0,wood);for(const x of [-.48,.48])box(g,.10,2,.15,x,1,0,wood);}
  if(w.type==="window"){box(g,2,.11,.15,0,.05,0,wood);box(g,1.75,.12,.15,0,.85,0,wood);box(g,1.75,.12,.15,0,1.86,0,wood);for(const x of [-.64,.64])box(g,.09,2.44,.14,x,1.28,0,wood);}
  if(w.finished){const m=materials.wall;if(w.type==="frame")box(g,2,2.55,.19,0,1.28,0,m);if(w.type==="door"){box(g,2,.48,.19,0,2.32,0,m);for(const x of [-.76,.76])box(g,.48,2.05,.19,x,1.025,0,m);}if(w.type==="window"){box(g,2,.85,.19,0,.425,0,m);box(g,2,.68,.19,0,2.2,0,m);for(const x of [-.82,.82])box(g,.36,1.05,.19,x,1.37,0,m);box(g,1.25,.97,.07,0,1.35,0,materials.glass);}}
- addKey(g,k);if(w.type!=="door"){const a=p.axis==="x";obstacles.push({minX:p.x-(a?1:.12),maxX:p.x+(a?1:.12),minZ:p.z-(a?.12:1),maxZ:p.z+(a?.12:1)});}else{for(const d of [-.76,.76]){const x=p.x+(p.axis==="x"?d:0),z=p.z+(p.axis==="z"?d:0);obstacles.push({minX:x-(p.axis==="x"?.24:.12),maxX:x+(p.axis==="x"?.24:.12),minZ:z-(p.axis==="z"?.24:.12),maxZ:z+(p.axis==="z"?.24:.12)});}}
- }
- for(const [k,t] of Object.entries(job.fixtures)){const p=center(k),g=group(root,p.x,.15,p.z);if(p.axis==="z")g.rotation.y=Math.PI/2;
+}
+function fixtureGeometry(g,t,k){
  if(electrical.includes(t)){const panel=t==="breaker";const y=panel?1.45:t==="outlet"?.55:1.2;box(g,panel?.43:.15,panel?.62:.23,.08,0,y,.14,materials.white);if(panel){for(let i=0;i<4;i++)box(g,.22,.055,.035,0,y-.19+i*.12,.2,materials.dark)}else if(t==="outlet"){for(const x of [-.035,.035])box(g,.012,.06,.012,x,y+.02,.19,materials.dark)}else box(g,.06,.09,.035,0,y,.2,materials.dark);if(!job.walls[k]?.finished)box(g,.027,Math.max(.2,2.55-y),.027,.19,(2.55+y)/2,.08,materials.wire);}
  else if(t==="sink"){box(g,.6,.78,.52,0,.4,0,materials.white);box(g,.67,.11,.58,0,.84,0,materials.steel);box(g,.05,.19,.05,0,.97,-.19,materials.steel);box(g,.05,.05,.17,0,1.05,-.12,materials.steel);}
  else if(t==="toilet"){box(g,.33,.35,.42,0,.18,0,materials.white);sphere(g,.25,0,.38,.08,materials.white);box(g,.36,.54,.18,0,.53,-.21,materials.white);}
  else if(t==="vent"){box(g,.48,.055,.3,0,.04,0,materials.steel);for(let i=0;i<6;i++)box(g,.4,.015,.012,0,.076,-.12+i*.048,materials.dark);}
  else {box(g,.72,.86,.58,0,.43,0,materials.steel);for(let i=0;i<5;i++)box(g,.5,.035,.025,0,.28+i*.09,.31,materials.dark);box(g,.3,.24,.3,0,.97,0,materials.steel);}
+}
+function rebuild(){
+ if(preview)preview.visible=false;if(previewBounds)previewBounds.visible=false;
+ siteGrid.position.x=job.origin.x;siteGrid.position.z=job.origin.z;siteGrid.visible=snap;previewSignature="";
+ for(const o of [...root.children]){o.traverse(v=>{if(v.geometry)v.geometry.dispose()});root.remove(o)}worldMeshes=[];obstacles=[];
+ for(const k of Object.keys(job.floors)){const p=center(k);addKey(box(root,1.99,.12,1.99,p.x,.09,p.z,materials.concrete),k);}
+ for(const [k,w] of Object.entries(job.walls)){const p=center(k),g=group(root,p.x,.15,p.z);if(p.axis==="z")g.rotation.y=Math.PI/2;
+ wallGeometry(g,w);
+ addKey(g,k);if(w.type!=="door"){const a=p.axis==="x";obstacles.push({minX:p.x-(a?1:.12),maxX:p.x+(a?1:.12),minZ:p.z-(a?.12:1),maxZ:p.z+(a?.12:1)});}else{for(const d of [-.76,.76]){const x=p.x+(p.axis==="x"?d:0),z=p.z+(p.axis==="z"?d:0);obstacles.push({minX:x-(p.axis==="x"?.24:.12),maxX:x+(p.axis==="x"?.24:.12),minZ:z-(p.axis==="z"?.24:.12),maxZ:z+(p.axis==="z"?.24:.12)});}}
+ }
+ for(const [k,t] of Object.entries(job.fixtures)){const p=center(k),f=job.fixturePos[k]||{x:0,z:0},g=group(root,p.x+f.x,.15,p.z+f.z);if(p.axis==="z")g.rotation.y=Math.PI/2;
+ fixtureGeometry(g,t,k);
  addKey(g,k);
  }
  for(const k of Object.keys(job.roofs)){const p=center(k);const o=box(root,2.02,.14,2.02,p.x,2.85,p.z,materials.roof);o.visible=roofVisible;addKey(o,k);}
 }
-function reach(k){const p=center(k);return Math.hypot(p.x-avatar.position.x,p.z-avatar.position.z)>3.4?"Walk closer to the work area (WASD).":""}
-function attempt(k){if(job.sold)return;const error=check(job,selected,k)||reach(k);if(error){status(error);return}if(["frame","window","door"].includes(selected)){const p=center(k);if(Math.hypot(p.x-avatar.position.x,p.z-avatar.position.z)<.55){status("Step away from the wall before building.");return;}}if(trade.includes(selected)){openPuzzle(selected,k);return}if(commit(job,selected,k)){rebuild();updateUI();status(toolMap[selected].name+" installed.");}}
-function show(content){modalOpen=true;keys.clear();preview.visible=false;$("modal").innerHTML=content;$("dialog").classList.remove("hidden")}
+
+function placementOffset(id,k,point){
+ const p=center(k);if(!point||snap)return {x:0,z:0};
+ const dx=point.x-p.x,dz=point.z-p.z;
+ const limit=(v,max)=>Math.max(-max,Math.min(max,v));
+ if(id==="floor"&&!Object.keys(job.floors).length){const x=limit(dx,.96),z=limit(dz,.96);return {x,z,origin:{x:job.origin.x+x,z:job.origin.z+z}}}
+ if(electrical.includes(id)){const max=id==="breaker"?.73:.88;return {x:p.axis==="x"?limit(dx,max):0,z:p.axis==="z"?limit(dz,max):0};}
+ if(wet.includes(id)||hvac.includes(id)){const radii={sink:[.35,.34],toilet:[.26,.36],vent:[.25,.16],air:[.37,.32]}[id];return {x:limit(dx,1-radii[0]),z:limit(dz,1-radii[1])};}
+ return {x:0,z:0};
+}
+function refreshPreview(k,point){
+ if(!preview)return;preview.visible=!!k&&!modalOpen;previewBounds.visible=preview.visible;if(!preview.visible)return;
+ const offset=placementOffset(selected,k,point),p=center(k),sig=selected+"|"+k+"|"+offset.x.toFixed(3)+"|"+offset.z.toFixed(3);
+ if(sig!==previewSignature){
+ previewSignature=sig;for(const o of [...preview.children]){o.traverse(v=>{if(v.geometry)v.geometry.dispose()});preview.remove(o);}
+ if(!ghostMaterial)ghostMaterial=new THREE.MeshBasicMaterial({color:0xc9ff91,transparent:true,opacity:.36,depthWrite:false});
+ const type=selected==="remove"?(job.fixtures[k]|| (job.roofs[k]?"roof":job.walls[k]?.type||"floor")):selected;
+ const actualOffset=selected==="remove"&&job.fixtures[k]?job.fixturePos[k]||offset:offset;
+ const g=group(preview,p.x+actualOffset.x,.15,p.z+actualOffset.z);if(p.axis==="z")g.rotation.y=Math.PI/2;
+ if(type==="floor")box(g,1.99,.12,1.99,0,-.06,0,materials.concrete);
+ else if(type==="roof")box(g,2.02,.14,2.02,0,2.7,0,materials.roof);
+ else if(["frame","door","window","finish"].includes(type))wallGeometry(g,{type:type==="finish"?job.walls[k]?.type||"frame":type,finished:type==="finish"||selected==="remove"&&!!job.walls[k]?.finished});
+ else if(trade.includes(type))fixtureGeometry(g,type,k);
+ g.traverse(v=>{if(v.isMesh){v.material=ghostMaterial;v.castShadow=false;v.receiveShadow=false}});
+ preview.updateMatrixWorld(true);previewBounds.box.setFromObject(preview);previewBounds.updateMatrixWorld(true);
+ }
+ const error=check(job,selected,k)||reach(k);ghostMaterial.color.set(error?"#ed8b79":"#c9ff91");previewBounds.material.color.set(error?"#ed8b79":"#c9ff91");
+}
+
+function reach(k){const b=previewBounds?.visible?previewBounds.box:null,p=center(k);const x=b?Math.max(b.min.x,Math.min(avatar.position.x,b.max.x)):p.x,z=b?Math.max(b.min.z,Math.min(avatar.position.z,b.max.z)):p.z;return Math.hypot(x-avatar.position.x,z-avatar.position.z)>3.4?"Walk closer to the work area (WASD).":""}
+function attempt(k,point){const pos=placementOffset(selected,k,point);if(job.sold)return;const error=check(job,selected,k)||reach(k);if(error){status(error);return}if(["frame","window","door"].includes(selected)){const p=center(k);if(Math.hypot(p.x-avatar.position.x,p.z-avatar.position.z)<.55){status("Step away from the wall before building.");return;}}if(trade.includes(selected)){openPuzzle(selected,k,pos);return}if(commit(job,selected,k,false,pos)){rebuild();updateUI();status(toolMap[selected].name+" installed.");}}
+function show(content){modalOpen=true;keys.clear();preview.visible=false;previewBounds.visible=false;$("modal").innerHTML=content;$("dialog").classList.remove("hidden")}
 function close(){modalOpen=false;puzzleState=null;$("dialog").classList.add("hidden");keys.clear()}
 function shuffle(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b}
-function openPuzzle(id,k){const p=puzzles[id];puzzleState={id,k,chosen:-1,done:[],right:shuffle(p.pairs.map(x=>x[1])),message:"Select a source, then its destination."};drawPuzzle()}
-function drawPuzzle(){const st=puzzleState,p=puzzles[st.id];show('<div class="tag">'+(electrical.includes(st.id)?"ELECTRICAL":wet.includes(st.id)?"PLUMBING":"HVAC")+' / WORK ORDER</div><h2>'+p.title+'</h2><p>'+p.intro+'</p><div class="guide"><b>Connection guide · game schematic</b>'+p.pairs.map(a=>'<div>'+a[0]+' → '+a[1]+'</div>').join("")+'</div><div class="diagram" id="diagram"><svg class="wireCanvas" id="wires"></svg><div class="ports">'+p.pairs.map((a,i)=>'<button id="l'+i+'" data-left="'+i+'" class="'+(st.done.includes(i)?"done":st.chosen===i?"selected":"")+'" '+(st.done.includes(i)?"disabled":"")+'>'+a[0]+'</button>').join("")+'</div><div class="ports">'+st.right.map((a,i)=>'<button id="r'+i+'" data-right="'+i+'" class="'+(st.done.some(j=>p.pairs[j][1]===a)?"done":"")+'" '+(st.done.some(j=>p.pairs[j][1]===a)?"disabled":"")+'>'+a+'</button>').join("")+'</div></div><p id="feedback">'+st.message+' · '+st.done.length+'/'+p.pairs.length+'</p><div class="actions"><button id="cancel">Cancel work</button><button class="primary" id="complete" '+(st.done.length===p.pairs.length?"":"disabled")+'>Install · '+money(toolMap[st.id].cost)+'</button></div><p class="muted">Simplified fictional, de-energized training diagram. Not an installation guide for real equipment.</p>');
- $("cancel").onclick=close;$("complete").onclick=()=>{if(st.done.length!==p.pairs.length)return;if(commit(job,st.id,st.k,true)){rebuild();updateUI();status(p.title+" completed.");}close();};
- $("diagram").onclick=e=>{const l=e.target.closest("[data-left]"),r=e.target.closest("[data-right]");if(l){st.chosen=Number(l.dataset.left);st.message="Choose the matching destination."}if(r&&st.chosen>=0){if(match(st.id,st.chosen,st.right[Number(r.dataset.right)])){st.done.push(st.chosen);st.message="Connection verified.";st.chosen=-1;}else st.message="Incorrect connection. Check the schematic."}drawPuzzle()};
- requestAnimationFrame(()=>{if(puzzleState!==st)return;const d=$("diagram"),svg=$("wires"),rect=d.getBoundingClientRect();svg.setAttribute("viewBox","0 0 "+rect.width+" "+rect.height);for(const i of st.done){const l=$("l"+i).getBoundingClientRect(),r=$("r"+st.right.indexOf(p.pairs[i][1])).getBoundingClientRect();const x1=l.right-rect.left,y1=l.top+l.height/2-rect.top,x2=r.left-rect.left,y2=r.top+r.height/2-rect.top,path=document.createElementNS("http://www.w3.org/2000/svg","path");path.setAttribute("d","M"+x1+" "+y1+" C"+(x1+22)+" "+y1+" "+(x2-22)+" "+y2+" "+x2+" "+y2);path.setAttribute("stroke",["#f2c677","#8bbdf3","#8cd6a1","#cf9ce9"][i%4]);path.setAttribute("stroke-width","4");path.setAttribute("fill","none");svg.appendChild(path)}});
+
+const tradeSteps={
+ outlet:["Secure the mounting box","Seat the receptacle","Fit the cover plate"],
+ switch:["Secure the switch box","Seat the switch mechanism","Fit the cover plate"],
+ three:["Mount both switch boxes","Seat both switch mechanisms","Fit the plates"],
+ breaker:["Mount the enclosure","Seat the simulated breaker modules","Secure the cover"],
+ sink:["Set the sink in position","Seat the faucet assembly","Tighten the fixture connections"],
+ toilet:["Position the fixture","Seat the tank assembly","Secure the base"],
+ vent:["Fit the duct boot","Seat the grille","Fasten the grille"],
+ air:["Set the unit on its base","Seat the duct collars","Secure the service cover"]
+};
+function openPuzzle(id,k,pos){const p=puzzles[id];puzzleState={id,k,pos,stage:0,done:[],bolts:[],right:shuffle(p.pairs.map(x=>x[1])),message:"Fit the mounting hardware.",selected:-1};drawPuzzle()}
+function deviceArt(id){
+ if(id==="outlet")return '<rect x="280" y="72" width="140" height="240" rx="16" fill="#d5d9cd" stroke="#77877c" stroke-width="4"/><rect x="310" y="102" width="80" height="70" rx="18" fill="#f5f2dd"/><rect x="310" y="205" width="80" height="70" rx="18" fill="#f5f2dd"/>'+[130,233].map(y=>'<path d="M337 '+y+' v18 M362 '+y+' v18" stroke="#34423d" stroke-width="6" stroke-linecap="round"/><circle cx="350" cy="'+(y+27)+'" r="5" fill="#34423d"/>').join("");
+ if(id==="switch"||id==="three")return (id==="three"?[280,365]:[325]).map(x=>'<rect x="'+(x-40)+'" y="85" width="80" height="215" rx="8" fill="#d0d3c9" stroke="#77877c" stroke-width="4"/><rect x="'+(x-22)+'" y="144" width="44" height="93" rx="6" fill="#f1f0dd"/><path d="M'+(x-20)+' 190 h40" stroke="#7a8277" stroke-width="3"/>').join("");
+ if(id==="breaker")return '<rect x="242" y="60" width="216" height="270" rx="7" fill="#788b90" stroke="#b7c8c8" stroke-width="5"/><rect x="270" y="83" width="160" height="223" rx="3" fill="#25323b"/>'+[0,1,2,3].map(i=>'<rect x="290" y="'+(100+i*49)+'" width="120" height="37" rx="4" fill="#4d5b62"/><rect x="333" y="'+(107+i*49)+'" width="34" height="23" rx="3" fill="#20272c"/>').join("");
+ if(id==="sink")return '<rect x="225" y="85" width="250" height="210" rx="42" fill="#aebec0" stroke="#e2ece6" stroke-width="5"/><rect x="249" y="112" width="202" height="155" rx="32" fill="#637e81"/><circle cx="350" cy="220" r="19" fill="#34474d" stroke="#c4d2d0" stroke-width="5"/><path d="M350 117 V75 Q350 48 375 48 Q400 48 400 78 V109" fill="none" stroke="#c6d3d2" stroke-width="16" stroke-linecap="round"/>';
+ if(id==="toilet")return '<rect x="270" y="58" width="160" height="105" rx="13" fill="#dddcd0" stroke="#a7b7b1" stroke-width="4"/><ellipse cx="350" cy="234" rx="94" ry="100" fill="#efeee0" stroke="#a7b7b1" stroke-width="4"/><ellipse cx="350" cy="233" rx="65" ry="72" fill="#9ab6ba"/><ellipse cx="350" cy="240" rx="42" ry="46" fill="#6e9fa9"/>';
+ if(id==="vent")return '<rect x="220" y="108" width="260" height="170" rx="8" fill="#899a9d" stroke="#ccd7d6" stroke-width="5"/>'+Array.from({length:9},(_,i)=>'<rect x="243" y="'+(128+i*15)+'" width="214" height="7" rx="2" fill="#303f43"/>').join("");
+ return '<rect x="235" y="70" width="230" height="245" rx="7" fill="#aab8b7" stroke="#d9e0dd" stroke-width="4"/><circle cx="350" cy="185" r="73" fill="#52676b"/><circle cx="350" cy="185" r="58" fill="none" stroke="#899d9b" stroke-width="4"/>'+[0,90,180,270].map(a=>'<path d="M350 185 Q390 120 401 166 Q399 190 350 185" fill="#b8c5c2" transform="rotate('+a+' 350 185)"/>').join("")+'<circle cx="350" cy="185" r="13" fill="#35484c"/>';
+}
+function drawPuzzle(){
+ const st=puzzleState,p=puzzles[st.id],steps=tradeSteps[st.id],isElec=electrical.includes(st.id),isWet=wet.includes(st.id),colors=isElec?["#d4a65e","#b9c2c5","#75bd8c","#b78ed8"]:isWet?["#e18270","#6ba8db","#b7a48a","#89bcb0"]:["#7abbd0","#b5c6d0","#d8b774","#8fbd9f"];
+ const stageNames=[steps[0],"Connect the "+(isElec?"leads":isWet?"pipes":"ducts"),steps[1],steps[2],"Test the installation"];
+ const n=p.pairs.length,ys=Array.from({length:n},(_,i)=>85+i*220/Math.max(1,n-1));
+ const guide=p.pairs.map((pair,i)=>'<div><span style="color:'+colors[i]+'">●</span> '+pair[0]+' → '+pair[1]+'</div>').join("");
+ const ports=st.stage===1?ys.map((y,i)=>'<g><path d="M48 '+y+' Q100 '+(y-16)+' 145 '+y+'" stroke="'+colors[i]+'" stroke-width="'+(isElec?7:14)+'" fill="none" stroke-linecap="round"/><circle cx="150" cy="'+y+'" r="13" fill="'+colors[i]+'" stroke="#e9e7d8" stroke-width="2" data-port="'+i+'" class="workTarget"/><text x="25" y="'+(y-18)+'" fill="#e5ece3" font-size="11">'+p.pairs[i][0]+'</text></g>').join("")+ys.map((y,i)=>'<g><rect x="514" y="'+(y-13)+'" width="26" height="26" rx="'+(isElec?5:12)+'" fill="#4f6665" stroke="#b6cbc1" stroke-width="2" data-socket="'+i+'" class="workTarget"/><text x="548" y="'+(y+4)+'" fill="#e5ece3" font-size="11">'+st.right[i]+'</text></g>').join(""):"";
+ const installed=st.stage===1?st.done.map(i=>{const dest=st.right.indexOf(p.pairs[i][1]);return '<path d="M150 '+ys[i]+' C235 '+ys[i]+' 445 '+ys[dest]+' 527 '+ys[dest]+'" fill="none" stroke="'+colors[i]+'" stroke-width="'+(isElec?6:13)+'" stroke-linecap="round"/>'}).join(""):"";
+ const targets=[0,2,3].includes(st.stage)?[[265,67],[435,67],[265,320],[435,320]].map(([x,y],i)=>'<g class="workTarget" data-bolt="'+i+'"><circle cx="'+x+'" cy="'+y+'" r="22" fill="'+(st.bolts.includes(i)?"#609d78":"#4a5b62")+'" stroke="'+(st.bolts.includes(i)?"#9be4a8":"#e0c775")+'" stroke-width="3"/><path d="M'+(x-8)+' '+y+' h16 M'+x+' '+(y-8)+' v16" stroke="#e9eadd" stroke-width="3" pointer-events="none"/></g>').join(""):"";
+ show('<div class="tag">'+(isElec?"ELECTRICAL":isWet?"PLUMBING":"HVAC")+' / ON-SITE WORK · '+(st.stage+1)+'/5</div><h2>'+p.title+'</h2><p><b>'+stageNames[st.stage]+'</b> · '+(st.stage===1?"Drag the colored component ends into the matching ports.":st.stage===4?"Run a simulated system test.":"Hold each highlighted fastener to fit and secure the component.")+'</p><div class="guide">'+(st.stage===1?'<b>Fictional system schematic</b>'+guide:'<div>Work at the actual fixture location. Each fastener must be secured individually.</div>')+'</div><div class="workbench"><svg id="bench" viewBox="0 0 700 390" width="100%" style="display:block;touch-action:none;user-select:none"><rect width="700" height="390" rx="12" fill="#101b1d"/><path d="M0 38 H700 M0 350 H700" stroke="#293e3c"/>'+deviceArt(st.id)+installed+ports+targets+'<path id="dragWire" fill="none" stroke-width="'+(isElec?7:14)+'" stroke-linecap="round"/><text x="18" y="374" fill="#88a69d" font-size="12">ISOLATED SIMULATION · NO LIVE POWER OR PRESSURE</text></svg><div class="workProgress"><i id="workFill"></i></div></div><p id="feedback" role="status">'+st.message+'</p><div class="actions"><button id="cancel">Cancel work</button><button class="primary" id="complete" '+(st.stage===4||st.stage===1&&st.done.length===n||[0,2,3].includes(st.stage)&&st.bolts.length===4?"":"disabled")+'>'+(st.stage===4?"Run test & install · "+money(toolMap[st.id].cost):"Continue")+'</button></div><p class="muted">Game-only device models and simplified isolated circuits. Not real-world wiring, plumbing or HVAC instructions.</p>');
+ const bench=$("bench");let hold=null,raf=0,dragPort=-1;
+ function stop(){if(raf)cancelAnimationFrame(raf);raf=0;hold=null;const fill=$("workFill");if(fill)fill.style.width="0%"}
+ function point(e){const v=bench.createSVGPoint();v.x=e.clientX;v.y=e.clientY;return v.matrixTransform(bench.getScreenCTM().inverse())}
+ bench.onpointerdown=e=>{const b=e.target.closest("[data-bolt]"),a=e.target.closest("[data-port]");if(b){const i=Number(b.dataset.bolt);if(st.bolts.includes(i))return;bench.setPointerCapture(e.pointerId);hold={i,start:performance.now()};const run=t=>{if(!hold||puzzleState!==st)return;const f=Math.min(1,(t-hold.start)/680);$("workFill").style.width=f*100+"%";if(f===1){st.bolts.push(i);st.message="Fastener secured · "+st.bolts.length+"/4";stop();drawPuzzle();}else raf=requestAnimationFrame(run)};raf=requestAnimationFrame(run)}
+ else if(a){const i=Number(a.dataset.port);if(st.done.includes(i))return;dragPort=i;bench.setPointerCapture(e.pointerId);$("dragWire").setAttribute("stroke",colors[i]);}};
+ bench.onpointermove=e=>{if(dragPort<0)return;const v=point(e);$("dragWire").setAttribute("d","M150 "+ys[dragPort]+" C235 "+ys[dragPort]+" "+(v.x-55)+" "+v.y+" "+v.x+" "+v.y)};
+ bench.onpointerup=e=>{stop();if(dragPort<0)return;const v=point(e),j=ys.findIndex(y=>Math.hypot(v.x-527,v.y-y)<30),i=dragPort;dragPort=-1;if(j>=0&&match(st.id,i,st.right[j])&&!st.done.includes(i)){st.done.push(i);st.message="Connection seated · "+st.done.length+"/"+n;}else st.message="Connection did not fit. Check the schematic and try again.";drawPuzzle()};
+ bench.onpointercancel=()=>{stop();dragPort=-1;$("dragWire").removeAttribute("d")};
+ $("cancel").onclick=()=>{stop();close()};$("complete").onclick=()=>{if(st.stage===4){if(commit(job,st.id,st.k,true,st.pos)){rebuild();updateUI();status(p.title+" installed and tested.");}close();return;}if(st.stage===1?st.done.length!==n:st.bolts.length!==4)return;st.stage++;st.bolts=[];st.message=st.stage===1?"Connect the physical leads or fittings.":st.stage===4?"All components are fitted. Ready to test.":"Secure each highlighted point.";drawPuzzle()};
 }
 function openInspection(){const items=inspection(job),ok=items.every(x=>x.ok);show('<div class="tag">PROPERTY / INSPECTION</div><h2>Ready for sale?</h2><p>Estimated sale price '+money(price(job))+' · construction cost '+money(job.spent)+'</p><div class="inspection">'+items.map(i=>'<div class="'+(i.ok?"pass":"fail")+'">'+(i.ok?"✓ ":"○ ")+i.name+'</div>').join("")+'</div><div class="actions"><button id="cancel">Back to work</button><button class="primary" id="sell" '+(ok?"":"disabled")+'>Sell property</button></div>');$("cancel").onclick=close;$("sell").onclick=()=>{if(sell(job)){updateUI();show('<div class="tag">PROPERTY SOLD</div><h2>Sale completed</h2><p>Cash: '+money(job.cash)+' · '+job.homes+' homes sold.</p><button id="new" class="primary">Start a new custom home</button>');$("new").onclick=()=>{next(job);avatar.position.set(0,0,9.2);rebuild();updateUI();close();status("New lot ready.")}}}}
+function toggleSnap(){snap=!snap;siteGrid.visible=snap;$("snap").textContent="Snap: "+(snap?"ON":"OFF");$("snap").setAttribute("aria-pressed",String(snap));previewSignature="";status(snap?"Grid snap enabled.":"Free fixture positioning enabled. Structural modules attach to their foundation; the first tile sets the layout origin.");if(hoverKey)refreshPreview(hoverKey,hoverPos)}
+$("snap").onclick=toggleSnap;
 $("undo").onclick=()=>{if(!modalOpen&&undo(job)){rebuild();updateUI();status("Last change undone.")}};$("roofView").onclick=()=>{roofVisible=!roofVisible;$("roofView").textContent="Roof: "+(roofVisible?"visible":"hidden");rebuild()};$("inspect").onclick=openInspection;$("reset").onclick=()=>{yaw=0;zoom=7;pitch=.83};
-window.addEventListener("keydown",e=>{if(modalOpen){if(e.key==="Escape"&&!job.sold)close();return}const k=e.key.toLowerCase();if(["w","a","s","d","q","e","shift"].includes(k)){e.preventDefault();keys.add(k)}});window.addEventListener("keyup",e=>keys.delete(e.key.toLowerCase()));window.addEventListener("blur",()=>keys.clear());for(const b of document.querySelectorAll("[data-move]")){b.onpointerdown=e=>{b.setPointerCapture(e.pointerId);keys.add(b.dataset.move)};b.onpointerup=b.onpointercancel=b.onlostpointercapture=()=>keys.delete(b.dataset.move)}
+window.addEventListener("keydown",e=>{if(modalOpen){if(e.key==="Escape"&&!job.sold)close();return}const k=e.key.toLowerCase();if(k==="g"&&!e.repeat){e.preventDefault();toggleSnap();return}if(["w","a","s","d","q","e","shift"].includes(k)){e.preventDefault();keys.add(k)}});window.addEventListener("keyup",e=>keys.delete(e.key.toLowerCase()));window.addEventListener("blur",()=>keys.clear());for(const b of document.querySelectorAll("[data-move]")){b.onpointerdown=e=>{b.setPointerCapture(e.pointerId);keys.add(b.dataset.move)};b.onpointerup=b.onpointercancel=b.onlostpointercapture=()=>keys.delete(b.dataset.move)}
 try{boot()}catch(e){console.error(e);show('<h2>Unable to start the 3D site</h2><p>WebGL initialization failed. Check browser graphics acceleration.</p><a href="/">Return to GAMESHUB</a>');}
 </script></body></html>
