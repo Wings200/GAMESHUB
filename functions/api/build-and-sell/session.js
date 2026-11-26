@@ -1,4 +1,5 @@
 
+import {readPlate,readCompaction,plateFromPlayer,compactPatch} from "../../../games/build-and-sell/compactor-math.mjs";
 import {readGravel,gravelPatch} from "../../../games/build-and-sell/gravel-math.mjs";
 import {cleanMachineVisual} from "../../../games/build-and-sell/machine-playback.mjs";
 import {readMachine,readDig,cleanDrive,targetTile} from "../../../games/build-and-sell/excavator-math.mjs";
@@ -23,7 +24,7 @@ async function schema(db){await db.batch([
  db.prepare("CREATE TABLE IF NOT EXISTS build_players_v2 (id TEXT PRIMARY KEY, room TEXT NOT NULL, token TEXT NOT NULL, name TEXT NOT NULL, pose TEXT NOT NULL, updated INTEGER NOT NULL)"),
  db.prepare("CREATE INDEX IF NOT EXISTS build_players_v2_room ON build_players_v2(room,updated)")
 ]);}
-const worldData=(w,room)=>{const l=readLayout(w),d=readDig(w,l.layout);return {...l,machine:readMachine(w,room),...d,...readGravel(w,l.layout,d.dug)};};
+const worldData=(w,room)=>{const l=readLayout(w),d=readDig(w,l.layout),g=readGravel(w,l.layout,d.dug);return {...l,machine:readMachine(w,room),...d,...g,plate:readPlate(w,room),...readCompaction(w,l.layout,g.gravel)};};
 const active="EXISTS (SELECT 1 FROM build_sessions_v2 s WHERE s.code=build_players_v2.room AND s.closed=0 AND s.updated>?)";
 async function openWorld(db,user,action,username,now){
  let w=await db.prepare("SELECT id,state,updated FROM build_worlds_v2 WHERE owner=?").bind(user.id).first();
@@ -76,16 +77,29 @@ export async function onRequestPost(ctx){
  return j.meta?.changes?json({ok:true,code:room,id,token:secret,host:false}):json({ok:false,error:"Session is closed, expired, or full."},409);
  }
  if(!/^[A-Z0-9]{6}$/.test(room)||typeof b.id!=="string"||typeof b.token!=="string")return json({ok:false,error:"Invalid session credentials."},400);
- if(!["sync","save","leave","layout","vehicle","dig","gravel"].includes(b.action))return json({ok:false,error:"Unknown operation."},400);
+ if(!["sync","save","leave","layout","vehicle","dig","gravel","plate","compact"].includes(b.action))return json({ok:false,error:"Unknown operation."},400);
  const auth=await db.prepare("SELECT s.world,s.host,s.closed,s.updated FROM build_players_v2 p JOIN build_sessions_v2 s ON s.code=p.room WHERE p.id=? AND p.room=? AND p.token=? AND p.updated>? AND s.closed=0 AND s.updated>?").bind(b.id,room,b.token,cutoff,cutoff).first();
  if(!auth)return json({ok:false,error:"Session closed or expired. Load the world or get a new code."},410);
  const host=auth.host===b.id;
  const guard="EXISTS(SELECT 1 FROM build_sessions_v2 s JOIN build_players_v2 p ON p.room=s.code WHERE s.code=? AND s.world=build_worlds_v2.id AND s.closed=0 AND s.updated>? AND p.id=? AND p.token=? AND p.updated>?)";
  const guardArgs=[room,cutoff,b.id,b.token,cutoff];
  const worldRow=async()=>JSON.parse((await db.prepare("SELECT state FROM build_worlds_v2 WHERE id=?").bind(auth.world).first())?.state||"{}");
+ if(b.action==="plate"||b.action==="compact"){
+ const w=await worldRow(),plate=readPlate(w,room),pose=sanitizePose(b.pose),l=readLayout(w),d=readDig(w,l.layout),g=readGravel(w,l.layout,d.dug),c=readCompaction(w,l.layout,g.gravel);
+ if(!pose)return json({ok:false,error:"Invalid player position."},400);
+ if(b.action==="plate"){
+ const enter=b.enter===true;if(enter){if(readMachine(w,room).driver===b.id||Math.hypot(pose.x-plate.x,pose.z-plate.z)>2.8)return json({ok:false,error:"Approach the plate compactor on foot."},400);if(plate.driver&&plate.driver!==b.id){const other=await db.prepare("SELECT id FROM build_players_v2 WHERE id=? AND room=? AND updated>?").bind(plate.driver,room,cutoff).first();if(other)return json({ok:false,error:"Compactor occupied."},409);}}else if(plate.driver!==b.id)return json({ok:false,error:"Not operating the compactor."},409);
+ const next={...(enter?plate:plateFromPlayer(pose)),driver:enter?b.id:null,room,rev:plate.rev+1};
+ const u=await db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,'$.plate',json(?)),updated=? WHERE id=? AND COALESCE(json_extract(state,'$.plate.rev'),0)=? AND "+guard).bind(JSON.stringify(next),now,auth.world,plate.rev,...guardArgs).run();if(!u.meta?.changes)return json({ok:false,error:"Compactor changed. Try again."},409);return json({ok:true,...worldData(await worldRow(),room)});
+ }
+ if(plate.driver!==b.id||b.pose?.plateOperating!==true||b.revision!==l.revision)return json({ok:false,error:"Operate the compactor first."},403);
+ const position=plateFromPlayer(pose);if(Math.hypot(position.x-plate.x,position.z-plate.z)>4)return json({ok:false,error:"Compactor position out of range."},409);
+ const ids=compactPatch(l.layout,position,new Set(g.gravel),new Set(c.compacted));if(!ids.length)return json({ok:false,error:"No loose gravel here."},409);
+ const u=await db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,'$.compacted',json(?),'$.compactRevision',?,'$.plate.x',?,'$.plate.z',?,'$.plate.yaw',?),updated=? WHERE id=? AND COALESCE(json_extract(state,'$.compactRevision'),0)=? AND COALESCE(json_extract(state,'$.layoutRevision'),0)=? AND json_extract(state,'$.plate.driver')=? AND json_extract(state,'$.plate.room')=? AND "+guard).bind(JSON.stringify([...c.compacted,...ids]),c.compactRevision+1,position.x,position.z,position.yaw,now,auth.world,c.compactRevision,l.revision,b.id,room,...guardArgs).run();if(!u.meta?.changes)return json({ok:false,error:"Compaction changed. Try again."},409);return json({ok:true,...worldData(await worldRow(),room)});
+ }
  if(b.action==="gravel"){
  const w=await worldRow(),l=readLayout(w),d=readDig(w,l.layout),g=readGravel(w,l.layout,d.dug),pose=sanitizePose(b.pose);
- if(!pose||b.pose?.driving||b.pose?.gravelMode!==true||readMachine(w,room).driver===b.id||b.revision!==l.revision)return json({ok:false,error:"Equip gravel tool near the excavation."},400);
+ if(!pose||b.pose?.driving||readPlate(w,room).driver===b.id||b.pose?.gravelMode!==true||readMachine(w,room).driver===b.id||b.revision!==l.revision)return json({ok:false,error:"Equip gravel tool near the excavation."},400);
  const ids=gravelPatch(l.layout,b.tile,new Set(d.dug),new Set(g.gravel),pose);
  if(!ids.length)return json({ok:false,error:"No uncovered excavated ground in reach."},409);
  const last={actor:b.id,tile:b.tile};
@@ -94,7 +108,7 @@ export async function onRequestPost(ctx){
  }
  if(b.action==="vehicle"||b.action==="dig"){
  const w=await worldRow(),m=readMachine(w,room),l=readLayout(w),d=readDig(w,l.layout),pose=sanitizePose(b.pose);
- if(b.action==="vehicle"){
+ if(b.action==="vehicle"){if(b.enter===true&&readPlate(w,room).driver===b.id)return json({ok:false,error:"Park the compactor first."},409);
  const enter=b.enter===true;if(enter){if(!pose||Math.hypot(pose.x-m.x,pose.z-m.z)>3.5)return json({ok:false,error:"Approach the excavator first."},400);if(m.driver&&m.driver!==b.id){const owner=await db.prepare("SELECT id FROM build_players_v2 WHERE id=? AND room=? AND updated>?").bind(m.driver,room,cutoff).first();if(owner)return json({ok:false,error:"Excavator occupied."},409);}}else if(m.driver!==b.id)return json({ok:false,error:"You are not driving."},409);
  const v=!enter?(cleanDrive(b.pose?.drive)||m):m;const next={x:v.x,z:v.z,yaw:v.yaw,driver:enter?b.id:null,room,rev:m.rev+1};
  const u=await db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,'$.machine',json(?)),updated=? WHERE id=? AND COALESCE(json_extract(state,'$.machine.rev'),0)=? AND "+guard).bind(JSON.stringify(next),now,auth.world,m.rev,...guardArgs).run();if(!u.meta?.changes)return json({ok:false,error:"Excavator changed. Try again."},409);return json({ok:true,...worldData(await worldRow(),room)});
@@ -119,6 +133,7 @@ export async function onRequestPost(ctx){
  const saveSql="UPDATE build_worlds_v2 SET state=json_set(state,'$.hostPose',json(?)),updated=? WHERE id=? AND EXISTS(SELECT 1 FROM build_sessions_v2 WHERE code=? AND world=build_worlds_v2.id AND host=? AND closed=0 AND updated>?)";
  if(b.action==="leave"){
  const statements=[];
+ if(p&&b.pose?.plateOperating){const q=plateFromPlayer(p);statements.push(db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,'$.plate.x',?,'$.plate.z',?,'$.plate.yaw',?,'$.plate.driver',NULL,'$.plate.rev',COALESCE(json_extract(state,'$.plate.rev'),0)+1) WHERE id=? AND json_extract(state,'$.plate.driver')=? AND json_extract(state,'$.plate.room')=? AND "+guard).bind(q.x,q.z,q.yaw,auth.world,b.id,room,...guardArgs));}
  const v=cleanDrive(b.pose?.drive);if(v)statements.push(db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,'$.machine.x',?,'$.machine.z',?,'$.machine.yaw',?,'$.machine.driver',NULL,'$.machine.rev',COALESCE(json_extract(state,'$.machine.rev'),0)+1) WHERE id=? AND json_extract(state,'$.machine.driver')=? AND json_extract(state,'$.machine.room')=? AND "+guard).bind(v.x,v.z,v.yaw,auth.world,b.id,room,...guardArgs));
  if(host&&saveState)statements.push(db.prepare(saveSql).bind(saveState,now,auth.world,room,b.id,cutoff));
  if(host)statements.push(db.prepare("UPDATE build_sessions_v2 SET closed=1 WHERE code=? AND host=?").bind(room,b.id));
@@ -133,6 +148,7 @@ export async function onRequestPost(ctx){
  if(b.action==="save")statements.push(db.prepare(saveSql).bind(saveState,now,auth.world,room,b.id,cutoff));
  else statements.push(db.prepare(saveSql+" AND updated<?").bind(saveState,now,auth.world,room,b.id,cutoff,now-15000));
  }
+ if(p&&b.pose?.plateOperating){const q=plateFromPlayer(p);statements.push(db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,'$.plate.x',?,'$.plate.z',?,'$.plate.yaw',?) WHERE id=? AND json_extract(state,'$.plate.driver')=? AND json_extract(state,'$.plate.room')=? AND "+guard).bind(q.x,q.z,q.yaw,auth.world,b.id,room,...guardArgs));}
  const v=cleanDrive(b.pose?.drive);if(p.driving&&v)statements.push(db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,'$.machine.x',?,'$.machine.z',?,'$.machine.yaw',?) WHERE id=? AND json_extract(state,'$.machine.driver')=? AND json_extract(state,'$.machine.room')=? AND "+guard).bind(v.x,v.z,v.yaw,auth.world,b.id,room,...guardArgs));
  statements.push(db.prepare("SELECT p.id,p.name,p.pose FROM build_players_v2 p JOIN build_sessions_v2 s ON s.code=p.room WHERE p.room=? AND p.updated>? AND s.closed=0 AND s.updated>? ORDER BY p.id LIMIT 8").bind(room,cutoff,cutoff));
  statements.push(db.prepare("SELECT state FROM build_worlds_v2 WHERE id=?").bind(auth.world));

@@ -7,12 +7,14 @@ export function baseGroundHeight(x,z){
 }
 export const PIT_Y=-.45;
 export const GRAVEL_Y=PIT_Y+.15;
-let excavation=null,dug=new Set(),gravel=new Set();
+export const COMPACT_Y=PIT_Y+.12;
+let excavation=null,dug=new Set(),gravel=new Set(),compacted=new Set();
 export function tileAt(rect,x,z){if(!rect||x<rect.x1||z<rect.z1||x>=rect.x2||z>=rect.z2)return null;return Math.floor(x-rect.x1)+Math.floor(z-rect.z1)*48;}
 export function tileBounds(rect,id){if(!rect||!Number.isInteger(id)||id<0||id>=2304)return null;const x1=rect.x1+id%48,z1=rect.z1+Math.floor(id/48);if(x1>=rect.x2-1e-8||z1>=rect.z2-1e-8)return null;return {x1,z1,x2:Math.min(rect.x2,x1+1),z2:Math.min(rect.z2,z1+1)};}
 export function setExcavation(rect,ids){excavation=rect;dug=new Set(ids);}
 export function setGravel(ids){gravel=new Set(ids);}
-export function groundHeight(x,z){const id=tileAt(excavation,x,z);return dug.has(id)?gravel.has(id)?GRAVEL_Y:PIT_Y:baseGroundHeight(x,z);}
+export function setCompacted(ids){compacted=new Set(ids);}
+export function groundHeight(x,z){const id=tileAt(excavation,x,z);return dug.has(id)?gravel.has(id)?compacted.has(id)?COMPACT_Y:GRAVEL_Y:PIT_Y:baseGroundHeight(x,z);}
 export function aimGround(origin,dir,reach=4){
  if(!origin||!dir||!Number.isFinite(origin.x+origin.y+origin.z+dir.x+dir.y+dir.z)||dir.y>=-.025)return null;
  const f=t=>origin.y+dir.y*t-groundHeight(origin.x+dir.x*t,origin.z+dir.z*t);
