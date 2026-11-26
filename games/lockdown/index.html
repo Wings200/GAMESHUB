@@ -1,0 +1,81 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LOCKDOWN | GAMESHUB</title><style>
+:root{color-scheme:dark;--bg:#0b1118;--panel:#151e29;--line:#2c3c4a;--accent:#65e2c6;--muted:#9baebb}*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% 0,#213342,#0b1118 65%);font:15px system-ui;color:#edf3f8;min-height:100vh}main{max-width:1220px;margin:auto;padding:20px}header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}h1{font-size:clamp(28px,5vw,42px);letter-spacing:.14em;margin:3px 0;color:#e8f3f6}h2{margin:0 0 12px}p{line-height:1.55}small,.muted{color:var(--muted)}a{color:var(--accent)}button{font:inherit;font-weight:700;border:1px solid #476172;background:#223441;color:#edf3f8;padding:11px 16px;border-radius:8px;cursor:pointer}button:hover:not(:disabled){background:#365563}button:disabled{opacity:.38;cursor:not-allowed}.primary{background:var(--accent);color:#10252a;border:0}.panel{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:16px}.roles{display:grid;grid-template-columns:1fr 1fr;gap:16px}.roles button{width:100%;margin-top:12px}.layout{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:14px}.mapbox{position:relative;padding:8px;overflow:hidden}canvas{display:block;width:100%;height:auto;aspect-ratio:8/5;touch-action:none;background:#111d27;border-radius:8px}.hud{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin:0 0 12px}.hud strong{font-size:20px;font-variant-numeric:tabular-nums}.hud span{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em}.meter{height:7px;border-radius:8px;background:#0b131b;overflow:hidden;margin:8px 0 14px}.meter i{display:block;height:100%;background:var(--accent);transition:width .15s}.side button{width:100%;margin-bottom:8px}.notice{min-height:70px;color:#e7c382;font-size:14px;line-height:1.5}.hidden{display:none!important}.tag{font-size:11px;letter-spacing:.16em;color:var(--accent);font-weight:800}.controls{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}.result{text-align:center;padding:40px}.result h2{font-size:34px;color:var(--accent)}@media(max-width:800px){.layout{grid-template-columns:1fr}.roles{grid-template-columns:1fr}main{padding:12px}.hud{gap:10px}.side{display:grid;grid-template-columns:1fr 1fr;gap:10px}.side .notice{grid-column:1/-1}.side p{margin:0}.side button{margin:0}}
+</style></head><body><main><header><div><div class="tag">GAMESHUB / IN DEV / 0.1</div><h1>LOCKDOWN</h1><small>One hidden player. Six districts. Two opposing objectives.</small></div><a href="/">← GAMESHUB</a></header>
+<section id="menu"><div class="panel"><h2>Choose your side</h2><p class="muted">A real-time, fictional arena of deception and deduction. This short solo prototype lasts 3 minutes 30 seconds. Online multiplayer is not implemented yet.</p><div class="roles"><div class="panel"><div class="tag">STEALTH</div><h2>Prisoner</h2><p>Blend into the crowd of fifteen moving NPCs. Activate four glowing game markers, then the final extraction marker. Avoid two identity confirmations.</p><button class="primary" id="prisoner">Play as Prisoner</button></div><div class="panel"><div class="tag">DEDUCTION</div><h2>Warden</h2><p>Watch sixteen inmates. Scan areas to reveal unusual activity, select suspects and spend limited inspection energy. Two correct identity checks win the match.</p><button class="primary" id="warden">Play as Warden</button></div></div></div></section>
+<section id="play" class="hidden"><div class="hud"><div><span>Role</span><br><strong id="role"></strong></div><div><span>Time left</span><br><strong id="timer"></strong></div><div><span>Routine</span><br><strong id="routine"></strong></div><div><span>Signals</span><br><strong id="progress"></strong></div><div><span>Confirmations</span><br><strong id="evidence"></strong></div></div><div class="layout"><div class="panel mapbox"><canvas id="map" width="960" height="600" aria-label="Interactive fictional prison game arena"></canvas><div class="controls"><button id="interact">Hold to activate</button><button id="pause">Pause</button><button id="quit">Main menu</button></div></div><aside class="panel side"><div><div class="tag" id="sideTag"></div><h2 id="sideTitle"></h2><p id="help" class="muted"></p><div id="meterBox"><small id="meterLabel"></small><div class="meter"><i id="meter"></i></div></div></div><div><button id="scan">Scan selected area</button><button id="inspect">Inspect selected inmate</button><p class="muted" id="selection"></p></div><div class="notice" id="notice" role="status"></div></aside></div></section><section class="panel result hidden" id="result"><div class="tag">MATCH COMPLETE</div><h2 id="winner"></h2><p id="summary"></p><button class="primary" id="again">Play again</button></section></main>
+<script>
+
+const W=960,H=600,DURATION=210;
+const zones=[
+ {name:"Cell block",x:28,y:28,w:285,h:226,color:"#293b4c"},
+ {name:"Commons",x:337,y:28,w:286,h:226,color:"#343e48"},
+ {name:"Workshop",x:647,y:28,w:285,h:226,color:"#433e38"},
+ {name:"Recreation",x:28,y:278,w:285,h:294,color:"#2b4545"},
+ {name:"Mess hall",x:337,y:278,w:286,h:294,color:"#453d36"},
+ {name:"Activity hall",x:647,y:278,w:285,h:294,color:"#343b50"}
+];
+const nodes=[{x:482,y:141},{x:790,y:420},{x:165,y:430},{x:790,y:141}];
+const exit={x:482,y:480};
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const rand=(a,b)=>a+Math.random()*(b-a);
+const routine=[0,4,2,1,3,5];
+function zoneOf(p){return zones.findIndex(z=>p.x>=z.x&&p.x<=z.x+z.w&&p.y>=z.y&&p.y<=z.y+z.h)}
+function destination(z){const r=zones[z];return {x:rand(r.x+25,r.x+r.w-25),y:rand(r.y+35,r.y+r.h-25)}}
+function newGame(role){
+ const hidden=Math.floor(Math.random()*16);
+ return {role,hidden,time:0,done:null,charge:0,progress:0,exitProgress:0,active:0,notice:"",noticeT:0,scan:0,scanX:0,scanY:0,cool:0,energy:100,selected:-1,aiClock:0,evidence:0,aiNotice:0,stun:0,actors:Array.from({length:16},(_,id)=>{const p=destination(0);return {id,x:p.x,y:p.y,target:destination(0),wait:rand(0,3),signal:0,suspicion:0,highlight:0}})}
+}
+function notify(g,s){g.notice=s;g.noticeT=3.5}
+function move(p,t,speed,dt){const dx=t.x-p.x,dy=t.y-p.y,d=Math.hypot(dx,dy);if(d>1){const n=Math.min(d,speed*dt);p.x+=dx/d*n;p.y+=dy/d*n;}}
+function scan(g,x,y){if(g.done||g.energy<24||g.cool>0)return false;g.energy-=24;g.cool=4;g.scan=2.2;g.scanX=x;g.scanY=y;for(const p of g.actors){if(dist(p,{x,y})<150){p.highlight=2.2;if(p.signal>0)p.suspicion=Math.min(3,p.suspicion+1);}}notify(g,"Scan complete. Amber signals are unusual activity, not proof.");return true}
+function inspect(g,id){if(g.done||g.cool>0||g.energy<30||!g.actors[id])return false;const p=g.actors[id];g.energy-=30;g.cool=5;if(id===g.hidden){g.evidence++;p.suspicion=3;if(g.evidence>=2){g.done="warden";notify(g,"Identity confirmed. Warden wins.");}else{notify(g,"Positive identification. Confirm with a second inspection.");}}else{p.suspicion=0;p.highlight=2;notify(g,"Inmate cleared. No match.");}return true}
+function step(g,dt,input={}){
+ if(g.done)return;
+ g.time+=dt;g.cool=Math.max(0,g.cool-dt);g.scan=Math.max(0,g.scan-dt);g.noticeT=Math.max(0,g.noticeT-dt);g.energy=Math.min(100,g.energy+dt*2.4);g.stun=Math.max(0,g.stun-dt);
+ if(g.time>=DURATION){g.done="warden";return}
+ const phase=Math.floor(g.time/35)%routine.length,area=routine[phase],p=g.actors[g.hidden],goal=g.active<nodes.length?nodes[g.active]:exit;
+ for(const a of g.actors){a.signal=Math.max(0,a.signal-dt);a.highlight=Math.max(0,a.highlight-dt);
+ if(a.id===g.hidden)continue;
+ a.wait-=dt;if(a.wait<=0||dist(a,a.target)<5){const zone=Math.random()<.76?area:Math.floor(Math.random()*zones.length);a.target=destination(zone);a.wait=rand(4,12);if(Math.random()<.20)a.signal=rand(1.5,5);}
+ move(a,a.target,rand(42,57),dt);
+ }
+ let interacting=false;
+ if(g.role==="prisoner"){
+ const dx=(input.right?1:0)-(input.left?1:0),dy=(input.down?1:0)-(input.up?1:0),d=Math.hypot(dx,dy);
+ if(d&&g.stun<=0){p.x=clamp(p.x+dx/d*112*dt,12,W-12);p.y=clamp(p.y+dy/d*112*dt,12,H-12);}
+ else if(input.target&&g.stun<=0)move(p,input.target,92,dt);
+ interacting=!!input.interact&&g.stun<=0&&dist(p,goal)<38;
+ }else{if(g.stun<=0){if(g.aiNotice<=0&&g.time>8){g.aiNotice=rand(12,24);p.target=destination(area);}if(g.aiNotice>6)move(p,p.target,55,dt);else{move(p,goal,63,dt);interacting=dist(p,goal)<30;}}g.aiNotice-=dt;}
+ if(interacting){p.signal=3;g.progress+=dt;if(g.progress>=4){g.progress=0;g.active++;if(g.active>nodes.length){g.done="prisoner";return}notify(g,g.role==="prisoner"?"Objective synchronized. Next marker unlocked.":"An unidentified signal changed state.");}}
+ else g.progress=Math.max(0,g.progress-dt*.8);
+ if(g.role==="prisoner"){
+ g.aiClock+=dt;if(g.aiClock>=3.8){g.aiClock=0;const suspicious=p.signal>0? .24:zoneOf(p)!==area?.075:.015;if(Math.random()<suspicious&&g.cool<=0){if(g.evidence===0){g.evidence=1;g.stun=2;g.cool=12;notify(g,"Warning: your identity was flagged. One more confirmation loses.");}else if(Math.random()<.6){g.done="warden";return;}}}
+ }
+}
+
+const $=s=>document.getElementById(s),canvas=$("map"),ctx=canvas.getContext("2d");
+let g=null,keys={},target=null,held=false,paused=false,last=0,point={x:480,y:300},anim=0;
+function screen(id){for(const s of ["menu","play","result"])$(s).classList.toggle("hidden",s!==id)}
+function begin(role){cancelAnimationFrame(anim);g=newGame(role);keys={};target=null;held=false;paused=false;last=0;point={x:480,y:300};screen("play");$("pause").textContent="Pause";$("role").textContent=role==="prisoner"?"Prisoner":"Warden";$("sideTag").textContent=role==="prisoner"?"FIELD OBJECTIVE":"SECURITY CONSOLE";$("sideTitle").textContent=role==="prisoner"?"Stay unnoticed":"Find the hidden player";$("help").textContent=role==="prisoner"?"Move with WASD, arrow keys or click the map. Hold E or the Activate button beside the highlighted marker.":"Click an inmate to select them. Click any area to aim a scan. An amber scan result is a clue, not certainty.";for(const s of ["scan","inspect"])$(s).classList.toggle("hidden",role!=="warden");$("interact").classList.toggle("hidden",role!=="prisoner");anim=requestAnimationFrame(frame)}
+$("prisoner").onclick=()=>begin("prisoner");$("warden").onclick=()=>begin("warden");$("again").onclick=$("quit").onclick=()=>{cancelAnimationFrame(anim);g=null;screen("menu")};
+$("pause").onclick=()=>{paused=!paused;held=false;keys={};$("pause").textContent=paused?"Resume":"Pause"};
+window.addEventListener("blur",()=>{keys={};held=false});
+window.addEventListener("keydown",e=>{if(!g||g.done)return;if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key))e.preventDefault();keys[e.key.toLowerCase()]=true;if(["w","a","s","d","arrowup","arrowdown","arrowleft","arrowright"].includes(e.key.toLowerCase()))target=null});
+window.addEventListener("keyup",e=>{keys[e.key.toLowerCase()]=false});
+$("interact").onpointerdown=e=>{e.preventDefault();$("interact").setPointerCapture(e.pointerId);held=true};$("interact").onpointerup=$("interact").onpointercancel=$("interact").onlostpointercapture=()=>held=false;
+canvas.onclick=e=>{if(!g||paused||g.done)return;const r=canvas.getBoundingClientRect(),p={x:clamp((e.clientX-r.left)/r.width*W,12,W-12),y:clamp((e.clientY-r.top)/r.height*H,12,H-12)};if(g.role==="prisoner"){target=p;}else{point=p;const sorted=[...g.actors].sort((a,b)=>dist(a,p)-dist(b,p));g.selected=dist(sorted[0],p)<25?sorted[0].id:-1;}};
+$("scan").onclick=()=>{if(g&&!paused&&g.role==="warden")scan(g,point.x,point.y)};
+$("inspect").onclick=()=>{if(g&&!paused&&g.role==="warden")inspect(g,g.selected)};
+function circle(x,y,r,fill,stroke){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.stroke()}}
+function text(t,x,y,color="#b7c9d4",size=13){ctx.fillStyle=color;ctx.font="600 "+size+"px system-ui";ctx.fillText(t,x,y)}
+function draw(){ctx.fillStyle="#101b25";ctx.fillRect(0,0,W,H);ctx.strokeStyle="#1b2a35";ctx.lineWidth=1;for(let x=0;x<W;x+=24){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}for(let y=0;y<H;y+=24){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+ zones.forEach((z,k)=>{ctx.fillStyle=z.color;ctx.fillRect(z.x,z.y,z.w,z.h);ctx.strokeStyle=k===routine[Math.floor(g.time/35)%6]?"#75cbb4":"#4d6574";ctx.lineWidth=2;ctx.strokeRect(z.x,z.y,z.w,z.h);text(z.name.toUpperCase(),z.x+11,z.y+19,"#c6d9df",12);ctx.fillStyle="#ffffff0c";for(let j=0;j<3;j++)ctx.fillRect(z.x+16+j*(z.w-26)/3,z.y+36,38,z.h-52);});
+ nodes.concat([exit]).forEach((n,i)=>{const active=i===g.active,done=i<g.active;ctx.lineWidth=2;circle(n.x,n.y,23,done?"#21453e":active?"#214b4c":"#202b35",done?"#6dafa0":active?"#80f7dd":"#5d6a76");text(done?"✓":i===nodes.length?"X":String(i+1),n.x-5,n.y+5,active?"#9bffe6":"#b1bfc8",15);if(active&&g.role==="prisoner"){ctx.beginPath();ctx.arc(n.x,n.y,29,-Math.PI/2,-Math.PI/2+Math.PI*2*g.progress/4);ctx.strokeStyle="#c1ff94";ctx.lineWidth=4;ctx.stroke()}});
+ if(g.role==="warden"){ctx.lineWidth=1;circle(point.x,point.y,150,null,"#8bbac54c");if(g.scan>0){ctx.lineWidth=3;circle(g.scanX,g.scanY,150,"#72e8d61a","#72e8d6");}}
+ for(const a of g.actors){const self=g.role==="prisoner"&&a.id===g.hidden,chosen=g.role==="warden"&&a.id===g.selected;ctx.fillStyle="#0005";ctx.beginPath();ctx.ellipse(a.x,a.y+8,12,6,0,0,Math.PI*2);ctx.fill();if(self||chosen||a.highlight>0){ctx.lineWidth=2;circle(a.x,a.y,16,null,self?"#80f7dd":chosen?"#f7e4a0":a.suspicion?"#f8a95e":"#a8e5db");}ctx.fillStyle="#c18c53";ctx.fillRect(a.x-7,a.y-3,14,15);circle(a.x,a.y-7,6,"#dfb68b");if(g.role==="warden")text(String(a.id+1).padStart(2,"0"),a.x-8,a.y+24,"#e3e9ee",10);else if(self)text("YOU",a.x-13,a.y-20,"#9bffe6",12);}
+ if(paused){ctx.fillStyle="#091019c9";ctx.fillRect(0,0,W,H);text("PAUSED",W/2-65,H/2,"white",30)}
+}
+function ui(){const remain=Math.max(0,Math.ceil(DURATION-g.time));$("timer").textContent=Math.floor(remain/60)+":"+String(remain%60).padStart(2,"0");$("routine").textContent=zones[routine[Math.floor(g.time/35)%6]].name;$("progress").textContent=Math.min(g.active,4)+"/4";$("evidence").textContent=g.evidence+"/2";$("notice").textContent=g.noticeT>0?g.notice:"";const w=g.role==="warden";$("meterLabel").textContent=w?"Inspection energy: "+Math.floor(g.energy)+"%":"Activation: "+Math.floor(g.progress/4*100)+"%";$("meter").style.width=(w?g.energy:g.progress/4*100)+"%";$("selection").textContent=w?(g.selected<0?"No inmate selected.":"Selected: inmate "+String(g.selected+1).padStart(2,"0")):"Next: "+(g.active<4?"marker "+(g.active+1):"extraction");$("scan").disabled=paused||g.cool>0||g.energy<24;$("inspect").disabled=paused||g.cool>0||g.energy<30||g.selected<0;}
+function frame(t){if(!g)return;const dt=last?Math.min(.05,(t-last)/1000):0;last=t;if(!paused){const input={up:keys.w||keys.arrowup,down:keys.s||keys.arrowdown,left:keys.a||keys.arrowleft,right:keys.d||keys.arrowright,interact:held||keys.e||keys[" "],target};if(target&&dist(g.actors[g.hidden],target)<4){target=null;input.target=null;}step(g,dt,input);}draw();ui();if(g.done){$("winner").textContent=g.done==="warden"?"WARDEN WINS":"PRISONER WINS";$("summary").textContent=g.done===g.role?"You won the match.":"Your opponent won. Try a different strategy.";screen("result");return}anim=requestAnimationFrame(frame)}
+</script></body></html>
