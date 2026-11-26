@@ -1,5 +1,6 @@
 
 import {sanitizePose} from "../../../games/build-and-sell/movement.mjs";
+import {sanitizeTape} from "../../../games/build-and-sell/tape-math.mjs";
 import {onRequestGet as accountMe} from "../account/me.js";
 const json=(d,s=200)=>new Response(JSON.stringify(d),{status:s,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"}});
 const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789",TTL=45000;
@@ -74,6 +75,7 @@ export async function onRequestPost(ctx){
  const host=auth.host===b.id;
  if(b.action==="save"&&!host)return json({ok:false,error:"Only the host can save."},403);
  const p=sanitizePose(b.pose),save=savedPose(b.pose);
+ if(p)p.tape=sanitizeTape(b.pose?.tape);
  if(b.action!=="leave"&&!p)return json({ok:false,error:"Invalid movement state."},400);
  const saveState=save?JSON.stringify({version:1,hostPose:save}):null;
  const saveSql="UPDATE build_worlds_v2 SET state=?,updated=? WHERE id=? AND EXISTS(SELECT 1 FROM build_sessions_v2 WHERE code=? AND world=build_worlds_v2.id AND host=? AND closed=0 AND updated>?)";
