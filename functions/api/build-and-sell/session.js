@@ -7,6 +7,7 @@ import {readPanels,panelChange} from "../../../games/build-and-sell/panel-math.m
 import {readOutlets,finishOutlet,toggleInstalledSwitch} from "../../../games/build-and-sell/outlet-math.mjs";
 import {readCables,addCable,CABLE_TYPES,routeCable} from "../../../games/build-and-sell/cable-math.mjs";
 import {readElectrical,addDevice,deviceNear,validDevice,ELECTRIC_KINDS} from "../../../games/build-and-sell/electrical-math.mjs";
+import {readUtility,utilityChange} from "../../../games/build-and-sell/utility-math.mjs";
 import {readFixtures,fixtureChange,validFixture,fixturePosition,SPECS} from "../../../games/build-and-sell/fixture-math.mjs";
 import {readHeaters,changeHeater,position as heaterPosition} from "../../../games/build-and-sell/heater-math.mjs";
 import {readWallPipes,addWallPipe,removeWallPipe,routeWallPipe,pipeHoleConflict} from "../../../games/build-and-sell/wall-pipe-math.mjs";
@@ -37,7 +38,7 @@ async function schema(db){await db.batch([
  db.prepare("CREATE TABLE IF NOT EXISTS build_players_v2 (id TEXT PRIMARY KEY, room TEXT NOT NULL, token TEXT NOT NULL, name TEXT NOT NULL, pose TEXT NOT NULL, updated INTEGER NOT NULL)"),
  db.prepare("CREATE INDEX IF NOT EXISTS build_players_v2_room ON build_players_v2(room,updated)")
 ]);}
-const worldData=(w,room)=>{const l=readLayout(w),d=readDig(w,l.layout),g=readGravel(w,l.layout,d.dug),comp=readCompaction(w,l.layout,g.gravel),prep=readPrep(w,l.layout,comp.compacted),pl=readPipes(w,l.layout),su=readSupply(w,l.layout),risers=readRisers(w,l.layout,{drain:pl.pipes,...su.supply}),s=readWalls(w,l.layout),wp=readWallPipes(w,s.walls,risers),e=readElectrical(w,s.walls),c=readCables(w,s.walls,e.devices),o=readOutlets(w,e.devices,c.cables),a=readPanels(w,e.devices,c.cables);return {...l,machine:readMachine(w,room),...d,...g,plate:readPlate(w,room),...comp,...readForms(w,l.layout),...pl,...su,risers,elevated:readElevated(w,l.layout),...prep,...readConcrete(w,l.layout,prep.rebar),...s,...wp,...e,...c,...o,...a,...readHeaters(w,l.layout,s.walls,e.devices,wp.wallPipes),...readFixtures(w,{layout:l.layout,walls:s.walls,lines:wp.wallPipes,risers}),hose:readHose(w,room),serverNow:Date.now()};};
+const worldData=(w,room)=>{const l=readLayout(w),d=readDig(w,l.layout),g=readGravel(w,l.layout,d.dug),comp=readCompaction(w,l.layout,g.gravel),prep=readPrep(w,l.layout,comp.compacted),pl=readPipes(w,l.layout),su=readSupply(w,l.layout),risers=readRisers(w,l.layout,{drain:pl.pipes,...su.supply}),s=readWalls(w,l.layout),wp=readWallPipes(w,s.walls,risers),e=readElectrical(w,s.walls),c=readCables(w,s.walls,e.devices),o=readOutlets(w,e.devices,c.cables),a=readPanels(w,e.devices,c.cables);return {...l,machine:readMachine(w,room),...d,...g,plate:readPlate(w,room),...comp,...readForms(w,l.layout),...pl,...su,risers,elevated:readElevated(w,l.layout),...prep,...readConcrete(w,l.layout,prep.rebar),...s,...wp,...e,...c,...o,...a,...readHeaters(w,l.layout,s.walls,e.devices,wp.wallPipes),...readFixtures(w,{layout:l.layout,walls:s.walls,lines:wp.wallPipes,risers}),...readUtility(w,l.layout,pl.pipes,su.supply),hose:readHose(w,room),serverNow:Date.now()};};
 const active="EXISTS (SELECT 1 FROM build_sessions_v2 s WHERE s.code=build_players_v2.room AND s.closed=0 AND s.updated>?)";
 async function openWorld(db,user,action,username,now){
  let w=await db.prepare("SELECT id,state,updated FROM build_worlds_v2 WHERE owner=?").bind(user.id).first();
@@ -90,7 +91,7 @@ export async function onRequestPost(ctx){
  return j.meta?.changes?json({ok:true,code:room,id,token:secret,host:false}):json({ok:false,error:"Session is closed, expired, or full."},409);
  }
  if(!/^[A-Z0-9]{6}$/.test(room)||typeof b.id!=="string"||typeof b.token!=="string")return json({ok:false,error:"Invalid session credentials."},400);
- if(!["sync","save","leave","layout","vehicle","dig","gravel","plate","compact","form","pipe","prep","concrete","hose","wall","electrical","cable","outlet","panel","wallPipe","heater","fixture"].includes(b.action))return json({ok:false,error:"Unknown operation."},400);
+ if(!["sync","save","leave","layout","vehicle","dig","gravel","plate","compact","form","pipe","prep","concrete","hose","wall","electrical","cable","outlet","panel","wallPipe","heater","fixture","utility"].includes(b.action))return json({ok:false,error:"Unknown operation."},400);
  const auth=await db.prepare("SELECT s.world,s.host,s.closed,s.updated FROM build_players_v2 p JOIN build_sessions_v2 s ON s.code=p.room WHERE p.id=? AND p.room=? AND p.token=? AND p.updated>? AND s.closed=0 AND s.updated>?").bind(b.id,room,b.token,cutoff,cutoff).first();
  if(!auth)return json({ok:false,error:"Session closed or expired. Load the world or get a new code."},410);
  const host=auth.host===b.id;
@@ -161,6 +162,14 @@ export async function onRequestPost(ctx){
  const next=applyPrep(l.layout,b.tile,b.kind,b.install,new Set(c.compacted),new Set(s.barrier),new Set(s.rebar),pose);if(!next)return json({ok:false,error:"No eligible material in this patch."},409);
  const last={actor:b.id,kind:b.kind,tile:b.tile,install:b.install};const u=await db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,'$.barrier',json(?),'$.rebar',json(?),'$.prepRevision',?,'$.lastPrep',json(?)),updated=? WHERE id=? AND COALESCE(json_extract(state,'$.prepRevision'),0)=? AND COALESCE(json_extract(state,'$.layoutRevision'),0)=? AND COALESCE(json_array_length(json_extract(state,'$.poured')),0)=0 AND "+guard).bind(JSON.stringify(next.barrier),JSON.stringify(next.rebar),s.prepRevision+1,JSON.stringify(last),now,auth.world,s.prepRevision,l.revision,...guardArgs).run();
  if(!u.meta?.changes)return json({ok:false,error:"Material changed. Try again."},409);return json({ok:true,...worldData(await worldRow(),room)});
+ }
+ if(b.action==="utility"){
+ const w=await worldRow(),l=readLayout(w),pl=readPipes(w,l.layout),su=readSupply(w,l.layout),u=readUtility(w,l.layout,pl.pipes,su.supply),p=sanitizePose(b.pose);
+ if(!p||b.pose?.utilityMode!==true||readMachine(w,room).driver===b.id||readPlate(w,room).driver===b.id||b.revision!==l.revision||b.pipeRevision!==pl.pipeRevision||b.utilityRevision!==u.utilityRevision)return json({ok:false,error:"Utility state changed. Try again."},409);
+ if(!Number.isFinite(w.cureAt)||w.cureAt<=0||now<w.cureAt)return json({ok:false,error:"Finish slab first."},400);
+ const next=utilityChange({layout:l.layout,pipes:pl.pipes,supply:su.supply},u.utility,b,p);if(next.error)return json({ok:false,error:next.error},400);
+ const waterService=!!next.utility.water&&next.utility.meter&&next.utility.valve;
+ const q=await db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,'$.utility',json(?),'$.utilityRevision',?,'$.waterService',json(?)),updated=? WHERE id=? AND COALESCE(json_extract(state,'$.utilityRevision'),0)=? AND COALESCE(json_extract(state,'$.pipeRevision'),0)=? AND COALESCE(json_extract(state,'$.layoutRevision'),0)=? AND "+guard).bind(JSON.stringify(next.utility),u.utilityRevision+1,JSON.stringify(waterService),now,auth.world,u.utilityRevision,pl.pipeRevision,l.revision,...guardArgs).run();if(!q.meta?.changes)return json({ok:false,error:"Utility state changed. Try again."},409);return json({ok:true,...worldData(await worldRow(),room)});
  }
  if(b.action==="fixture"){
  const w=await worldRow(),l=readLayout(w),s=readWalls(w,l.layout),pl=readPipes(w,l.layout),su=readSupply(w,l.layout),risers=readRisers(w,l.layout,{drain:pl.pipes,...su.supply}),wp=readWallPipes(w,s.walls,risers),e=readElectrical(w,s.walls),he=readHeaters(w,l.layout,s.walls,e.devices,wp.wallPipes),ctx={layout:l.layout,walls:s.walls,lines:wp.wallPipes,risers,heaters:he.heaters},f=readFixtures(w,ctx),p=sanitizePose(b.pose);
