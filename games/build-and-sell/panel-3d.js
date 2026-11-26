@@ -87,8 +87,8 @@ const connections=paths.map(p=>p.pts[p.pts.length-1]);
 function installed(parent,closed=true){const o=cabinet(parent);for(let i=0;i<3;i++){const f=fitting(o);f.position.set(...entries[i]);const q=breaker(o);q.position.set(...slots[i]);tube(o,jacketPaths[i],black,.012);note(o,circuits[i],.085,slots[i][1],.11)}for(const p of paths)tube(o,p.pts,p.mat,.004);for(const p of mounts){const q=screw(o);q.position.set(...p)}if(closed){const f=panelCover(o);f.position.z=.128;for(const p of coverPoints){const q=screw(o);q.position.set(...p)}}return o}
 export function finishedBreaker(parent,side=1){const o=g(parent,0,1.45,.10*side);if(side<0)o.rotation.y=Math.PI;return installed(o)}
 const stages=[
- {title:"Isolate the training circuit",tool:"Lockout tag",mode:"hold",targets:[[-.31,.32,.09]],hint:"Attach the lockout tag to the isolated game supply."},
- {title:"Verify the isolated work area",tool:"Voltage tester",mode:"hold",targets:[[-.31,.21,.09]],hint:"Touch the simulated verification point. The game supply is not connected to live power."},
+ {title:"Isolate the training circuit",tool:"Lockout tag",mode:"hold",targets:[[0,.24,.07]],hint:"Attach the lockout tag to the isolated game supply."},
+ {title:"Verify the isolated work area",tool:"Voltage tester",mode:"hold",targets:[[0,.13,.07]],hint:"Touch the simulated verification point. The game supply is not connected to live power."},
  {title:"Mark enclosure mounting holes",tool:"Pencil",mode:"click",targets:mounts.map(p=>[p[0],p[1],.002]),hint:"Mark the four locations on the backing."},
  {title:"Prepare the mounting holes",tool:"Drill",mode:"hold",targets:mounts.map(p=>[p[0],p[1],.002]),hint:"Drill at the marked mounting locations."},
  {title:"Position the empty cabinet",tool:"Cabinet",mode:"drag",targets:[[0,0,.006]],sources:[[-.39,-.04,.11]],hint:"Drag the empty cabinet from the tool tray onto the marked wall."},
@@ -173,8 +173,8 @@ function electricalSpec(id){
  const terminals=wiring.map(p=>p.at(-1)),coverTargets=xs.map(x=>PT(x,0,.108));
  const backing=(q,state)=>{if(state&&state.stage>=7&&state.stage<=8)terminalDevice(q,device,terminals);};
  const sequence=[
- hold("Isolate the simulated lighting/receptacle circuit","Lockout tag",[PT(-.32,.31,.04)],"Tag the isolated game circuit.",(q)=>{round(q,.05,.075,.025,-.32,.31,.025,red,.004);note(q,"ISOLATED",-.32,.31,.041)}),
- hold("Verify isolation","Voltage tester",[PT(-.32,.21,.04)],"Check the isolated simulation before work.",()=>{}),
+ hold("Isolate the simulated lighting/receptacle circuit","Lockout tag",[PT(0,.20,.04)],"Tag the isolated game circuit.",(q)=>{}),
+ hold("Verify isolation","Voltage tester",[PT(0,.10,.04)],"Check the isolated simulation before work.",()=>{}),
  click("Mark the wall-box positions","Pencil",screws.map(p=>[p[0],p[1],.003]),"Mark the mounting positions.",markHoles),
  put(isThree?"Mount both switch boxes":"Position the wall box","Wall box",boxes,boxes.map(()=>wallbox),"Fit the wall box into the prepared framing."),
  hold("Fasten the box hardware","Impact driver",screws,"Secure the box to the support.",mounted),
@@ -313,8 +313,8 @@ export function startPanelWork({id="breaker",engine,canvas,origin,orientation,sc
  if(spec){spec.backing(stageRoot,state);for(let n=0;n<=state.stage;n++){const a=jobStages[n];if(a.after)for(let i=0;i<a.targets.length;i++)if(stageDone(n,i))a.after(stageRoot,i,a.targets[i]);}}else{
  // Backing exists in the room, not in a detached workbench.
  // Actual framed wall remains visible behind the cabinet.
- if(stageDone(0,0)){const t=b(stageRoot,.064,.088,.013,-.31,.32,.03,red);note(stageRoot,"LOCKED",-.31,.32,.039);}
- if(stageDone(1,0))note(stageRoot,"ISOLATED",-.31,.21,.037);
+ if(stageDone(0,0)&&!prior(4)){const t=b(stageRoot,.064,.088,.013,0,.24,.03,red);note(stageRoot,"LOCKED",0,.24,.039);}
+ if(stageDone(1,0)&&!prior(4))note(stageRoot,"ISOLATED",0,.13,.037);
  if(!prior(4)){for(let i=0;i<mounts.length;i++){const [x,y]=mounts[i];if(stageDone(2,i))b(stageRoot,.012,.003,.002,x,y,.003,black);if(stageDone(3,i))cy(stageRoot,.006,.004,x,y,.005,dark).rotation.x=Math.PI/2;}}
  if(stageDone(4,0)){
  cabinet(stageRoot);
@@ -351,12 +351,35 @@ export function startPanelWork({id="breaker",engine,canvas,origin,orientation,sc
  else if(st.mode==="hold"&&d2(pointer(e),st.targets[active.i])>64){stop();hudText.textContent=st.title+" — Keep holding on the highlighted work point.";bar.style.width=100*(state.stage+state.done.length/st.targets.length)/jobStages.length+"%";}
  else if(st.mode==="route"){const pts=st.paths[active.i],a=active.lastScreen,b=pointer(e);const len=Math.hypot(a.x-b.x,a.y-b.y);for(let j=1,n=Math.max(1,Math.ceil(len/5));j<=n;j++){const q={x:a.x+(b.x-a.x)*j/n,y:a.y+(b.y-a.y)*j/n};if(active.next<pts.length&&d2(q,pts[active.next])<19)active.next++}active.lastScreen=b;active.last=p.clone();if(liveRoute)disposeObj(liveRoute);const drawn=[...pts.slice(0,active.next).map(q=>[q[0],q[1],q[2]+.026]),[p.x,p.y,.15]];if(drawn.length>1&&drawn.some(q=>Math.hypot(q[0]-drawn[0][0],q[1]-drawn[0][1])>.002))liveRoute=tube(root,drawn,toolOrange,.005);if(active.next===pts.length){const i=active.i;success(i)}}
  }
- function up(e){if(!live)return;e.stopImmediatePropagation();if(lookDrag){lookDrag=null;return;}if(!active)return;const st=jobStages[state.stage],a=active,p=localFromPointer(e);if(st.mode==="drag"){if(p&&d2(pointer(e),st.targets[a.i])<38){success(a.i);return}a.obj.position.copy(a.original)}stop()}
+ function up(e){if(!live)return;e.stopImmediatePropagation();if(e.type==="pointercancel"){if(active?.obj&&active.original)active.obj.position.copy(active.original);lookDrag=null;stop();return;}if(lookDrag){lookDrag=null;return;}if(!active)return;const st=jobStages[state.stage],a=active,p=localFromPointer(e);if(st.mode==="drag"){if(p&&d2(pointer(e),st.targets[a.i])<38){success(a.i);return}a.obj.position.copy(a.original)}stop()}
  function wheel(e){if(live){e.preventDefault();e.stopImmediatePropagation();workZoom=THREE.MathUtils.clamp(workZoom*Math.exp(e.deltaY*.0015),.55,1.65)}}
  function key(e){if(live&&e.key==="Escape"){e.preventDefault();e.stopImmediatePropagation();cleanup();onCancel()}}
  function cleanup(){if(!live)return;live=false;stop();for(const [n,f] of [["pointerdown",down],["pointermove",move],["pointerup",up],["pointercancel",up],["wheel",wheel]])canvas.removeEventListener(n,f,true);window.removeEventListener("keydown",key,true);disposeObj(root);glow.dispose();doneGlow.dispose();guideMat.dispose();hud.classList.add("hidden");engine.camera.position.copy(oldCamera);engine.camera.quaternion.copy(oldRotation);}
  for(const [n,f] of [["pointerdown",down],["pointermove",move],["pointerup",up],["pointercancel",up],["wheel",wheel]])canvas.addEventListener(n,f,{capture:true,passive:false});window.addEventListener("keydown",key,true);
  cancel.onclick=()=>{cleanup();onCancel()};hud.classList.remove("hidden");draw();
- function frame(){if(!live)return;root.updateMatrixWorld(true);const st=jobStages[state.stage],precision=spec?.wall&&state.stage>=7&&state.stage<=10,base=spec?.focus||[-.04,.015,.05],f=precision?[0,.015,.06]:base,distance=(spec?.distance||1.18)*(precision?.64:1)*workZoom*Math.max(1,1.15/engine.camera.aspect),tilt=spec?.tilt||0;const target=root.localToWorld(V(f[0],f[1]-.025,f[2]));const camera=root.localToWorld(V(f[0]+Math.sin(workAngle)*distance,f[1]+tilt*distance,f[2]+Math.cos(workAngle)*distance));engine.camera.position.copy(camera);engine.camera.lookAt(target);engine.camera.updateMatrixWorld(true)}
+ 
+function frame(){
+ if(!live)return;root.updateMatrixWorld(true);
+ const st=jobStages[state.stage],base=spec?.focus||[0,0,.05];
+ const activeIndex=st.targets.findIndex((_,i)=>!state.done.includes(i));
+ const pts=st.mode==="route"&&activeIndex>=0?st.paths[activeIndex]:st.targets.filter((_,i)=>!state.done.includes(i));
+ const focusPoints=[...pts,...(st.mode==="drag"?st.sources.filter((_,i)=>!state.done.includes(i)):[])];
+ // Include the actual fixture reference even when the next operation is offset from it.
+ focusPoints.push([0,0,0]);
+ const box=new THREE.Box3();for(const p of focusPoints)box.expandByPoint(V(...p));
+ const center=box.getCenter(V()),size=box.getSize(V());
+ const fov=engine.camera.fov*Math.PI/180,halfTan=Math.tan(fov/2);
+ const ratio=Math.max(.25,engine.camera.aspect);
+ const minDistance=(spec?.distance||1.18)*(spec?.wall&&state.stage>=7&&state.stage<=10?.66:.78);
+ const fit=Math.max((size.x+.30)/(2*halfTan*ratio*.80),(size.y+.27)/(2*halfTan*.65),size.z+.35,minDistance);
+ const distance=fit*workZoom,tilt=spec?.tilt||0;
+ // Transform a direction separately from the position so scaling the panel never scales camera distance.
+ const q=root.getWorldQuaternion(new THREE.Quaternion());
+ const local=V(center.x,center.y-.09,center.z);
+ const target=root.localToWorld(local);
+ const delta=V(Math.sin(workAngle)*distance,tilt*distance,Math.cos(workAngle)*distance).applyQuaternion(q);
+ const camera=target.clone().add(delta);
+ engine.camera.position.copy(camera);engine.camera.lookAt(target);engine.camera.updateMatrixWorld(true);
+}
  frame();return {frame,dispose:cleanup,state};
 }
