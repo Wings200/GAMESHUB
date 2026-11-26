@@ -7,7 +7,7 @@ export const TOOLS=[
 ["layout","Layout kit","Survey","LMB corners · G snap · Delete clear"],
 ["gravel","Gravel shovel","Foundation","Hold LMB spread"],
 ["form","Formwork hammer","Foundation","LMB install · RMB remove"],
-["drain","Drain pipe kit","Plumbing","T mode · R/F height · G snap"],
+["drain","Drain & vent kit","Plumbing","T waste/vent in framing · G snap · LMB route"],
 ["cold","Cold PEX kit","Plumbing","T mode · R/F height · G snap"],
 ["hot","Hot PEX kit","Plumbing","T mode · R/F height · G snap"],
 ["conduit","Conduit kit","Electrical","T mode · R/F height · G snap"],
