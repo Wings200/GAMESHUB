@@ -15,8 +15,8 @@ export function createSiteAudio(){
  function one(name,level=.35,index=0,rate=1){
   if(!active||!enabled||volume===0)return;
   const key=name==="step"?"step"+index%5:name;
-  let bank=oneShots.get(key);if(!bank){const url=name==="step"?foot(index):remote[name];if(!url)return;bank=Array.from({length:3},()=>media(url));if(name==="place"||name==="dig")for(const a of bank)a.addEventListener("error",()=>{if(!a.dataset.fallback){a.dataset.fallback="1";a.src=foot(name==="place"?0:3);}});oneShots.set(key,bank);}
-  const a=bank.find(x=>x.paused||x.ended)||bank[0];try{a.currentTime=0;}catch{}a.volume=clamp(level*volume,0,1);a.playbackRate=rate;safePlay(a);
+  let bank=oneShots.get(key);if(!bank){const url=name==="step"?foot(index):name==="gravel"?foot(3):remote[name];if(!url)return;bank=Array.from({length:3},()=>media(url));if(name==="place"||name==="dig")for(const a of bank)a.addEventListener("error",()=>{if(!a.dataset.fallback){a.dataset.fallback="1";a.src=foot(name==="place"?0:3);}});oneShots.set(key,bank);}
+  if(name==="gravel")rate=.83+Math.random()*.18;const a=bank.find(x=>x.paused||x.ended)||bank[0];try{a.currentTime=0;}catch{}a.volume=clamp(level*volume,0,1);a.playbackRate=rate;safePlay(a);
  }
  function unlock(){if(enabled)return;enabled=true;
   wind=media(remote.wind,true);engine=media(remote.engine,true);tracks=media(remote.tracks,true);
