@@ -12,7 +12,7 @@ import {makeLayoutVisual} from "./layout-visual.js?v=6";
 import {DEFAULT_MACHINE,driveStep,targetTile,countTiles} from "./excavator-math.mjs";
 import {makeExcavator,rebuildTerrain} from "./excavator-visual.js?v=9";
 import {poseDriver,restoreSeat} from "./driver-seat.js?v=8";
-import {createSiteAudio} from "./site-audio.js?v=11";
+import {createSiteAudio} from "./site-audio.js?v=11.1";
 import {createMachinePlayback,cleanMachineVisual} from "./machine-playback.mjs";
 import {gravelTarget} from "./gravel-math.mjs";
 import {makeGravelTool,makeGravelVisual} from "./gravel-visual.js?v=11";

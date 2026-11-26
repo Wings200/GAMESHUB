@@ -1,9 +1,12 @@
 # Build & Sell sound sources
 
 - Kenney CC0 recorded footsteps: existing /games/engine-test/assets/audio/footstep_concrete_*.ogg, license in that directory. Temporary surface match for dirt.
-- Joseph Sardin / BigSoundBank, CC0: [Wind in the Trees](https://bigsoundbank.com/forest-wind-in-the-trees-s0904.html), [Excavator engine](https://bigsoundbank.com/excavator-engine-s2147.html), [Gavel, 1 blow](https://bigsoundbank.com/gavel-1-blow-s1588.html). External media URLs use site's published /UPLOAD/mp3/ ID convention. Network/decoding and listening not yet verified; engine fallback is the existing REDLINE idle sample, wind fallback is low-pass noise, placement fallback is a recorded impact-like step.
+- Joseph Sardin / BigSoundBank, CC0: [Wind in the Trees](https://bigsoundbank.com/forest-wind-in-the-trees-s0904.html), [Excavator engine](https://bigsoundbank.com/excavator-engine-s2147.html), [Gavel, 1 blow](https://bigsoundbank.com/gavel-1-blow-s1588.html). External media URLs use site's published /UPLOAD/mp3/ ID convention. Network/decoding and listening not yet verified; no REDLINE engine fallback, wind fallback is low-pass noise, placement fallback is a recorded impact-like step.
 - themightyglider / RavenWolfProds, [Shovel Sound](https://opengameart.org/content/shovel-sound), CC0, direct .ogg asset. Short soil contact cue.
 
 Browser autoplay is unlocked on input. External sources should be vendored locally after audition; direct downloads were not available to the developer in this session. Do not claim real recorded machinery quality until auditioned.
 
 - [Excavator, displacement](https://bigsoundbank.com/excavator-displacement-s2149.html), Joseph Sardin / BigSoundBank, CC0: moving tracks layer.
+
+## Plate compactor (11.1)
+- T. Voekler, [PLATE VIBRATING RAMMER.ogg](https://commons.wikimedia.org/wiki/File:PLATE_VIBRATING_RAMMER.ogg), [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/). Original recording of a plate vibrating rammer in operation, 6.772 seconds. The unchanged original file is streamed from Wikimedia Commons and played as a loop at its native speed with distance-based volume and short gain fades. Source: https://upload.wikimedia.org/wikipedia/commons/8/8c/PLATE_VIBRATING_RAMMER.ogg. Audio credit also appears on the game menu. No pitch shifting or car-engine fallback. Source page and license verified; live browser playback and audio quality not verified. If unavailable, compactor is silent rather than using incorrect engine sounds.
