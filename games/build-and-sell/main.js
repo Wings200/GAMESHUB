@@ -38,7 +38,7 @@ import {waterState} from "./water-math.mjs?v=35";
 import {makeWaterVisual} from "./water-visual.js?v=35";
 let waterVisual=null,waterSnapshot={pressure:0,leaks:[],fixtures:{},heaters:{},demand:0},waterLast=0,waterTickAt=-1;
 let utility={water:null,sewer:null,meter:false,valve:false},utilityRevision=-1,utilityMode=false,utilityIndex=0,utilityBusy=false,utilityVisual=null;
-import {createHandbook} from "./handbook.js?v=36";
+import {createHandbook} from "./handbook.js?v=37";
 let handbook=null,bookOpen=false,bookWasLocked=false;
 function openBook(){if(!playing||bookOpen)return;bookWasLocked=document.pointerLockElement===canvas;bookOpen=true;keys.clear();mountHold=false;mountStart=0;cableHold=false;cableStart=0;outletHold=false;outletStart=0;panelHold=null;digHeld=false;gravelHeld=false;concreteHeld=false;prepHeld=false;prepRemove=false;handbook.setOpen(true);document.exitPointerLock?.();$("pause").classList.add("hidden");}
 function closeBook(resume=false){if(!bookOpen)return;bookOpen=false;handbook?.setOpen(false);keys.clear();if(resume&&playing&&!vanOpen&&bookWasLocked){try{canvas.requestPointerLock()?.catch?.(()=>{})}catch{}}bookWasLocked=false;if(playing&&!bookOpen&&!vanOpen&&document.pointerLockElement!==canvas)$("pause").classList.remove("hidden");}
