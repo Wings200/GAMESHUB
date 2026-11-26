@@ -26,9 +26,9 @@ export function makeExcavator(scene){
  const load=box(bucket,.53,.19,.40,dirt,0,-.025,-.08);load.visible=false;
  const aim=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({color:0x9cf4ae,transparent:true,opacity:.40,depthWrite:false,side:THREE.DoubleSide}));aim.rotation.x=-Math.PI/2;aim.visible=false;scene.add(aim);
  const border=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints([[-.5,-.5],[.5,-.5],[.5,.5],[-.5,.5]].map(([x,z])=>new THREE.Vector3(x,0,z))),new THREE.LineBasicMaterial({color:0xd2ffcf}));scene.add(border);border.visible=false;
- return {root,update(machine,target,anim,now,visible=true,viewYaw=null){
+ return {root,get cabinYaw(){return turret.rotation.y;},update(machine,target,anim,now,visible=true,viewYaw=null){
   root.visible=visible;if(!visible){aim.visible=border.visible=false;return;}const y=groundHeight(machine.x,machine.z);root.position.set(machine.x,y,machine.z);tracks.rotation.y=machine.yaw;
-  const active=anim&&now-anim.start<800?anim:null,focus=active?.target||target;turret.rotation.y=focus?Math.atan2(-(focus.x-machine.x),-(focus.z-machine.z)):viewYaw??machine.yaw;
+  const active=anim&&now-anim.start<800?anim:null,focus=active?.target||target;turret.rotation.y=viewYaw??(focus?Math.atan2(-(focus.x-machine.x),-(focus.z-machine.z)):machine.yaw);
   const dist=focus?Math.hypot(focus.x-machine.x,focus.z-machine.z):3.2,t=active?Math.max(0,Math.min(1,(now-active.start)/800)):0;
   const dip=active?Math.sin(Math.PI*t):0,reach=Math.max(1.45,Math.min(6.5,dist));
   const A=new THREE.Vector3(.45,1.48,-.72),C=new THREE.Vector3(.0,active?Math.max(PIT_Y-y+.22,.9-1.55*dip):1.03,-reach);
