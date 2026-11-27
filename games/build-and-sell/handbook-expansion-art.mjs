@@ -1,0 +1,22 @@
+
+const E=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+const C={ink:"#34483f",green:"#548668",wood:"#b78d61",paper:"#f6efdd",blue:"#628ba3",gray:"#8a9690",red:"#b45d4f",gold:"#b58a3d"};
+const rect=(x,y,w,h,fill,stroke=C.ink,rx=3)=>'<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="'+rx+'" fill="'+fill+'" stroke="'+stroke+'"/>';
+const line=(x,y,X,Y,c=C.ink,w=2)=>'<path d="M'+x+' '+y+'L'+X+' '+Y+'" stroke="'+c+'" stroke-width="'+w+'" fill="none"/>';
+const label=(x,y,t,size=11)=>'<text x="'+x+'" y="'+y+'" text-anchor="middle" fill="'+C.ink+'" font-size="'+size+'" font-weight="700">'+E(t)+'</text>';
+const panel=(x,y,w,h,col)=>rect(x,y,w,h,col);
+const roof=(x,y,w,h)=>'<path d="M'+x+' '+(y+h)+'L'+(x+w/2)+' '+y+'L'+(x+w)+' '+(y+h)+'Z" fill="'+C.wood+'" stroke="'+C.ink+'" stroke-width="2"/>';
+const house=(x,y)=>roof(x-8,y,116,40)+rect(x,y+40,100,72,C.paper)+rect(x+40,y+66,22,46,C.wood)+rect(x+12,y+55,20,20,C.blue)+rect(x+70,y+55,20,20,C.blue);
+function drawing(k){let q="";if(k==="store"){q=rect(65,32,350,110,C.green)+rect(85,42,310,27,C.paper)+label(240,60,"MATERIALS DEPOT",16);for(let j=0;j<3;j++)for(let i=0;i<4;i++)q+=rect(100+i*69,78+j*19,60,15,j%2?C.wood:C.paper);}
+else if(k==="stock"||k==="finance"||k==="value"||k==="sell"||k==="ranks"){if(k==="sell")q=house(70,24)+rect(252,40,155,91,C.paper)+label(330,66,"OFFER",16)+label(330,92,"$68,203",22)+label(330,115,"NET PROCEEDS");else if(k==="ranks"){for(let i=0;i<6;i++)q+=rect(55+i*62,142-(i+1)*15,46,(i+1)*15,C.green)+label(78+i*62,157,["0","1","3","7","15","30"][i]);}else{for(let i=0;i<3;i++){const names=k==="stock"?["CASH","STOCK","COST"]:k==="value"?["BASE","BONUS","NET"]:["CASH","EXPENSES","PROCEEDS"];q+=rect(35+i*140,40,130,100,C.paper)+label(100+i*140,58,names[i])+rect(65+i*140,113-18*i,70,15+18*i,[C.green,C.gold,C.blue][i]);}}}
+else if(k==="layers"||k==="siding"){for(let i=0;i<4;i++){q+=rect(70+i*85,30,75,115,[C.wood,"#c3a36f","#e3e6dc",C.green][i])+label(107+i*85,154,["FRAME","OSB","WRAP","SIDING"][i]);if(i===0)for(let j=1;j<4;j++)q+=line(70+j*18,30,70+j*18,145,C.ink,4);if(i===3)for(let j=1;j<7;j++)q+=line(325,30+j*16,400,30+j*16);}}
+else if(k==="drywall"||k==="finish"||k==="paint"){q=rect(134,18,212,138,k==="paint"?"#a0b5a0":"#e2ded0");for(let j=0;j<4;j++)for(let i=0;i<3;i++)q+='<circle cx="'+(150+i*90)+'" cy="'+(33+j*36)+'" r="4" fill="'+(k==="finish"?C.gold:C.ink)+'"/>';if(k==="drywall")q+=rect(207,62,40,31,C.blue)+line(207,62,247,93,C.red);if(k==="finish")q+=rect(228,18,20,138,"#eee9dc");if(k==="paint")q+=rect(245,25,92,125,"#7896a2")+rect(250,58,60,20,C.paper)+line(310,68,324,112,C.ink,4);}
+else if(k==="floor"){for(let j=0;j<5;j++)for(let i=0;i<8;i++)q+=rect(80+i*40,28+j*23,39,22,[C.wood,"#c4a478","#9d7855"][(i+j)%3],C.paper,0);}
+else if(k==="opening"){q=rect(100,24,112,133,C.wood)+rect(111,35,90,122,C.paper)+rect(121,39,70,118,C.wood)+rect(173,90,12,5,C.gold)+rect(272,38,108,83,C.wood)+rect(282,48,88,63,C.blue)+line(326,48,326,111)+line(282,80,370,80);}
+else if(k==="roof"){q=roof(110,22,260,91)+rect(128,113,224,45,C.paper);for(let i=0;i<5;i++)q+=line(110+i*65,113,240,22,C.ink,1);q+=line(128,113,352,113,C.green,5)+line(128,145,352,145,C.blue,4);}
+else if(k==="furniture"||k==="room"){q=rect(97,20,286,137,C.paper);q+=rect(112,34,83,96,C.wood)+rect(117,41,73,84,C.blue)+rect(121,46,30,19,C.paper)+rect(155,46,30,19,C.paper)+rect(276,36,84,36,C.green)+rect(270,112,91,28,C.wood)+rect(307,89,23,18,C.gold);q+=line(224,30,224,145,C.gray,2);}
+else if(k==="inspect"||k==="check"){q=rect(120,20,240,137,C.paper)+label(240,39,"PROPERTY CHECKLIST",14);for(let i=0;i<4;i++){q+=rect(145,51+i*24,15,15,i===2?C.red:C.green)+label(153,62+i*24,i===2?"×":"✓")+line(175,58+i*24,330,58+i*24,C.gray,2);}}
+else if(k==="sites"||k==="loop"){q=house(53,30)+house(190,30)+house(326,30);q+=label(103,157,"ACTIVE")+label(240,157,k==="sites"?"SAVED":"INSPECT")+label(376,157,k==="sites"?"NEXT":"SOLD");}
+return q;}
+export function expansionArt(p){const n=p.nodes.length,step=440/n,w=step-8;let chain="";for(let i=0;i<n;i++){const x=20+i*step;chain+=rect(x,183,w,33,C.paper,C.green,4)+label(x+w/2,203,p.nodes[i],n>5?10:11);if(i<n-1)chain+=line(x+w,199,x+step,199,C.green,2);}
+return '<svg class="hb-diagram hb-detailed" viewBox="0 0 480 230" role="img" aria-label="'+E(p.title)+' game illustration" xmlns="http://www.w3.org/2000/svg">'+drawing(p.art)+chain+'</svg>';}
