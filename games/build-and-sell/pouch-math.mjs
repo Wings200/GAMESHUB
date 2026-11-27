@@ -22,6 +22,7 @@ export const TOOLS=[
 ["joinery","Door & window installation kit","Structure","LMB close-up install · RMB uninstall · E interact when stowed"],
 ["siding","Exterior siding kit","Structure","T style · R/F color · LMB fit · RMB remove"],
 ["roof","Ceiling & roof construction kit","Structure","T stage · aim overhead · hold LMB install · RMB remove"],
+["furniture","Furnishing placement kit","Structure","T item · R/F rotate · LMB place · RMB return to stock"],
 ["floor","Flooring installation kit","Structure","T material · hold LMB install · RMB remove"],
 ["electric","Box mounting kit","Electrical","T type · R/F height · LMB mount"],
 ["cable","Cable spool & drill","Electrical","T cable type · R/F height · hold LMB route"],

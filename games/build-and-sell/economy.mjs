@@ -1,4 +1,5 @@
 
+import {FURNISHINGS} from "./furniture-math.mjs";
 export const STORE={x:17,z:-23.3},STORE_REACH=3.5,START_CASH=25000;
 export const GOODS=[
 ["gravel","Gravel","Foundation",100,45],["form","Form boards","Foundation",4,24],["barrier","Vapor barrier","Foundation",100,30],["rebar","Reinforcement","Foundation",100,85],["concrete","Concrete","Foundation",100,100],
@@ -8,7 +9,7 @@ export const GOODS=[
 ["sidingvinyl","Vinyl siding","Exterior",4,60],["sidingwood","Wood siding","Exterior",4,88],["sidingbrick","Brick veneer","Exterior",4,110],["sidingstucco","Stucco supplies","Exterior",4,72],
 ["lumber","Framing lumber","Structure",4,48],["opening","Opening framing supplies","Structure",1,22],["osb","OSB sheets","Structure",4,44],["wrap","House wrap","Structure",10,35],["insulation","Insulation","Structure",8,32],["drywall","Drywall sheets","Structure",4,36],["finish","Joint finishing supplies","Structure",12,24],["paint","Paint coverage units","Structure",24,38],
 ["drain","Drain pipe","Plumbing",5,30],["cold","Cold water pipe","Plumbing",5,19],["hot","Hot water pipe","Plumbing",5,19],["conduit","Conduit","Electrical",5,18],["box","Electrical boxes","Electrical",4,16],["cable","Cable","Electrical",5,30],["device","Electrical devices","Electrical",4,32],["breaker","Breakers / service components","Electrical",2,38],["heater","Water heaters","Plumbing",1,380],["fixture","Fixture supplies","Plumbing",1,110],["utility","Utility connection supplies","Plumbing",4,50]
-].map(([id,name,category,pack,price])=>({id,name,category,pack,price}));
+].map(([id,name,category,pack,price])=>({id,name,category,pack,price})).concat(FURNISHINGS.map(f=>({id:f.stock,name:f.name,category:"Furnishings",pack:1,price:f.price})));
 export const nearStore=p=>!!p&&Math.hypot(p.x-STORE.x,p.z-STORE.z)<=STORE_REACH;
 export function readEconomy(w){const e=w?.economy||{},stock={};for(const g of GOODS)stock[g.id]=Number.isSafeInteger(e.stock?.[g.id])?Math.max(0,Math.min(1000000,e.stock[g.id])):0;return {cash:Number.isSafeInteger(e.cash)?Math.max(0,e.cash):START_CASH,stock,revision:Number.isSafeInteger(e.revision)&&e.revision>=0?e.revision:0};}
 export function buyGoods(w,id,packs){const e=readEconomy(w),g=GOODS.find(g=>g.id===id);if(!g||!Number.isInteger(packs)||packs<1||packs>100)return {error:"Choose 1–100 packs"};const price=g.price*packs;if(e.cash<price)return {error:"Not enough project funds"};if(e.stock[id]+packs*g.pack>1000000)return {error:"Stock limit reached"};e.cash-=price;e.stock[id]+=packs*g.pack;e.revision++;return {economy:e};}
