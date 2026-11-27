@@ -1,6 +1,6 @@
 
 export const VAN_ACCESS={x:-12,z:-23.5},VAN_REACH=3;
-export const TOOLS=[
+export const TASKS=[
 ["tape","Tape measure","Survey","LMB anchor · RMB retract"],
 ["laser","Rotary laser","Survey","LMB set up · RMB retrieve"],
 ["rod","Grade rod","Survey","Walk to read elevations"],
@@ -32,6 +32,17 @@ export const TOOLS=[
 ["fixture","Fixture installation kit","Plumbing","LMB place/select/connect · T type/port · R disconnect"],
 ["utility","Municipal service kit","Plumbing","T water/sewer/meter/valve · LMB install · RMB disconnect"]
 ].map(([id,name,category,controls])=>({id,name,category,controls}));
-export function cleanPouch(input){const seen=new Set(),arr=Array.isArray(input)?input:[];return Array.from({length:3},(_,i)=>{const id=arr[i];if(!TOOLS.some(t=>t.id===id)||seen.has(id))return null;seen.add(id);return id;});}
+export const TOOLS=[
+ {id:"surveyKit",name:"Survey kit",category:"Planning",modes:["layout","tape","laser","rod"]},
+ {id:"foundationKit",name:"Foundation kit",category:"Construction",modes:["gravel","form","barrier","rebar","pour","screed"]},
+ {id:"structureKit",name:"Structure kit",category:"Construction",modes:["wall","joinery","roof","siding"]},
+ {id:"finishKit",name:"Interior finish kit",category:"Construction",modes:["drywall","finish","paint","floor"]},
+ {id:"electricalKit",name:"Electrical kit",category:"Services",modes:["electric","conduit","cable","outlet","panel"]},
+ {id:"plumbingKit",name:"Plumbing kit",category:"Services",modes:["drain","cold","hot","utility","heater","fixture"]},
+ {id:"furnitureKit",name:"Furnishing kit",category:"Interiors",modes:["furniture"]}
+].map(k=>({...k,controls:k.modes.map(id=>TASKS.find(t=>t.id===id).name).join(" · ")}));
+export const kitFor=id=>TOOLS.find(k=>k.id===id||k.modes.includes(id))||null;
+export function readKitModes(input,prior={}){const result={};for(const k of TOOLS){const saved=prior?.[k.id];const legacy=(Array.isArray(input)?input:[]).find(id=>k.modes.includes(id));result[k.id]=k.modes.includes(saved)?saved:legacy||k.modes[0];}return result;}
+export function cleanPouch(input){const seen=new Set(),arr=Array.isArray(input)?input:[];return Array.from({length:3},(_,i)=>{const id=kitFor(arr[i])?.id;if(!id||seen.has(id))return null;seen.add(id);return id;});}
 export function putTool(pouch,slot,id){const p=cleanPouch(pouch);if(!Number.isInteger(slot)||slot<0||slot>2||id!==null&&!TOOLS.some(t=>t.id===id))return p;const previous=p.indexOf(id);if(id!==null&&previous>=0&&previous!==slot)p[previous]=p[slot];p[slot]=id;return p;}
 export function nearVan(p){return !!p&&Math.hypot(p.x-VAN_ACCESS.x,p.z-VAN_ACCESS.z)<=VAN_REACH;}
