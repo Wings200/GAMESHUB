@@ -29,7 +29,7 @@ export function makeFeedVisual(canvas,callbacks){
  function tick(now){if(!active)return;frame=requestAnimationFrame(tick);if(held){const a=parts[held],progress=Math.min(1,(now-started)/750);driver.visible=true;driver.position.set(a.tx,.19,.15);driver.rotation.z=progress*Math.PI*6;driver.position.z=.15-.035*progress;callbacks.progress(progress);if(progress>=1){const k=held;stop();callbacks.secure(k);}}else callbacks.progress(0);if(now-previous>250){resize();previous=now;}renderer.render(scene,camera);}
  canvas.onpointermove=e=>{if(!active)return;hover=find(e);if(held&&(hover?.kind!=="fastener"||hover.k!==held))stop();canvas.style.cursor=hover?"pointer":"default";};
  function activateTarget(t){if(!active||!work||callbacks.busy())return;if(!t)return;if(t.kind==="cord"&&!work.matched[t.k])callbacks.select(t.k);else if(t.kind==="socket"&&!work.matched[t.k])callbacks.match(t.k);else if(t.kind==="fastener"&&work.matched[t.k]&&!work.secured.includes(t.k)){held=t.k;started=performance.now();}} 
- canvas.onpointerdown=e=>{if(e.button!==0)return;e.preventDefault();activateTarget(find(e));if(held)canvas.setPointerCapture?.(e.pointerId);};
+ canvas.onpointerdown=e=>{if((callbacks.primaryMouse?.()||"Mouse0")!=="Mouse"+e.button)return;e.preventDefault();activateTarget(find(e));if(held)canvas.setPointerCapture?.(e.pointerId);};
  canvas.onpointerup=canvas.onpointercancel=canvas.onlostpointercapture=stop;
  function keyTarget(){const r=canvas.getBoundingClientRect();return find({clientX:r.left+kx*r.width,clientY:r.top+ky*r.height});}
  function cursor(){const c=document.getElementById("feedKeyCursor");if(c){c.style.left=(kx*100)+"%";c.style.top=(ky*100)+"%";}}

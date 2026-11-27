@@ -1,0 +1,18 @@
+
+export const LOOK_KEYS=["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"];
+export const ACTIONS=[
+ ["Movement","KeyW","Forward","KeyW"],["Movement","KeyS","Backward","KeyS"],["Movement","KeyA","Strafe left","KeyA"],["Movement","KeyD","Strafe right","KeyD"],["Movement","ShiftLeft","Sprint","ShiftLeft"],["Movement","KeyC","Crouch","KeyC"],["Movement","Space","Jump","Space"],
+ ["Camera","ArrowLeft","Look left","ArrowLeft"],["Camera","ArrowRight","Look right","ArrowRight"],["Camera","ArrowUp","Look up","ArrowUp"],["Camera","ArrowDown","Look down","ArrowDown"],["Camera","KeyV","Vehicle camera","KeyV"],
+ ["Tools","Primary","Use / build / hold","Mouse0"],["Tools","Secondary","Remove / cancel","Mouse2"],["Tools","KeyE","Interact / finish","KeyE"],["Tools","Digit1","Tool slot 1","Digit1"],["Tools","Digit2","Tool slot 2","Digit2"],["Tools","Digit3","Tool slot 3","Digit3"],["Tools","KeyQ","Change job","KeyQ"],["Tools","KeyT","Change option / submode","KeyT"],["Tools","KeyR","Increase / rotate / disconnect","KeyR"],["Tools","KeyF","Decrease / rotate back","KeyF"],["Tools","KeyG","Snap / face / contextual action","KeyG"],["Tools","AltAction","Alternate material","Shift+KeyG"],["Tools","KeyY","Contextual option","KeyY"],["Tools","Delete","Delete foundation layout","Delete"],["Tools","KeyU","Switch units","KeyU"],
+ ["Menus","KeyB","Handbook","KeyB"],["Menus","KeyI","Inspection / business","KeyI"],["Menus","Escape","Pause / resume","Escape"]
+].map(([group,id,name,def])=>({group,id,name,def}));
+export const defaults=()=>Object.fromEntries(ACTIONS.map(a=>[a.id,a.def]));
+export function validBinding(v){return typeof v==="string"&&/^(?:(?:Shift\+)?(?:Key[A-Z]|Digit[0-9]|Numpad[0-9]|Arrow(?:Left|Right|Up|Down)|Space|Enter|Backspace|Delete|Home|End|PageUp|PageDown|BracketLeft|BracketRight|Semicolon|Quote|Comma|Period|Slash|Backslash|Minus|Equal|Backquote)|ShiftLeft|ShiftRight|ControlLeft|ControlRight|AltLeft|AltRight|Mouse[0-4]|Escape)$/.test(v);}
+export function cleanBindings(raw){const b=defaults(),seen=new Set();for(const a of ACTIONS){const v=raw?.[a.id];if(validBinding(v)&&(v!=="Escape"||a.id==="Escape"))b[a.id]=v;}
+ for(const a of ACTIONS){if(seen.has(b[a.id]))return defaults();seen.add(b[a.id]);}return b;}
+export function bindAction(b,id,value){if(!ACTIONS.some(a=>a.id===id)||!validBinding(value)||value==="Escape"&&id!=="Escape")return {error:"This key is reserved or unsupported"};const clash=ACTIONS.find(a=>a.id!==id&&b[a.id]===value);return clash?{error:"Already assigned to "+clash.name}:{bindings:{...b,[id]:value}};}
+export function actionFor(b,physical){return ACTIONS.find(a=>b[a.id]===physical)?.id||null;}
+export function keyLabel(v){if(!v)return "Unbound";if(v.startsWith("Shift+"))return "Shift + "+keyLabel(v.slice(6));return ({Mouse0:"LMB",Mouse1:"MMB",Mouse2:"RMB",Mouse3:"Mouse 4",Mouse4:"Mouse 5",ShiftLeft:"L Shift",ShiftRight:"R Shift",ControlLeft:"L Ctrl",ControlRight:"R Ctrl",AltLeft:"L Alt",AltRight:"R Alt",ArrowLeft:"←",ArrowRight:"→",ArrowUp:"↑",ArrowDown:"↓",Escape:"Esc"})[v]||v.replace(/^Key|^Digit/,"");}
+export function controlText(s,b){const lookup={LMB:"Primary",RMB:"Secondary",E:"KeyE",Q:"KeyQ",T:"KeyT",R:"KeyR",F:"KeyF",G:"KeyG",Y:"KeyY",U:"KeyU",B:"KeyB",I:"KeyI",V:"KeyV",Delete:"Delete"};
+ return String(s).replace(/\b(?:LMB|RMB|Delete|[EQTRFGYUBIV])\b/g,k=>keyLabel(b[lookup[k]]));}
+export function keyboardLook(p,keys,dt,sensitivity=1){const d=Math.max(0,Math.min(.05,dt))*sensitivity;p.yaw+=((keys.has("ArrowLeft")?1:0)-(keys.has("ArrowRight")?1:0))*1.85*d;p.pitch=Math.max(-1.44,Math.min(1.44,p.pitch+((keys.has("ArrowUp")?1:0)-(keys.has("ArrowDown")?1:0))*1.45*d));}
