@@ -39,7 +39,13 @@ async function schema(db){await db.batch([
  db.prepare("CREATE TABLE IF NOT EXISTS build_players_v2 (id TEXT PRIMARY KEY, room TEXT NOT NULL, token TEXT NOT NULL, name TEXT NOT NULL, pose TEXT NOT NULL, updated INTEGER NOT NULL)"),
  db.prepare("CREATE INDEX IF NOT EXISTS build_players_v2_room ON build_players_v2(room,updated)")
 ]);}
-const worldData=(w,room)=>{const l=readLayout(w),d=readDig(w,l.layout),g=readGravel(w,l.layout,d.dug),comp=readCompaction(w,l.layout,g.gravel),prep=readPrep(w,l.layout,comp.compacted),pl=readPipes(w,l.layout),su=readSupply(w,l.layout),risers=readRisers(w,l.layout,{drain:pl.pipes,...su.supply}),s=readWalls(w,l.layout),wp=readWallPipes(w,s.walls,risers),e=readElectrical(w,s.walls),c=readCables(w,s.walls,e.devices),o=readOutlets(w,e.devices,c.cables),a=readPanels(w,e.devices,c.cables);return {...l,machine:readMachine(w,room),...d,...g,plate:readPlate(w,room),...comp,...readForms(w,l.layout),...pl,...su,risers,elevated:readElevated(w,l.layout),...prep,...readConcrete(w,l.layout,prep.rebar),...s,...wp,...e,...c,...o,...a,...readHeaters(w,l.layout,s.walls,e.devices,wp.wallPipes),...readFixtures(w,{layout:l.layout,walls:s.walls,lines:wp.wallPipes,risers}),...readUtility(w,l.layout,pl.pipes,su.supply),waterTickAt:Number.isFinite(w.waterTickAt)?w.waterTickAt:0,hose:readHose(w,room),serverNow:Date.now()};};
+const singleWorldData=(w,room)=>{const l=readLayout(w),d=readDig(w,l.layout),g=readGravel(w,l.layout,d.dug),comp=readCompaction(w,l.layout,g.gravel),prep=readPrep(w,l.layout,comp.compacted),pl=readPipes(w,l.layout),su=readSupply(w,l.layout),risers=readRisers(w,l.layout,{drain:pl.pipes,...su.supply}),s=readWalls(w,l.layout),wp=readWallPipes(w,s.walls,risers),e=readElectrical(w,s.walls),c=readCables(w,s.walls,e.devices),o=readOutlets(w,e.devices,c.cables),a=readPanels(w,e.devices,c.cables);return {...l,machine:readMachine(w,room),...d,...g,plate:readPlate(w,room),...comp,...readForms(w,l.layout),...pl,...su,risers,elevated:readElevated(w,l.layout),...prep,...readConcrete(w,l.layout,prep.rebar),...s,...wp,...e,...c,...o,...a,...readHeaters(w,l.layout,s.walls,e.devices,wp.wallPipes),...readFixtures(w,{layout:l.layout,walls:s.walls,lines:wp.wallPipes,risers}),...readUtility(w,l.layout,pl.pipes,su.supply),waterTickAt:Number.isFinite(w.waterTickAt)?w.waterTickAt:0,hose:readHose(w,room),serverNow:Date.now()};};
+const FOUNDATION_FIELDS=["layout","dug","gravel","compacted","forms","barrier","rebar","poured","screeded","cureAt","pipes","supply","risers","elevated","walls","wallPipes","devices","cables","outlets","panels","heaters","fixtures","utility","waterTickAt","waterService"],FOUNDATION_REVS=["layoutRevision","digRevision","gravelRevision","compactRevision","formRevision","prepRevision","concreteRevision","pipeRevision","wallRevision","wallPipeRevision","electricRevision","cableRevision","outletRevision","panelRevision","heaterRevision","fixtureRevision","utilityRevision"],MAX_FOUNDATIONS=8;
+const foundationId=w=>typeof w.foundationId==="string"?w.foundationId:"foundation-1";
+const foundationSnapshot=w=>Object.fromEntries(FOUNDATION_FIELDS.map(k=>[k,w[k]??null]));
+const archivedFoundations=w=>(Array.isArray(w.foundations)?w.foundations:[]).filter(f=>typeof f?.id==="string"&&sanitizeLayout(f.state?.layout)).slice(0,MAX_FOUNDATIONS-1);
+function overlaps(a,b){return !!a&&!!b&&Math.min(a.x2,b.x2)-Math.max(a.x1,b.x1)>.001&&Math.min(a.z2,b.z2)-Math.max(a.z1,b.z1)>.001;}
+const worldData=(w,room)=>({...singleWorldData(w,room),foundationId:foundationId(w),foundations:archivedFoundations(w).map(f=>({id:f.id,...singleWorldData(f.state,room)}))});
 const active="EXISTS (SELECT 1 FROM build_sessions_v2 s WHERE s.code=build_players_v2.room AND s.closed=0 AND s.updated>?)";
 async function openWorld(db,user,action,username,now){
  let w=await db.prepare("SELECT id,state,updated FROM build_worlds_v2 WHERE owner=?").bind(user.id).first();
@@ -250,23 +256,34 @@ export async function onRequestPost(ctx){
  const u=await db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,'$.dug',json(?),'$.digRevision',?,'$.lastDig',?),updated=? WHERE id=? AND COALESCE(json_extract(state,'$.digRevision'),0)=? AND COALESCE(json_extract(state,'$.layoutRevision'),0)=? AND json_extract(state,'$.machine.driver')=? AND json_extract(state,'$.machine.room')=? AND "+guard).bind(JSON.stringify([...d.dug,target.id]),d.digRevision+1,target.id,now,auth.world,d.digRevision,l.revision,b.id,room,...guardArgs).run();if(!u.meta?.changes)return json({ok:false,error:"Dig changed. Try again."},409);return json({ok:true,...worldData(await worldRow(),room)});
  }
  if(b.action==="layout"){
- const w=await worldRow(),l=readLayout(w),requested=sanitizeLayout(b.layout),revision=b.revision;
- if((b.layout!==null&&!requested)||revision!==l.revision)return json({ok:false,error:"Invalid or changed foundation layout."},409);
- if(b.layout===null&&!host)return json({ok:false,error:"Only the host can clear the layout."},403);
- const existing=readDig(w,l.layout).dug.length>0;let rect=requested,patch={};
- if(existing){
- if(!requested)return json({ok:false,error:"Existing construction cannot be cleared. Draw an extension instead."},400);
- if(readHose(w,room).owner||readMachine(w,room).driver||readPlate(w,room).driver)return json({ok:false,error:"Park equipment and release the hose before extending."},400);
- rect=extendLayout(l.layout,requested);if(!rect||JSON.stringify(rect)===JSON.stringify(l.layout))return json({ok:false,error:"Choose an extension outside the existing foundation and inside the lot."},400);
- const before=worldData(w,room),afterUtility=readUtility(w,rect,before.pipes,before.supply).utility;
- if(before.utility.water!==afterUtility.water||before.utility.sewer!==afterUtility.sewer)return json({ok:false,error:"This extension would cover a connected municipal endpoint. Extend a different edge."},400);
- for(const [key,rev] of [["dug","digRevision"],["gravel","gravelRevision"],["compacted","compactRevision"],["barrier","prepRevision"],["rebar","prepRevision"],["poured","concreteRevision"],["screeded","concreteRevision"]]){patch[key]=remapFoundationTiles(l.layout,rect,before[key]);patch[rev]=(w[rev]||0)+1;}
- patch.forms=[];patch.formRevision=(w.formRevision||0)+1;patch.cureAt=0;patch.lastDig=null;patch.lastGravel=null;patch.lastPrep=null;patch.lastConcrete=null;patch.lastForm=null;
+ const w=await worldRow(),l=readLayout(w),requested=sanitizeLayout(b.layout),revision=b.revision,archives=archivedFoundations(w),id=foundationId(w);
+ if(revision!==l.revision)return json({ok:false,error:"Foundation selection changed. Try again."},409);
+ if(!host)return json({ok:false,error:"Only the host can create or select foundations."},403);
+ if(readHose(w,room).owner||readMachine(w,room).driver||readPlate(w,room).driver)return json({ok:false,error:"Park equipment and release the hose first."},400);
+ let patch={},nextArchives=archives,nextId=id;
+ if(typeof b.select==="string"){
+ const target=archives.find(f=>f.id===b.select);if(!target)return json({ok:false,error:"Foundation not found."},400);
+ nextArchives=archives.filter(f=>f.id!==target.id);if(l.layout)nextArchives.push({id,state:foundationSnapshot(w)});nextId=target.id;patch=foundationSnapshot(target.state);
+ }else if(b.layout===null){
+ if(readDig(w,l.layout).dug.length)return json({ok:false,error:"Existing construction cannot be cleared."},400);
+ patch={layout:null};
+ }else{
+ if(!requested)return json({ok:false,error:"Invalid foundation layout."},400);
+ if(archives.some(f=>overlaps(requested,f.state.layout)))return json({ok:false,error:"New foundation overlaps another saved foundation. Press T to switch."},400);
+ if(l.layout&&overlaps(requested,l.layout)){
+ if(readDig(w,l.layout).dug.length)return json({ok:false,error:"Draw a separate non-overlapping foundation."},400);
+ patch={layout:requested};
+ }else if(l.layout){
+ if(archives.length>=MAX_FOUNDATIONS-1)return json({ok:false,error:"Maximum of eight foundations reached."},400);
+ nextArchives=[...archives,{id,state:foundationSnapshot(w)}];nextId=crypto.randomUUID();patch=foundationSnapshot({layout:requested});
+ }else{patch=foundationSnapshot({layout:requested});}
  }
- const revs=["layoutRevision","digRevision","gravelRevision","compactRevision","formRevision","prepRevision","concreteRevision","pipeRevision","wallRevision","utilityRevision"],where=revs.map(k=>"COALESCE(json_extract(state,'$."+k+"'),0)=?").join(" AND ");
- const updates={...patch,layout:rect,layoutRevision:revision+1},keys=Object.keys(updates),set=keys.map(k=>"'$."+k+"',json(?)").join(",");
- const change=await db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,"+set+"),updated=? WHERE id=? AND "+where+" AND "+guard).bind(...keys.map(k=>JSON.stringify(updates[k])),now,auth.world,...revs.map(k=>w[k]||0),...guardArgs).run();
- if(!change.meta?.changes)return json({ok:false,error:"Layout changed or session closed."},409);
+ for(const k of FOUNDATION_REVS)patch[k]=(w[k]||0)+1;
+ for(const k of ["lastDig","lastGravel","lastForm","lastPrep","lastConcrete","lastPipe","lastWall","lastElectric","lastCable","lastOutlet","lastPanel"])patch[k]=null;
+ patch.waterTickAt=now;patch.foundations=nextArchives;patch.foundationId=nextId;patch.hose={side:0,owner:null,room:null,rev:(w.hose?.rev||0)+1};
+ const revs=[...FOUNDATION_REVS,"waterTickAt"],where=revs.map(k=>"COALESCE(json_extract(state,'$."+k+"'),0)=?").join(" AND "),keys=Object.keys(patch),set=keys.map(k=>"'$."+k+"',json(?)").join(",");
+ const change=await db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,"+set+"),updated=? WHERE id=? AND "+where+" AND COALESCE(json_extract(state,'$.machine.rev'),0)=? AND COALESCE(json_extract(state,'$.plate.rev'),0)=? AND COALESCE(json_extract(state,'$.hose.rev'),0)=? AND "+guard).bind(...keys.map(k=>JSON.stringify(patch[k])),now,auth.world,...revs.map(k=>w[k]||0),w.machine?.rev||0,w.plate?.rev||0,w.hose?.rev||0,...guardArgs).run();
+ if(!change.meta?.changes)return json({ok:false,error:"Foundation changed. Try again."},409);
  return json({ok:true,...worldData(await worldRow(),room)});
  }
  if(b.action==="save"&&!host)return json({ok:false,error:"Only the host can save."},403);

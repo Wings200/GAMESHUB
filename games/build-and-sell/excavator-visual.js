@@ -1,6 +1,6 @@
 
 import {THREE} from "../../engine/core.js";
-import {baseGroundHeight,groundHeight,PIT_Y,tileAt} from "./terrain.mjs";
+import {baseGroundHeight,groundHeight,PIT_Y,tileAt,getArchivedFoundations} from "./terrain.mjs";
 const mat=(c,r=.78,m=0)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m});
 const gold=mat(0xe8a82d,.55),dark=mat(0x252a2a),steel=mat(0x656c69,.45,.45),rubber=mat(0x272b29),glass=new THREE.MeshStandardMaterial({color:0x9fd2dc,transparent:true,opacity:.15,depthWrite:false,roughness:.2,side:THREE.DoubleSide}),dirt=mat(0x916b43),tooth=mat(0x515955,.6,.45);
 const up=new THREE.Vector3(0,1,0),vec=new THREE.Vector3();
@@ -40,9 +40,9 @@ export function makeExcavator(scene){
  }};
 }
 export function rebuildTerrain(mesh,rect,ids){
- const dug=new Set(ids),xs=[],zs=[];for(let i=-24;i<=24;i+=.5){xs.push(i);zs.push(i);}if(rect){for(let x=rect.x1;x<rect.x2;x+=1)xs.push(x);xs.push(rect.x2);for(let z=rect.z1;z<rect.z2;z+=1)zs.push(z);zs.push(rect.z2);}
+ const dug=new Set(ids),xs=[],zs=[];for(let i=-24;i<=24;i+=.5){xs.push(i);zs.push(i);}const archived=getArchivedFoundations();for(const r of [rect,...archived.map(f=>f.layout)])if(r){for(let x=r.x1;x<r.x2;x+=1)xs.push(x);xs.push(r.x2);for(let z=r.z1;z<r.z2;z+=1)zs.push(z);zs.push(r.z2);}
  const sorted=a=>[...new Set(a.map(v=>Math.round(v*10000)/10000))].sort((a,b)=>a-b),X=sorted(xs),Z=sorted(zs),vertices=[],colors=[];
- const isDug=(x,z)=>dug.has(tileAt(rect,x,z));
+ const isDug=(x,z)=>dug.has(tileAt(rect,x,z))||archived.some(f=>f.dug.has(tileAt(f.layout,x,z)));
  const top=new THREE.Color(0xb39d7d),floor=new THREE.Color(0x987451),wall=new THREE.Color(0x755337);
  function tri(a,b,c,color){for(const p of [a,b,c]){vertices.push(...p);colors.push(color.r,color.g,color.b);}}
  function quad(a,b,c,d,col){tri(a,b,c,col);tri(a,c,d,col);}

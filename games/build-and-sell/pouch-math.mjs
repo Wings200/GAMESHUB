@@ -4,7 +4,7 @@ export const TOOLS=[
 ["tape","Tape measure","Survey","LMB anchor · RMB retract"],
 ["laser","Rotary laser","Survey","LMB set up · RMB retrieve"],
 ["rod","Grade rod","Survey","Walk to read elevations"],
-["layout","Layout kit","Survey","LMB corners · G snap · Delete clear"],
+["layout","Layout kit","Survey","LMB new foundation corners · T switch · G snap"],
 ["gravel","Gravel shovel","Foundation","Hold LMB spread"],
 ["form","Formwork hammer","Foundation","LMB install · RMB remove"],
 ["drain","Drain & vent kit","Plumbing","T waste/vent in framing · G snap · LMB route"],
