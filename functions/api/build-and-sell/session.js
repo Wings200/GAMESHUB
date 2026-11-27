@@ -19,7 +19,7 @@ import {readGravel,gravelPatch} from "../../../games/build-and-sell/gravel-math.
 import {cleanMachineVisual} from "../../../games/build-and-sell/machine-playback.mjs";
 import {readMachine,readDig,cleanDrive,targetTile} from "../../../games/build-and-sell/excavator-math.mjs";
 import {tileBounds} from "../../../games/build-and-sell/terrain.mjs";
-import {sanitizeLayout,readLayout} from "../../../games/build-and-sell/layout-math.mjs";
+import {sanitizeLayout,readLayout,extendLayout,remapFoundationTiles} from "../../../games/build-and-sell/layout-math.mjs";
 import {sanitizePose} from "../../../games/build-and-sell/movement.mjs";
 import {sanitizeSurvey} from "../../../games/build-and-sell/survey-math.mjs";
 import {sanitizeTape} from "../../../games/build-and-sell/tape-math.mjs";
@@ -162,9 +162,9 @@ export async function onRequestPost(ctx){
  const w=await worldRow(),l=readLayout(w),d=readDig(w,l.layout),g=readGravel(w,l.layout,d.dug),c=readCompaction(w,l.layout,g.gravel),f=readForms(w,l.layout),s=readPrep(w,l.layout,c.compacted),pose=sanitizePose(b.pose);
  if(!pose||b.pose?.prepMode!==b.kind||readMachine(w,room).driver===b.id||readPlate(w,room).driver===b.id||b.revision!==l.revision||b.prepRevision!==s.prepRevision)return json({ok:false,error:"Material state changed. Try again."},409);
  if(b.install&&f.forms.length!==4)return json({ok:false,error:"Finish formwork first."},400);
- if(Array.isArray(w.poured)&&w.poured.length)return json({ok:false,error:"Reinforcement is locked after pouring."},409);
- const next=applyPrep(l.layout,b.tile,b.kind,b.install,new Set(c.compacted),new Set(s.barrier),new Set(s.rebar),pose);if(!next)return json({ok:false,error:"No eligible material in this patch."},409);
- const last={actor:b.id,kind:b.kind,tile:b.tile,install:b.install};const u=await db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,'$.barrier',json(?),'$.rebar',json(?),'$.prepRevision',?,'$.lastPrep',json(?)),updated=? WHERE id=? AND COALESCE(json_extract(state,'$.prepRevision'),0)=? AND COALESCE(json_extract(state,'$.layoutRevision'),0)=? AND COALESCE(json_array_length(json_extract(state,'$.poured')),0)=0 AND "+guard).bind(JSON.stringify(next.barrier),JSON.stringify(next.rebar),s.prepRevision+1,JSON.stringify(last),now,auth.world,s.prepRevision,l.revision,...guardArgs).run();
+ 
+ const next=applyPrep(l.layout,b.tile,b.kind,b.install,new Set(c.compacted),new Set(s.barrier),new Set(s.rebar),pose,new Set(w.poured||[]));if(!next)return json({ok:false,error:"No eligible unpoured material in this patch."},409);
+ const last={actor:b.id,kind:b.kind,tile:b.tile,install:b.install};const u=await db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,'$.barrier',json(?),'$.rebar',json(?),'$.prepRevision',?,'$.lastPrep',json(?)),updated=? WHERE id=? AND COALESCE(json_extract(state,'$.prepRevision'),0)=? AND COALESCE(json_extract(state,'$.layoutRevision'),0)=? AND COALESCE(json_extract(state,'$.concreteRevision'),0)=? AND "+guard).bind(JSON.stringify(next.barrier),JSON.stringify(next.rebar),s.prepRevision+1,JSON.stringify(last),now,auth.world,s.prepRevision,l.revision,w.concreteRevision||0,...guardArgs).run();
  if(!u.meta?.changes)return json({ok:false,error:"Material changed. Try again."},409);return json({ok:true,...worldData(await worldRow(),room)});
  }
  if(b.action==="utility"){
@@ -211,7 +211,7 @@ export async function onRequestPost(ctx){
  if(!b.install&&Array.isArray(w.poured)&&w.poured.length&&(!(w.cureAt>0)||now<w.cureAt))return json({ok:false,error:"Wait until concrete cures."},409);
  const next=changeForm(l.layout,f.forms,b.side,b.install,pose,new Set(c.compacted));if(!next)return json({ok:false,error:"Finish compaction and approach a valid foundation edge."},400);
  const last={actor:b.id,side:b.side,install:b.install};
- const u=await db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,'$.forms',json(?),'$.formRevision',?,'$.lastForm',json(?)),updated=? WHERE id=? AND COALESCE(json_extract(state,'$.formRevision'),0)=? AND COALESCE(json_extract(state,'$.layoutRevision'),0)=? AND (COALESCE(json_array_length(json_extract(state,'$.poured')),0)=0 OR (json_extract(state,'$.cureAt')>0 AND json_extract(state,'$.cureAt')<=?)) AND "+guard).bind(JSON.stringify(next),f.formRevision+1,JSON.stringify(last),now,auth.world,f.formRevision,l.revision,now,...guardArgs).run();
+ const u=await db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,'$.forms',json(?),'$.formRevision',?,'$.lastForm',json(?)),updated=? WHERE id=? AND COALESCE(json_extract(state,'$.formRevision'),0)=? AND COALESCE(json_extract(state,'$.layoutRevision'),0)=? AND COALESCE(json_extract(state,'$.concreteRevision'),0)=? AND "+guard).bind(JSON.stringify(next),f.formRevision+1,JSON.stringify(last),now,auth.world,f.formRevision,l.revision,w.concreteRevision||0,...guardArgs).run();
  if(!u.meta?.changes)return json({ok:false,error:"Formwork changed by another builder. Try again."},409);return json({ok:true,...worldData(await worldRow(),room)});
  }
  if(b.action==="plate"||b.action==="compact"){
@@ -249,11 +249,24 @@ export async function onRequestPost(ctx){
  const u=await db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,'$.dug',json(?),'$.digRevision',?,'$.lastDig',?),updated=? WHERE id=? AND COALESCE(json_extract(state,'$.digRevision'),0)=? AND COALESCE(json_extract(state,'$.layoutRevision'),0)=? AND json_extract(state,'$.machine.driver')=? AND json_extract(state,'$.machine.room')=? AND "+guard).bind(JSON.stringify([...d.dug,target.id]),d.digRevision+1,target.id,now,auth.world,d.digRevision,l.revision,b.id,room,...guardArgs).run();if(!u.meta?.changes)return json({ok:false,error:"Dig changed. Try again."},409);return json({ok:true,...worldData(await worldRow(),room)});
  }
  if(b.action==="layout"){
- const rect=sanitizeLayout(b.layout),revision=b.revision;if((b.layout!==null&&!rect)||!Number.isSafeInteger(revision)||revision<0)return json({ok:false,error:"Invalid foundation layout."},400);
+ const w=await worldRow(),l=readLayout(w),requested=sanitizeLayout(b.layout),revision=b.revision;
+ if((b.layout!==null&&!requested)||revision!==l.revision)return json({ok:false,error:"Invalid or changed foundation layout."},409);
  if(b.layout===null&&!host)return json({ok:false,error:"Only the host can clear the layout."},403);
- const change=await db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,'$.layout',json(?),'$.layoutRevision',?),updated=? WHERE id=? AND COALESCE(json_extract(state,'$.layoutRevision'),0)=? AND COALESCE(json_array_length(json_extract(state,'$.dug')),0)=0 AND EXISTS(SELECT 1 FROM build_sessions_v2 s JOIN build_players_v2 p ON p.room=s.code WHERE s.code=? AND s.world=build_worlds_v2.id AND s.closed=0 AND s.updated>? AND p.id=? AND p.token=? AND p.updated>?)").bind(JSON.stringify(rect),revision+1,now,auth.world,revision,room,cutoff,b.id,b.token,cutoff).run();
+ const existing=readDig(w,l.layout).dug.length>0;let rect=requested,patch={};
+ if(existing){
+ if(!requested)return json({ok:false,error:"Existing construction cannot be cleared. Draw an extension instead."},400);
+ if(readHose(w,room).owner||readMachine(w,room).driver||readPlate(w,room).driver)return json({ok:false,error:"Park equipment and release the hose before extending."},400);
+ rect=extendLayout(l.layout,requested);if(!rect||JSON.stringify(rect)===JSON.stringify(l.layout))return json({ok:false,error:"Choose an extension outside the existing foundation and inside the lot."},400);
+ const before=worldData(w,room),afterUtility=readUtility(w,rect,before.pipes,before.supply).utility;
+ if(before.utility.water!==afterUtility.water||before.utility.sewer!==afterUtility.sewer)return json({ok:false,error:"This extension would cover a connected municipal endpoint. Extend a different edge."},400);
+ for(const [key,rev] of [["dug","digRevision"],["gravel","gravelRevision"],["compacted","compactRevision"],["barrier","prepRevision"],["rebar","prepRevision"],["poured","concreteRevision"],["screeded","concreteRevision"]]){patch[key]=remapFoundationTiles(l.layout,rect,before[key]);patch[rev]=(w[rev]||0)+1;}
+ patch.forms=[];patch.formRevision=(w.formRevision||0)+1;patch.cureAt=0;patch.lastDig=null;patch.lastGravel=null;patch.lastPrep=null;patch.lastConcrete=null;patch.lastForm=null;
+ }
+ const revs=["layoutRevision","digRevision","gravelRevision","compactRevision","formRevision","prepRevision","concreteRevision","pipeRevision","wallRevision","utilityRevision"],where=revs.map(k=>"COALESCE(json_extract(state,'$."+k+"'),0)=?").join(" AND ");
+ const updates={...patch,layout:rect,layoutRevision:revision+1},keys=Object.keys(updates),set=keys.map(k=>"'$."+k+"',json(?)").join(",");
+ const change=await db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,"+set+"),updated=? WHERE id=? AND "+where+" AND "+guard).bind(...keys.map(k=>JSON.stringify(updates[k])),now,auth.world,...revs.map(k=>w[k]||0),...guardArgs).run();
  if(!change.meta?.changes)return json({ok:false,error:"Layout changed or session closed."},409);
- return json({ok:true,layout:rect,revision:revision+1});
+ return json({ok:true,...worldData(await worldRow(),room)});
  }
  if(b.action==="save"&&!host)return json({ok:false,error:"Only the host can save."},403);
  const p=sanitizePose(b.pose),save=savedPose(b.pose);
