@@ -61,18 +61,23 @@ async function openWorld(db,user,action,username,now){
   await db.prepare("INSERT OR IGNORE INTO build_worlds_v2(id,owner,state,updated) VALUES (?,?,?,?)").bind(id,user.id,state,now).run();
   w=await db.prepare("SELECT id,state,updated FROM build_worlds_v2 WHERE owner=?").bind(user.id).first();
  }
+ if(!w)return json({ok:false,error:"Save changed while opening. Refresh and try again."},409);
  const worldState=JSON.parse(w.state),pose=savedPose(worldState.hostPose)||spawn;
  for(let i=0;i<12;i++){
  const c=code(),id=crypto.randomUUID(),secret=token();
  try{
  // The code is inserted first with a unique constraint. D1 batches are atomic:
  // a collision rolls back the other statements rather than closing a valid room.
- await db.batch([
- db.prepare("INSERT INTO build_sessions_v2(code,world,host,updated,closed) VALUES (?,?,?,?,0)").bind(c,w.id,id,now),
- db.prepare("UPDATE build_sessions_v2 SET closed=1 WHERE world=? AND code<>? AND closed=0").bind(w.id,c),
- db.prepare("INSERT INTO build_players_v2(id,room,token,name,pose,updated) VALUES (?,?,?,?,?,?)").bind(id,c,secret,username,JSON.stringify(pose),now)
+ const opened=await db.batch([
+ db.prepare("INSERT INTO build_sessions_v2(code,world,host,updated,closed) SELECT ?,id,?,?,0 FROM build_worlds_v2 WHERE id=? AND owner=?").bind(c,id,now,w.id,user.id),
+ db.prepare("UPDATE build_sessions_v2 SET closed=1 WHERE world=? AND code<>? AND closed=0 AND EXISTS(SELECT 1 FROM build_sessions_v2 WHERE code=? AND world=? AND host=? AND closed=0)").bind(w.id,c,c,w.id,id),
+ db.prepare("INSERT INTO build_players_v2(id,room,token,name,pose,updated) SELECT ?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM build_sessions_v2 WHERE code=? AND world=? AND host=? AND closed=0)").bind(id,c,secret,username,JSON.stringify(pose),now,c,w.id,id)
  ]);
- return json({ok:true,code:c,id,token:secret,host:true,pose,...worldData(worldState,c),saveUpdated:w.updated});
+ if(!opened[0]?.meta?.changes||!opened[2]?.meta?.changes)return json({ok:false,error:"Save changed while opening. Refresh and try again."},409);
+ const latest=await db.prepare("SELECT w.state,w.updated FROM build_worlds_v2 w JOIN build_sessions_v2 s ON s.world=w.id WHERE w.id=? AND w.owner=? AND s.code=? AND s.host=? AND s.closed=0").bind(w.id,user.id,c,id).first();
+ if(!latest)return json({ok:false,error:"Session replaced or save deleted. Refresh and try again."},409);
+ const state=JSON.parse(latest.state);
+ return json({ok:true,code:c,id,token:secret,host:true,pose:savedPose(state.hostPose)||pose,...worldData(state,c),saveUpdated:latest.updated});
  }catch(e){if(!/unique|constraint/i.test(String(e)))throw e;}
  }
  return json({ok:false,error:"Unable to generate a fresh session code."},503);
