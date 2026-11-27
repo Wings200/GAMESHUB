@@ -2,6 +2,7 @@
 import {changeTrim,trimRects,drywallTargets,readWalls,changeDrywall} from "./wall-math.mjs";
 import {landCandidate,changeLandscape,readLandscape} from "./landscape-math.mjs";
 import {cleanWork,workMatches,workPulse} from "./work-activity.mjs";
+import {changeUpperWall,readUpperWalls,stairClear} from "./upper-wall-math.mjs";
 import {storyPlan,storySurface,changeStory,readStory} from "./story-math.mjs";
 import {roofPlan,roofTiles,changeRoof,readRoof,roofTile,roofEdges,roofY,changeRoofStyle} from "./roof-math.mjs";
 import {slabTotal} from "./concrete-math.mjs";
@@ -36,6 +37,14 @@ export function runRegression(){
  const bigPts=[{x:1,z:1},{x:8,z:1},{x:8,z:7},{x:1,z:7}],bigWalls=bigPts.map((a,i)=>({a,b:bigPts[(i+1)%4],height:2.5,openings:[]}));
  const upper=changeStory({cureAt:1},layout,bigWalls,0,false,{x:2,z:2},now);assert(!upper.error&&upper.cost.stairkit===1,"Build upper deck");
  const sp=readStory(upper,layout,bigWalls).storyPlan;assert(sp&&sp.height>2.5,"Read upper deck");
+ const upPose={x:2,z:2.5,levelY:sp.height};
+ const upWall={operation:"add",a:{x:1.2,z:1.2},b:{x:7.8,z:1.2},height:2.5};
+ const framed=changeUpperWall(sp,[],upWall,upPose,"upper-test");assert(!framed.error&&framed.upperWalls.length===1,"Upper framing");
+ assert(readUpperWalls(framed,sp).length===1,"Upper wall persistence");
+ assert(changeUpperWall(sp,[],upWall,{...upPose,levelY:0}).error,"Require upstairs");
+ assert(changeUpperWall(sp,[],{operation:"add",a:{x:sp.start+.5,z:sp.c-1},b:{x:sp.start+.5,z:sp.c+1},height:2.5},upPose).error,"Protect stair opening");
+ const opening=changeUpperWall(sp,framed.upperWalls,{operation:"opening",wallId:"upper-test",opening:{kind:"door",start:1,width:.9}},upPose);assert(!opening.error,"Upper door opening");
+ assert(changeStory({...upper,...framed},layout,bigWalls,0,true,{x:2,z:2},now).error,"Protect upper walls on deck removal");
  const walker={x:sp.start+.1,z:sp.c,levelY:0};walker.levelY=storySurface(walker,{x:sp.start-.1,z:sp.c},[sp]);assert(walker.levelY>0,"Enter stairs");const before={x:walker.x,z:walker.z};walker.x+=.2;assert(storySurface(walker,before,[sp])>walker.levelY,"Climb stairs");
  assert(changeStory({cureAt:1,roof:[{tile:1,stage:1}]},layout,bigWalls,0,false,{x:2,z:2},now).error,"Protect existing roof");
  const flat=roofPlan(layout,walls,"flat"),shed=roofPlan(layout,walls,"shed");

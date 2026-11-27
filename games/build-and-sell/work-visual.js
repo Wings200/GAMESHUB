@@ -1,6 +1,6 @@
 
 import {THREE} from "../../engine/core.js";
-import {WORK_LABELS,workPulse} from "./work-activity.mjs?v=88";
+import {WORK_LABELS,workPulse} from "./work-activity.mjs?v=91";
 export function makePeerWork(scene,builder){
  const model=builder.model.model,arm=model.getObjectByName("RightArm"),fore=model.getObjectByName("RightForeArm"),left=model.getObjectByName("LeftArm"),leftFore=model.getObjectByName("LeftForeArm");
  const bones=[arm,fore,left,leftFore],up=new THREE.Vector3(0,1,0),q=new THREE.Quaternion(),parent=new THREE.Quaternion(),delta=new THREE.Quaternion(),v=new THREE.Vector3();

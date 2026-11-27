@@ -22,6 +22,7 @@ export const TASKS=[
 ["paint","Interior painting kit","Structure","T color · LMB close-up paint · hold LMB coverage · E exit"],
 ["joinery","Door & window installation kit","Structure","LMB close-up install · RMB uninstall · E interact when stowed"],
 ["siding","Exterior siding kit","Structure","T style · R/F color · LMB fit · RMB remove"],
+["upperwall","Upper wall framing kit","Structure","T framing / openings · R/F height or width · LMB build · RMB remove"],
 ["story","Upper deck & stairs","Structure","R/F rotate staircase · LMB build · RMB remove"],
 ["roof","Ceiling & roof construction kit","Structure","T stage · R/F roof shape before building · hold LMB install · RMB remove"],
 ["landscape","Landscaping kit","Interiors","T type · R/F rotate fence · LMB install · RMB remove"],
@@ -38,7 +39,7 @@ export const TASKS=[
 export const TOOLS=[
  {id:"surveyKit",name:"Survey kit",category:"Planning",modes:["layout","tape","laser","rod"]},
  {id:"foundationKit",name:"Foundation kit",category:"Construction",modes:["gravel","form","barrier","rebar","pour","screed"]},
- {id:"structureKit",name:"Structure kit",category:"Construction",modes:["wall","joinery","roof","siding","story"]},
+ {id:"structureKit",name:"Structure kit",category:"Construction",modes:["wall","joinery","roof","siding","story","upperwall"]},
  {id:"finishKit",name:"Interior finish kit",category:"Construction",modes:["drywall","finish","paint","floor","trim"]},
  {id:"electricalKit",name:"Electrical kit",category:"Services",modes:["electric","conduit","cable","outlet","panel"]},
  {id:"plumbingKit",name:"Plumbing kit",category:"Services",modes:["drain","cold","hot","utility","heater","fixture"]},
