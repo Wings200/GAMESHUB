@@ -63,7 +63,7 @@ export function drywallTargets(w,key){
  if(!out.length&&rects.length){const [a,b,d,t]=rects[0];out.push({t:(a+b)/2,y:(d+t)/2});}return out.slice(0,24);
 }
 export function drywallRecord(w,key){return (w.drywall||[]).find(s=>s.key===key)||null;}
-export function cleanDrywall(w,raw){const out=[];for(const s of Array.isArray(raw)?raw.slice(0,80):[]){const k=s?.key;if(typeof k!=="string"||!/^[-+]\d+$/.test(k)||!sheathingRects(w,Number(k.slice(1))).length||(w.sheathing||[]).includes(k)||out.some(q=>q.key===k)||!Number.isInteger(s.stage)||s.stage<1||s.stage>4)continue;const n=drywallTargets(w,k).length,screws=s.stage===4?[...new Set((Array.isArray(s.screws)?s.screws:[]).filter(i=>Number.isInteger(i)&&i>=0&&i<n))].sort((a,b)=>a-b):[];out.push({key:k,stage:s.stage,screws,finish:s.stage===4&&screws.length===n&&Number.isInteger(s.finish)?clamp(s.finish,0,4):0});}return out;}
+export function cleanDrywall(w,raw){const out=[];for(const s of Array.isArray(raw)?raw.slice(0,80):[]){const k=s?.key;if(typeof k!=="string"||!/^[-+]\d+$/.test(k)||!sheathingRects(w,Number(k.slice(1))).length||(w.sheathing||[]).includes(k)||out.some(q=>q.key===k)||!Number.isInteger(s.stage)||s.stage<1||s.stage>4)continue;const n=drywallTargets(w,k).length,screws=s.stage===4?[...new Set((Array.isArray(s.screws)?s.screws:[]).filter(i=>Number.isInteger(i)&&i>=0&&i<n))].sort((a,b)=>a-b):[];out.push({key:k,stage:s.stage,screws,finish:s.stage===4&&screws.length===n&&Number.isInteger(s.finish)?clamp(s.finish,0,4):0,paint:s.stage===4&&screws.length===n&&s.finish===4?cleanPaint(w,k,s.paint):[]});}return out;}
 export function drywallComplete(w,s){return !!s&&s.stage===4&&s.screws.length===drywallTargets(w,s.key).length;}
 export function changeDrywall(walls,id,key,operation,p,screw){
  const w=walls.find(x=>x.id===id);if(!w||!p||typeof key!=="string"||!/^[-+]\d+$/.test(key)||key[0]!==sheathingSide(w,p)||!sheathingRects(w,Number(key.slice(1))).length)return {error:"Choose a valid drywall section on your side"};
@@ -85,4 +85,16 @@ export function finishDrywall(walls,id,key,operation,p){
  const step=({finishTape:1,finishCoat:2,finishSmooth:3,finishFinal:4})[operation];
  if(!step||step!==(s.finish||0)+1)return {error:"Complete the previous finishing stage first"};
  return {walls:walls.map(x=>x===w?{...w,drywall:w.drywall.map(v=>v.key===key?{...v,finish:step}:v)}:x)};
+}
+
+export const PAINT_COLORS=[{id:"white",name:"Warm white",hex:0xf3eee3},{id:"cream",name:"Cream",hex:0xe5d3b5},{id:"gray",name:"Soft gray",hex:0xb6bcc0},{id:"sage",name:"Sage",hex:0x99aa8d},{id:"blue",name:"Slate blue",hex:0x829fb7},{id:"terracotta",name:"Terracotta",hex:0xb77b65},{id:"charcoal",name:"Charcoal",hex:0x555c63},{id:"navy",name:"Deep navy",hex:0x3b506a}];
+export function paintRects(w,key){const out=[];for(const [a,b,d,t] of sheathingRects(w,Number(key.slice(1)))){const nx=Math.max(1,Math.ceil((b-a)/.6-1e-8)),ny=Math.max(1,Math.ceil((t-d)/.75-1e-8));for(let j=0;j<ny;j++)for(let i=0;i<nx;i++)out.push([a+(b-a)*i/nx,a+(b-a)*(i+1)/nx,d+(t-d)*j/ny,d+(t-d)*(j+1)/ny]);}return out;}
+export function cleanPaint(w,key,raw){const n=paintRects(w,key).length;return Array.from({length:n},(_,i)=>PAINT_COLORS.some(c=>c.id===raw?.[i])?raw[i]:null);}
+export function paintDrywall(walls,id,key,p,index,color){
+ const w=walls.find(v=>v.id===id),s=w&&drywallRecord(w,key);
+ if(!w||!p||!drywallComplete(w,s)||s.finish!==4||key[0]!==sheathingSide(w,p))return {error:"Finish the drywall on your side before painting"};
+ const rect=paintRects(w,key)[index];if(!Number.isInteger(index)||!rect||!PAINT_COLORS.some(c=>c.id===color))return {error:"Choose a valid paint target and color"};
+ const q=wallPoint(w,(rect[0]+rect[1])/2);if(Math.hypot(q.x-p.x,q.z-p.z)>WALL_REACH)return {error:"Move closer to the sheet"};
+ const paint=cleanPaint(w,key,s.paint);if(paint[index]===color)return {error:"This area already has that color"};paint[index]=color;
+ return {walls:walls.map(v=>v===w?{...w,drywall:w.drywall.map(r=>r.key===key?{...r,paint}:r)}:v)};
 }
