@@ -45,6 +45,7 @@ export function inspectProperty(d,now=Date.now()){
  add("Bathroom essentials",["sink","toilet","shower"].filter(k=>fixtures.some(f=>f.kind===k&&ready(f))).length,3,true,"A working sink, toilet and shower.");
  add("Water heater",heaters.some(h=>water.heaters[h.id]?.ready)?1:0,1,true,"A connected, ready water heater.");
  const furnished=new Set([...(d.furniture||[]),...(d.upperFurniture||[])].map(f=>f.kind));add("Furnishing variety",Math.min(6,furnished.size),6,false,"Optional furnishing bonus.");
+ const upperArea=d.storyPlan&&d.upperRoofPlan?Math.max(0,(d.upperRoofPlan.x2-d.upperRoofPlan.x1)*(d.upperRoofPlan.z2-d.upperRoofPlan.z1)-Math.max(0,Math.min(d.upperRoofPlan.x2,d.storyPlan.hole.x2)-Math.max(d.upperRoofPlan.x1,d.storyPlan.hole.x1))*Math.max(0,Math.min(d.upperRoofPlan.z2,d.storyPlan.hole.z2)-Math.max(d.upperRoofPlan.z1,d.storyPlan.hole.z1))):0;
  const score=Math.round(100*rows.reduce((n,v)=>n+v.done/v.total*(v.required?2:1),0)/rows.reduce((n,v)=>n+(v.required?2:1),0));
- return {score,passed:rows.filter(v=>v.required).every(v=>v.passed),rows,area:Math.round(area*100)/100,foundationArea:Math.round(foundationArea*100)/100,requiredRemaining:rows.filter(v=>v.required&&!v.passed).length};
+ return {score,passed:rows.filter(v=>v.required).every(v=>v.passed),rows,area:Math.round((area+upperArea)*100)/100,upperArea:Math.round(upperArea*100)/100,foundationArea:Math.round(foundationArea*100)/100,requiredRemaining:rows.filter(v=>v.required&&!v.passed).length};
 }

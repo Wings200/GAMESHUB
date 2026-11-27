@@ -2,7 +2,7 @@
 import {changeTrim,trimRects,drywallTargets,readWalls,changeDrywall} from "./wall-math.mjs";
 import {landCandidate,changeLandscape,readLandscape} from "./landscape-math.mjs";
 import {cleanWork,workMatches,workPulse} from "./work-activity.mjs";
-import {keyboardLook,defaults,bindAction,actionFor,controlText} from "./keybinds.mjs";
+import {keyboardLook,defaults,bindAction,actionFor,resolveBinding,controlText} from "./keybinds.mjs";
 import {changeUpperService,readUpperServices,serviceProgress} from "./upper-service-math.mjs";
 import {upperTiles,upperFloorTarget,changeUpperInterior,readUpperInterior} from "./upper-interior-math.mjs";
 import {upperRoofPlan,readUpperRoof,changeUpperRoof} from "./upper-roof-math.mjs";
@@ -17,7 +17,7 @@ import {inspectProperty} from "./inspection-math.mjs";
 import {propertyOffer,settleSale,companyStats} from "./sale-math.mjs";
 const assert=(ok,label)=>{if(!ok)throw new Error(label);};
 export function runRegression(){
- const kp={yaw:0,pitch:0};keyboardLook(kp,new Set(["ArrowLeft","ArrowUp"]),.05);assert(kp.yaw>0&&kp.pitch>0,"Keyboard look");const kb=bindAction(defaults(),"Primary","KeyZ").bindings;assert(actionFor(kb,"KeyZ")==="Primary"&&bindAction(kb,"Secondary","KeyZ").error,"Binding conflicts");assert(controlText("Hold LMB · RMB remove",kb)==="Hold Z · RMB remove","Keyboard hints");
+ const kp={yaw:0,pitch:0};keyboardLook(kp,new Set(["ArrowLeft","ArrowUp"]),.05);assert(kp.yaw>0&&kp.pitch>0,"Keyboard look");const kb=bindAction(defaults(),"Primary","KeyZ").bindings;assert(actionFor(kb,"KeyZ")==="Primary"&&bindAction(kb,"Secondary","KeyZ").error,"Binding conflicts");assert(controlText("Hold LMB · RMB remove",kb)==="Hold Z · RMB remove","Keyboard hints");assert(resolveBinding(kb,"KeyZ")==="Primary"&&resolveBinding(kb,"ShiftRight")==="ShiftLeft"&&resolveBinding(kb,"ControlLeft")==="KeyC"&&resolveBinding(kb,"KeyG",true)==="AltAction","Resolve default aliases and chords");
  const now=1000,layout={x1:0,x2:10,z1:0,z2:10},points=[{x:1,z:1},{x:5,z:1},{x:5,z:5},{x:1,z:5}],walls=points.map((a,i)=>({id:"w"+i,a,b:points[(i+1)%4],height:2.5,openings:[],sheathing:[],wrap:[],insulation:[],drywall:[]}));
  const activity=cleanWork({tool:"paint",state:"working",seq:1});assert(activity&&workMatches(activity,{wallMode:"paint"}),"Shared activity validation");assert(!workMatches(activity,{wallMode:"trim"})&&!workMatches(activity,{wallMode:"paint",driving:true}),"Reject mismatched work");assert(!cleanWork({tool:"unknown",state:"working",seq:1}),"Reject unknown work");assert(workPulse({state:"placing"},425)>.99,"Placement animation pulse");
  const yard=landCandidate("paver",{x:11.2,z:1.2},0),yp={x:11,z:2};
@@ -102,7 +102,7 @@ export function runRegression(){
  world.economy=spendGoods(world,{furn_bed:1}).economy;
  const d={...empty,...world,layout,walls,roofPlan:plan,roof:tiles.map(tile=>({tile,stage:5})),furniture:placed.furniture};
  const report=inspectProperty(d,now);assert(!report.passed&&report.area===16&&report.foundationArea===100,"Enclosed area, not slab area");assert(report.rows.find(v=>v.name==="Roof and ceiling").passed,"Completed roof inspection");
- const blocked=propertyOffer(d,report);assert(blocked.base===9600&&!blocked.eligible,"Incomplete building valuation");
+ const blocked=propertyOffer(d,report);assert(blocked.base===9600&&!blocked.eligible,"Incomplete building valuation");const doubled=propertyOffer({...d,upperFurniture:d.furniture},{...report,area:32});assert(doubled.base===19200&&doubled.furnishings===blocked.furnishings*2,"Upper area and furnishing value");
  assert(settleSale(world,"first",d,report,blocked.net,now).error,"Inspection blocks sale");
  // Isolate transaction logic; this synthetic report is not a claim of a completed simulated house.
  const pass={...report,passed:true,score:100},offer=propertyOffer(d,pass);
