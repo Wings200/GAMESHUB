@@ -2,6 +2,7 @@
 import {changeTrim,trimRects,drywallTargets,readWalls,changeDrywall} from "./wall-math.mjs";
 import {landCandidate,changeLandscape,readLandscape} from "./landscape-math.mjs";
 import {cleanWork,workMatches,workPulse} from "./work-activity.mjs";
+import {upperTiles,upperFloorTarget,changeUpperInterior,readUpperInterior} from "./upper-interior-math.mjs";
 import {upperRoofPlan,readUpperRoof,changeUpperRoof} from "./upper-roof-math.mjs";
 import {changeUpperWall,readUpperWalls,stairClear} from "./upper-wall-math.mjs";
 import {storyPlan,storySurface,changeStory,readStory} from "./story-math.mjs";
@@ -39,6 +40,10 @@ export function runRegression(){
  const upper=changeStory({cureAt:1},layout,bigWalls,0,false,{x:2,z:2},now);assert(!upper.error&&upper.cost.stairkit===1,"Build upper deck");
  const sp=readStory(upper,layout,bigWalls).storyPlan;assert(sp&&sp.height>2.5,"Read upper deck");
  const upPose={x:2,z:2.5,levelY:sp.height};
+ const ft=upperFloorTarget(sp,2,2),uf=changeUpperInterior({cureAt:1},sp,[],{job:"floor",tile:ft,kind:"hardwood"},upPose,now,"f");
+ assert(!uf.error&&readUpperInterior(uf,sp).upperFlooring.length===1,"Upper flooring persistence");
+ assert(upperFloorTarget(sp,(sp.hole.x1+sp.hole.x2)/2,(sp.hole.z1+sp.hole.z2)/2)===null,"Protect stair opening");
+ assert(changeUpperInterior({cureAt:1},sp,[],{job:"floor",tile:ft,kind:"hardwood"},{...upPose,levelY:0},now).error,"Require upper deck");
  const upWall={operation:"add",a:{x:1.2,z:1.2},b:{x:7.8,z:1.2},height:2.5};
  const framed=changeUpperWall(sp,[],upWall,upPose,"upper-test");assert(!framed.error&&framed.upperWalls.length===1,"Upper framing");
  assert(readUpperWalls(framed,sp).length===1,"Upper wall persistence");

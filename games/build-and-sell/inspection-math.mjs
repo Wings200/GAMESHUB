@@ -1,5 +1,6 @@
 
 import {wallLength,SHEATH_WIDTH,sheathingRects,insulationBays,drywallComplete,drywallRecord,paintRects} from "./wall-math.mjs";
+import {upperTiles} from "./upper-interior-math.mjs";
 import {roofTiles} from "./roof-math.mjs";
 import {slabTotal} from "./concrete-math.mjs";
 import {calculatePower,serviceLive} from "./power-math.mjs";
@@ -23,7 +24,7 @@ export function inspectProperty(d,now=Date.now()){
  const rt=roofTiles(r,plan),top=d.storyPlan?d.upperRoofPlan:plan,roofRows=d.storyPlan?(d.upperRoof||[]):(d.roof||[]),topTiles=roofTiles(r,top),roof=new Map(roofRows.map(v=>[v.tile,v.stage]));
  if(d.storyPlan)add("Upper wall perimeter",top?1:0,1,true,"Complete the upper enclosure.");
  add("Roof and ceiling",topTiles.filter(id=>roof.get(id)===5).length,topTiles.length||1,true,"Finish all five overhead stages.");add("Roof insulation",topTiles.filter(id=>roofRows.some(v=>v.tile===id&&v.insulated)).length,topTiles.length||1,true,"Insulate the overhead sections.");
- if(d.storyPlan)add("Upper-floor finishing",0,1,true,"Upper-floor finishing and services are not yet implemented; this property cannot pass inspection.");
+ if(d.storyPlan){const ids=upperTiles(d.storyPlan),covered=new Set((d.upperFlooring||[]).map(v=>v.tile));add("Upper flooring",ids.filter(id=>covered.has(id)).length,ids.length||1,true,"Finish the upper deck outside the stairwell.");add("Upper-floor services",0,1,true,"Upper-floor services are not yet implemented; this property cannot pass inspection.");}
  const floor=new Set((d.flooring||[]).map(v=>v.tile));add("Interior flooring",rt.filter(id=>floor.has(id)).length,rt.length||1,true,"Cover the interior footprint.");
  const devices=d.devices||[],cables=d.cables||[],outlets=d.outlets||[],panels=d.panels||[],power=calculatePower(devices,cables,outlets,panels);
  add("Electrical service",panels.some(serviceLive)?1:0,1,true,"Connect the simulated service and activate the panel.");
