@@ -17,6 +17,7 @@ export const TOOLS=[
 ["screed","Screed","Foundation","Hold LMB level"],
 ["wall","Framing hammer","Structure","LMB endpoints · T wall/door/window/sheathing/wrap/insulation · RMB remove"],
 ["drywall","Drywall installation kit","Structure","LMB close-up install · E exit · RMB remove"],
+["finish","Drywall finishing kit","Structure","LMB close-up finish · hold LMB targets · E exit"],
 ["electric","Box mounting kit","Electrical","T type · R/F height · LMB mount"],
 ["cable","Cable spool & drill","Electrical","T cable type · R/F height · hold LMB route"],
 ["outlet","Device wiring kit","Electrical","Outlets, switches & lights · hold to work · T mode/seat"],

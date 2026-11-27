@@ -63,7 +63,7 @@ export function drywallTargets(w,key){
  if(!out.length&&rects.length){const [a,b,d,t]=rects[0];out.push({t:(a+b)/2,y:(d+t)/2});}return out.slice(0,24);
 }
 export function drywallRecord(w,key){return (w.drywall||[]).find(s=>s.key===key)||null;}
-export function cleanDrywall(w,raw){const out=[];for(const s of Array.isArray(raw)?raw.slice(0,80):[]){const k=s?.key;if(typeof k!=="string"||!/^[-+]\d+$/.test(k)||!sheathingRects(w,Number(k.slice(1))).length||(w.sheathing||[]).includes(k)||out.some(q=>q.key===k)||!Number.isInteger(s.stage)||s.stage<1||s.stage>4)continue;const n=drywallTargets(w,k).length,screws=s.stage===4?[...new Set((Array.isArray(s.screws)?s.screws:[]).filter(i=>Number.isInteger(i)&&i>=0&&i<n))].sort((a,b)=>a-b):[];out.push({key:k,stage:s.stage,screws});}return out;}
+export function cleanDrywall(w,raw){const out=[];for(const s of Array.isArray(raw)?raw.slice(0,80):[]){const k=s?.key;if(typeof k!=="string"||!/^[-+]\d+$/.test(k)||!sheathingRects(w,Number(k.slice(1))).length||(w.sheathing||[]).includes(k)||out.some(q=>q.key===k)||!Number.isInteger(s.stage)||s.stage<1||s.stage>4)continue;const n=drywallTargets(w,k).length,screws=s.stage===4?[...new Set((Array.isArray(s.screws)?s.screws:[]).filter(i=>Number.isInteger(i)&&i>=0&&i<n))].sort((a,b)=>a-b):[];out.push({key:k,stage:s.stage,screws,finish:s.stage===4&&screws.length===n&&Number.isInteger(s.finish)?clamp(s.finish,0,4):0});}return out;}
 export function drywallComplete(w,s){return !!s&&s.stage===4&&s.screws.length===drywallTargets(w,s.key).length;}
 export function changeDrywall(walls,id,key,operation,p,screw){
  const w=walls.find(x=>x.id===id);if(!w||!p||typeof key!=="string"||!/^[-+]\d+$/.test(key)||key[0]!==sheathingSide(w,p)||!sheathingRects(w,Number(key.slice(1))).length)return {error:"Choose a valid drywall section on your side"};
@@ -75,4 +75,14 @@ export function changeDrywall(walls,id,key,operation,p,screw){
  else if(operation==="dryFasten"){const n=drywallTargets(w,key).length;if(s?.stage!==4||!Number.isInteger(screw)||screw<0||screw>=n||s.screws.includes(screw))return {error:"Choose an unfinished fastening target"};next={...s,screws:[...s.screws,screw].sort((a,b)=>a-b)};}
  else return {error:"Invalid drywall operation"};
  return {walls:walls.map(x=>x===w?{...w,drywall:[...rows.filter(v=>v.key!==key),next]}:x)};
+}
+
+export function finishDrywall(walls,id,key,operation,p){
+ const w=walls.find(x=>x.id===id),s=w&&drywallRecord(w,key);
+ if(!w||!p||!drywallComplete(w,s)||key[0]!==sheathingSide(w,p))return {error:"Choose a fully secured sheet on your side"};
+ const a=Number(key.slice(1))*SHEATH_WIDTH,b=Math.min(a+SHEATH_WIDTH,wallLength(w)),q=wallPoint(w,(a+b)/2);
+ if(Math.hypot(q.x-p.x,q.z-p.z)>WALL_REACH)return {error:"Move closer to the sheet"};
+ const step=({finishTape:1,finishCoat:2,finishSmooth:3,finishFinal:4})[operation];
+ if(!step||step!==(s.finish||0)+1)return {error:"Complete the previous finishing stage first"};
+ return {walls:walls.map(x=>x===w?{...w,drywall:w.drywall.map(v=>v.key===key?{...v,finish:step}:v)}:x)};
 }
