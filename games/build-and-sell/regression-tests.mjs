@@ -2,7 +2,7 @@
 import {changeTrim,trimRects,drywallTargets,readWalls,changeDrywall} from "./wall-math.mjs";
 import {landCandidate,changeLandscape,readLandscape} from "./landscape-math.mjs";
 import {cleanWork,workMatches,workPulse} from "./work-activity.mjs";
-import {roofPlan,roofTiles,changeRoof,readRoof,roofTile,roofEdges} from "./roof-math.mjs";
+import {roofPlan,roofTiles,changeRoof,readRoof,roofTile,roofEdges,roofY,changeRoofStyle} from "./roof-math.mjs";
 import {slabTotal} from "./concrete-math.mjs";
 import {changeFloor} from "./floor-math.mjs";
 import {changeFurniture,wallHitsFurniture} from "./furniture-math.mjs";
@@ -32,6 +32,13 @@ export function runRegression(){
  const disconnected=inspectProperty({...empty,devices:[{id:"lamp",kind:"light"}],outlets:[{deviceId:"lamp",kind:"light",cableId:"missing"}]},now);assert(!disconnected.rows.find(v=>v.name==="Lighting available").passed,"Reject installed but nonfunctional light");
  const start=inspectProperty(empty,now);assert(!start.passed&&start.area===0&&Number.isFinite(start.score),"Empty world inspection");
  const plan=roofPlan(layout,walls),tiles=roofTiles(layout,plan);assert(plan&&tiles.length===16&&!roofPlan(layout,walls.slice(0,3)),"Roof enclosure");
+ const flat=roofPlan(layout,walls,"flat"),shed=roofPlan(layout,walls,"shed");
+ assert(roofY(flat,1,1)===roofY(flat,5,5),"Flat roof surface");
+ assert(roofY(shed,3,5)>roofY(shed,3,1),"Single-slope rise");
+ assert(roofEdges(roofTile(layout,shed,tiles[0]),shed,"gutter").every(e=>e.side===-1&&e.axis===shed.axis),"Shed low-side gutters");
+ assert(changeRoofStyle({cureAt:1},layout,walls,"flat",{x:2,z:2},now).roofStyle==="flat","Select empty roof shape");
+ assert(changeRoofStyle({cureAt:1,roof:[{tile:tiles[0],stage:1}]},layout,walls,"shed",{x:2,z:2},now).error,"Lock constructed roof shape");
+ assert(readRoof({roofStyle:"shed"},layout,walls).roofPlan.style==="shed","Persist shape");
  const slab=Array.from({length:slabTotal(layout)},(_,n)=>n%10+48*Math.floor(n/10));
  let world={foundationId:"first",cureAt:1,screeded:slab},p={x:2,z:2};
  assert(changeRoof(world,layout,walls,tiles[0],"deck",false,p,now).error,"Reject skipped roof stage");
