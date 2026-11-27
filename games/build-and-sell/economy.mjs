@@ -2,6 +2,7 @@
 export const STORE={x:17,z:-23.3},STORE_REACH=3.5,START_CASH=25000;
 export const GOODS=[
 ["gravel","Gravel","Foundation",100,45],["form","Form boards","Foundation",4,24],["barrier","Vapor barrier","Foundation",100,30],["rebar","Reinforcement","Foundation",100,85],["concrete","Concrete","Foundation",100,100],
+["floorwood","Hardwood flooring","Flooring",10,145],["floortile","Ceramic tile","Flooring",10,95],["floorcarpet","Carpet","Flooring",10,65],["floorvinyl","Vinyl flooring","Flooring",10,80],
 ["lumber","Framing lumber","Structure",4,48],["opening","Opening framing supplies","Structure",1,22],["osb","OSB sheets","Structure",4,44],["wrap","House wrap","Structure",10,35],["insulation","Insulation","Structure",8,32],["drywall","Drywall sheets","Structure",4,36],["finish","Joint finishing supplies","Structure",12,24],["paint","Paint coverage units","Structure",24,38],
 ["drain","Drain pipe","Plumbing",5,30],["cold","Cold water pipe","Plumbing",5,19],["hot","Hot water pipe","Plumbing",5,19],["conduit","Conduit","Electrical",5,18],["box","Electrical boxes","Electrical",4,16],["cable","Cable","Electrical",5,30],["device","Electrical devices","Electrical",4,32],["breaker","Breakers / service components","Electrical",2,38],["heater","Water heaters","Plumbing",1,380],["fixture","Fixture supplies","Plumbing",1,110],["utility","Utility connection supplies","Plumbing",4,50]
 ].map(([id,name,category,pack,price])=>({id,name,category,pack,price}));
