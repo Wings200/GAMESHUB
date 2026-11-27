@@ -1,6 +1,6 @@
 
 import {changeTrim,trimRects,drywallTargets,readWalls,changeDrywall} from "./wall-math.mjs";
-import {roofPlan,roofTiles,changeRoof} from "./roof-math.mjs";
+import {roofPlan,roofTiles,changeRoof,readRoof,roofTile,roofEdges} from "./roof-math.mjs";
 import {slabTotal} from "./concrete-math.mjs";
 import {changeFloor} from "./floor-math.mjs";
 import {changeFurniture,wallHitsFurniture} from "./furniture-math.mjs";
@@ -29,6 +29,13 @@ export function runRegression(){
  assert(changeRoof(world,layout,walls,tiles[0],"deck",false,p,now).error,"Reject skipped roof stage");
  for(const kind of ["joist","rafter","deck","shingle","ceiling"]){const x=changeRoof(world,layout,walls,tiles[0],kind,false,p,now);assert(!x.error,"Roof stage "+kind);world={...world,...x};}
  assert(world.roof[0].stage===5,"Roof completed");
+ const edge=tiles[0],interior=tiles.find(id=>!roofEdges(roofTile(layout,plan,id),plan).length);
+ assert(changeRoof(world,layout,walls,edge,"gutter",false,p,now).error,"Gutters require fascia");
+ assert(changeRoof(world,layout,walls,interior,"fascia",false,p,now).error,"No fascia on interior squares");
+ for(const kind of ["fascia","soffit","gutter"]){const detail=changeRoof(world,layout,walls,edge,kind,false,p,now);assert(!detail.error,"Roof detail "+kind);world={...world,...detail};}
+ assert(readRoof(world,layout,walls).roof[0].gutter,"Persist gutter");
+ assert(changeRoof(world,layout,walls,edge,"fascia",true,p,now).error,"Remove dependent details first");
+ assert(changeRoof(world,layout,walls,edge,"gutter",false,p,now).error,"Reject duplicate gutter");
  assert(changeFloor({...world,cureAt:now+1},layout,tiles[0],"tile",false,p,now).error,"Reject uncured floor");
  const floor=changeFloor(world,layout,tiles[0],"tile",false,p,now);assert(!floor.error,"Install flooring");
  assert(changeFloor({...world,...floor},layout,tiles[0],"vinyl",false,p,now).error,"Reject overlapping floor");

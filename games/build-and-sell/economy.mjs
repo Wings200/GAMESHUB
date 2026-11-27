@@ -3,7 +3,7 @@ import {FURNISHINGS} from "./furniture-math.mjs";
 export const STORE={x:17,z:-23.3},STORE_REACH=3.5,START_CASH=25000;
 export const GOODS=[
 ["gravel","Gravel","Foundation",100,45],["form","Form boards","Foundation",4,24],["barrier","Vapor barrier","Foundation",100,30],["rebar","Reinforcement","Foundation",100,85],["concrete","Concrete","Foundation",100,100],
-["ceilingjoist","Ceiling framing units","Roofing",10,95],["roofrafter","Roof framing units","Roofing",10,130],["roofdeck","Roof decking","Roofing",10,90],["roofshingle","Roof shingles","Roofing",10,110],["ceilingpanel","Ceiling panels","Roofing",10,80],
+["ceilingjoist","Ceiling framing units","Roofing",10,95],["roofrafter","Roof framing units","Roofing",10,130],["roofdeck","Roof decking","Roofing",10,90],["roofshingle","Roof shingles","Roofing",10,110],["ceilingpanel","Ceiling panels","Roofing",10,80],["fascia","Fascia boards","Roofing",10,55],["soffit","Soffit panels","Roofing",10,65],["gutter","Gutter sections","Roofing",10,80],
 ["floorwood","Hardwood flooring","Flooring",10,145],["floortile","Ceramic tile","Flooring",10,95],["floorcarpet","Carpet","Flooring",10,65],["floorvinyl","Vinyl flooring","Flooring",10,80],
 ["joineryframe","Door & window frames","Openings",2,65],["doorunit","Door units","Openings",1,140],["windowunit","Window units","Openings",1,165],["joinerytrim","Trim & hardware packs","Openings",2,42],["baseboard","Baseboard lengths","Interior trim",10,45],["crowntrim","Crown molding lengths","Interior trim",10,70],
 ["sidingvinyl","Vinyl siding","Exterior",4,60],["sidingwood","Wood siding","Exterior",4,88],["sidingbrick","Brick veneer","Exterior",4,110],["sidingstucco","Stucco supplies","Exterior",4,72],
