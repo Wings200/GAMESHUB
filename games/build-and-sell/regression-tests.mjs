@@ -1,4 +1,5 @@
 
+import {currentResponse,staleLayout,syncDelay} from "./stability-math.mjs";
 import {changeTrim,trimRects,drywallTargets,readWalls,changeDrywall} from "./wall-math.mjs";
 import {landCandidate,changeLandscape,readLandscape} from "./landscape-math.mjs";
 import {cleanWork,workMatches,workPulse} from "./work-activity.mjs";
@@ -17,6 +18,7 @@ import {inspectProperty} from "./inspection-math.mjs";
 import {propertyOffer,settleSale,companyStats} from "./sale-math.mjs";
 const assert=(ok,label)=>{if(!ok)throw new Error(label);};
 export function runRegression(){
+ const session={code:"ABC",id:"one"};assert(currentResponse(session,session,2,2)&&!currentResponse(session,session,1,2)&&!currentResponse({code:"ABC",id:"two"},session,2,2),"Reject stale session responses");assert(staleLayout({revision:1},2)&&!staleLayout({revision:2},2),"Reject stale property snapshots");assert(syncDelay(0)===250&&syncDelay(1)===1500&&syncDelay(2)===3000&&syncDelay(100)===10000,"Bound retry delay");
  const kp={yaw:0,pitch:0};keyboardLook(kp,new Set(["ArrowLeft","ArrowUp"]),.05);assert(kp.yaw>0&&kp.pitch>0,"Keyboard look");const kb=bindAction(defaults(),"Primary","KeyZ").bindings;assert(actionFor(kb,"KeyZ")==="Primary"&&bindAction(kb,"Secondary","KeyZ").error,"Binding conflicts");assert(controlText("Hold LMB · RMB remove",kb)==="Hold Z · RMB remove","Keyboard hints");assert(resolveBinding(kb,"KeyZ")==="Primary"&&resolveBinding(kb,"ShiftRight")==="ShiftLeft"&&resolveBinding(kb,"ControlLeft")==="KeyC"&&resolveBinding(kb,"KeyG",true)==="AltAction","Resolve default aliases and chords");
  const now=1000,layout={x1:0,x2:10,z1:0,z2:10},points=[{x:1,z:1},{x:5,z:1},{x:5,z:5},{x:1,z:5}],walls=points.map((a,i)=>({id:"w"+i,a,b:points[(i+1)%4],height:2.5,openings:[],sheathing:[],wrap:[],insulation:[],drywall:[]}));
  const activity=cleanWork({tool:"paint",state:"working",seq:1});assert(activity&&workMatches(activity,{wallMode:"paint"}),"Shared activity validation");assert(!workMatches(activity,{wallMode:"trim"})&&!workMatches(activity,{wallMode:"paint",driving:true}),"Reject mismatched work");assert(!cleanWork({tool:"unknown",state:"working",seq:1}),"Reject unknown work");assert(workPulse({state:"placing"},425)>.99,"Placement animation pulse");
