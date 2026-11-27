@@ -1,5 +1,5 @@
 
-import {deviceWorld,deviceNear} from "./electrical-math.mjs";
+import {deviceWorld,deviceNear,deviceLocal} from "./electrical-math.mjs";
 export const CONDUCTORS=["black","white","ground"], TERMINALS=["brass","silver","green"];
 export const LIGHT_STYLES=["globe","sconce","bare bulb"];
 export const PAIR={black:"brass",white:"silver",ground:"green"};
@@ -23,7 +23,7 @@ export function screwTip(i,j){return j?.kind==="light"?{x:i===0?-.036:.036,y:0,z
 export function fixturePoint(k){return k==="bulb"?{x:0,y:0,z:.075}:{x:0,y:0,z:.14};}
 export function jobFinished(j){return !!j&&j.seated&&j.screws.length===2&&(j.kind!=="light"||j.bulb&&(j.style==="bare bulb"||j.cover));}
 export function cycleFixture(j){if(j?.kind!=="light"||j.seated)return false;j.style=LIGHT_STYLES[(LIGHT_STYLES.indexOf(j.style)+1)%LIGHT_STYLES.length];return true;}
-export function targetWorld(w,d,t){const q=deviceWorld(w,d),c=Math.cos(q.yaw),s=Math.sin(q.yaw);return {x:q.x+t.x*c+t.z*s,y:q.y+t.y,z:q.z-t.x*s+t.z*c};}
+export function targetWorld(w,d,t){return deviceLocal(w,d,t);}
 export function aimWork(o,dir,w,d,targets){let hit=null,best=.018;for(const target of targets){const q=targetWorld(w,d,target.point),x=q.x-o.x,y=q.y-o.y,z=q.z-o.z,t=x*dir.x+y*dir.y+z*dir.z;if(t<0||t>1.4)continue;const e=Math.hypot(x-t*dir.x,y-t*dir.y,z-t*dir.z);if(e<best){best=e;hit=target.id;}}return hit;}
 
 export function endTip(i,k){return {x:-.145+i*.044,y:k==="red"?-.099:.066-CONDUCTORS.indexOf(k)*.055,z:.11};}

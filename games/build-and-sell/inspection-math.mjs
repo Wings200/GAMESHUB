@@ -20,7 +20,7 @@ export function inspectProperty(d,now=Date.now()){
  add("Exterior siding",exteriorDone,outside||1,true,"Cover exterior wall faces with siding.");add("Exterior insulation",insulated,insulation||1,true,"Fill exterior wall cavities.");
  add("Interior drywall finished",finished,interior||1,true,"Secure and finish interior wall faces.");add("Interior painting",painted,interior||1,false,"Paint all finished interior panels for a better score.");
  add("Doors and windows",installed,openings||1,true,"Complete every framed opening.");add("Exterior entrance",doors>0?1:0,1,true,"Install at least one exterior door.");
- const rt=roofTiles(r,plan),roof=new Map((d.roof||[]).map(v=>[v.tile,v.stage]));add("Roof and ceiling",rt.filter(id=>roof.get(id)===5).length,rt.length||1,true,"Finish all five overhead stages.");
+ const rt=roofTiles(r,plan),roof=new Map((d.roof||[]).map(v=>[v.tile,v.stage]));add("Roof and ceiling",rt.filter(id=>roof.get(id)===5).length,rt.length||1,true,"Finish all five overhead stages.");add("Roof insulation",rt.filter(id=>(d.roof||[]).some(v=>v.tile===id&&v.insulated)).length,rt.length||1,true,"Insulate the overhead sections.");
  const floor=new Set((d.flooring||[]).map(v=>v.tile));add("Interior flooring",rt.filter(id=>floor.has(id)).length,rt.length||1,true,"Cover the interior footprint.");
  const devices=d.devices||[],cables=d.cables||[],outlets=d.outlets||[],panels=d.panels||[],power=calculatePower(devices,cables,outlets,panels);
  add("Electrical service",panels.some(serviceLive)?1:0,1,true,"Connect the simulated service and activate the panel.");
