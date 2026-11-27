@@ -20,6 +20,7 @@ export const TOOLS=[
 ["finish","Drywall finishing kit","Structure","LMB close-up finish · hold LMB targets · E exit"],
 ["paint","Interior painting kit","Structure","T color · LMB close-up paint · hold LMB coverage · E exit"],
 ["joinery","Door & window installation kit","Structure","LMB close-up install · RMB uninstall · E interact when stowed"],
+["siding","Exterior siding kit","Structure","T style · R/F color · LMB fit · RMB remove"],
 ["roof","Ceiling & roof construction kit","Structure","T stage · aim overhead · hold LMB install · RMB remove"],
 ["floor","Flooring installation kit","Structure","T material · hold LMB install · RMB remove"],
 ["electric","Box mounting kit","Electrical","T type · R/F height · LMB mount"],
