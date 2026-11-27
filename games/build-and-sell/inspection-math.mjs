@@ -7,7 +7,7 @@ import {waterState} from "./water-math.mjs";
 import {SPECS} from "./fixture-math.mjs";
 export function inspectProperty(d,now=Date.now()){
  const rows=[],add=(name,done,total,required,detail)=>{done=Math.max(0,Math.min(total,done));rows.push({name,done,total,required,passed:total>0&&done===total,detail});};
- const r=d.layout,walls=d.walls||[],plan=d.roofPlan,area=r?(r.x2-r.x1)*(r.z2-r.z1):0,tiles=slabTotal(r);
+ const r=d.layout,walls=d.walls||[],plan=d.roofPlan,foundationArea=r?(r.x2-r.x1)*(r.z2-r.z1):0,area=plan?(plan.x2-plan.x1)*(plan.z2-plan.z1):0,tiles=slabTotal(r);
  add("Foundation cured",d.cureAt>0&&d.cureAt<=now&&tiles>0&&d.screeded?.length===tiles?1:0,1,true,"Complete and cure the entire slab.");
  add("Enclosed wall perimeter",plan?1:0,1,true,"Complete the rectangular wall perimeter.");
  let outside=0,exteriorDone=0,insulation=0,insulated=0,interior=0,finished=0,painted=0,openings=0,installed=0,doors=0;
@@ -39,5 +39,5 @@ export function inspectProperty(d,now=Date.now()){
  add("Water heater",heaters.some(h=>water.heaters[h.id]?.ready)?1:0,1,true,"A connected, ready water heater.");
  const furnished=new Set((d.furniture||[]).map(f=>f.kind));add("Furnishing variety",Math.min(6,furnished.size),6,false,"Optional furnishing bonus.");
  const score=Math.round(100*rows.reduce((n,v)=>n+v.done/v.total*(v.required?2:1),0)/rows.reduce((n,v)=>n+(v.required?2:1),0));
- return {score,passed:rows.filter(v=>v.required).every(v=>v.passed),rows,area:Math.round(area*100)/100,requiredRemaining:rows.filter(v=>v.required&&!v.passed).length};
+ return {score,passed:rows.filter(v=>v.required).every(v=>v.passed),rows,area:Math.round(area*100)/100,foundationArea:Math.round(foundationArea*100)/100,requiredRemaining:rows.filter(v=>v.required&&!v.passed).length};
 }
