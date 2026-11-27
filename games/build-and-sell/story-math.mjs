@@ -27,6 +27,7 @@ export function changeStory(w,r,walls,direction,remove,p,now,furnitureBounds=[])
  if(!plan)return {error:"Choose a larger rectangular house or rotate the stairwell"};
  if(!p||!Number.isFinite(p.x)||!Number.isFinite(p.z)||Math.hypot(Math.max(plan.x1-p.x,0,p.x-plan.x2),Math.max(plan.z1-p.z,0,p.z-plan.z2))>5)return {error:"Approach the house"};
  if((p.levelY||0)>.25)return {error:"Return to the ground floor first"};
+ if(remove&&Array.isArray(w.upperRoof)&&w.upperRoof.length)return {error:"Remove upper roofing before removing the deck"};
  if(remove&&Array.isArray(w.upperWalls)&&w.upperWalls.length)return {error:"Remove upper walls before removing the deck"};
  if(remove)return old.story?{story:null}:{error:"No upper deck installed"};
  if(old.story)return {error:"Upper deck already installed"};

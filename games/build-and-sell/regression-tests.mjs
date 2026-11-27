@@ -2,6 +2,7 @@
 import {changeTrim,trimRects,drywallTargets,readWalls,changeDrywall} from "./wall-math.mjs";
 import {landCandidate,changeLandscape,readLandscape} from "./landscape-math.mjs";
 import {cleanWork,workMatches,workPulse} from "./work-activity.mjs";
+import {upperRoofPlan,readUpperRoof,changeUpperRoof} from "./upper-roof-math.mjs";
 import {changeUpperWall,readUpperWalls,stairClear} from "./upper-wall-math.mjs";
 import {storyPlan,storySurface,changeStory,readStory} from "./story-math.mjs";
 import {roofPlan,roofTiles,changeRoof,readRoof,roofTile,roofEdges,roofY,changeRoofStyle} from "./roof-math.mjs";
@@ -47,6 +48,13 @@ export function runRegression(){
  assert(changeStory({...upper,...framed},layout,bigWalls,0,true,{x:2,z:2},now).error,"Protect upper walls on deck removal");
  const walker={x:sp.start+.1,z:sp.c,levelY:0};walker.levelY=storySurface(walker,{x:sp.start-.1,z:sp.c},[sp]);assert(walker.levelY>0,"Enter stairs");const before={x:walker.x,z:walker.z};walker.x+=.2;assert(storySurface(walker,before,[sp])>walker.levelY,"Climb stairs");
  assert(changeStory({cureAt:1,roof:[{tile:1,stage:1}]},layout,bigWalls,0,false,{x:2,z:2},now).error,"Protect existing roof");
+ const upperPerimeter=bigPts.map((a,i)=>({a,b:bigPts[(i+1)%4],height:2.5,id:"up"+i,openings:[]}));
+ const upperPlan=upperRoofPlan(layout,sp,upperPerimeter,"shed"),upperTile=roofTiles(layout,upperPlan)[0],upperRoofState={cureAt:1,upperRoofStyle:"shed"};
+ assert(upperPlan.height===sp.height+2.5,"Elevated roof height");
+ assert(changeUpperRoof(upperRoofState,layout,sp,upperPerimeter,{operation:"stage",tile:upperTile,kind:"joist"},{x:2,z:2,levelY:0},now).error,"Require upper deck");
+ const upperBuilt=changeUpperRoof(upperRoofState,layout,sp,upperPerimeter,{operation:"stage",tile:upperTile,kind:"joist"},upPose,now);
+ assert(!upperBuilt.error&&readUpperRoof({...upperRoofState,...upperBuilt},layout,sp,upperPerimeter).upperRoof.length===1,"Save upper roof separately");
+ assert(changeUpperRoof({...upperRoofState,...upperBuilt},layout,sp,upperPerimeter,{operation:"style",style:"flat"},upPose,now).error,"Lock upper roof shape");
  const flat=roofPlan(layout,walls,"flat"),shed=roofPlan(layout,walls,"shed");
  assert(roofY(flat,1,1)===roofY(flat,5,5),"Flat roof surface");
  assert(roofY(shed,3,5)>roofY(shed,3,1),"Single-slope rise");
