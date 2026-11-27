@@ -1,7 +1,7 @@
 import {EXPANSION_PAGES} from "./handbook-expansion.mjs?v=69";
 import {expansionArt} from "./handbook-expansion-art.mjs?v=66";
 
-import {PAGES as BASE_PAGES} from "./handbook-pages.mjs?v=66";
+import {PAGES as BASE_PAGES} from "./handbook-pages.mjs?v=72";
 import {illustration} from "./handbook-art.mjs?v=37";
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
 

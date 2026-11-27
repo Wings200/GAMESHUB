@@ -7,7 +7,7 @@ import {readEconomy,buyGoods,spendGoods,nearStore,units,returnMaterial} from "..
 
 import {readPlate,readCompaction,plateFromPlayer,compactPatch} from "../../../games/build-and-sell/compactor-math.mjs";
 import {readPipes,addPipe,removePipe,readSupply,addSupply,cleanKind,readRisers,setRiser,readElevated,addElevated,removeElevated,pruneElevated} from "../../../games/build-and-sell/plumbing-math.mjs";
-import {readConcrete,applyConcrete,readHose,hoseDistance,PICKUP_REACH,concreteReady,slabTotal} from "../../../games/build-and-sell/concrete-math.mjs";
+import {readConcrete,applyConcrete,readHose,hoseDistance,PICKUP_REACH,concreteReady,slabTotal,truckParking,cleanTruck,truckCabDistance} from "../../../games/build-and-sell/concrete-math.mjs";
 import {calculatePower,applyTrips,serviceLive} from "../../../games/build-and-sell/power-math.mjs";
 import {readPanels,panelChange} from "../../../games/build-and-sell/panel-math.mjs";
 import {readOutlets,finishOutlet,toggleInstalledSwitch} from "../../../games/build-and-sell/outlet-math.mjs";
@@ -133,10 +133,10 @@ export async function onRequestPost(ctx){
  if(!host)return json({ok:false,error:"Only the host can sell a property."},403);
  const w=await worldRow(),id=foundationId(w),archives=archivedFoundations(w),archive=archives.find(f=>f.id===b.foundationId),active=b.foundationId===id;
  if(!active&&!archive)return json({ok:false,error:"Property not found or already sold."},404);
- if(readHose(w,room).owner||readMachine(w,room).driver||readPlate(w,room).driver)return json({ok:false,error:"Park equipment and release the hose first."},400);
+ if(readHose(w,room).owner||readHose(w,room).driver||readMachine(w,room).driver||readPlate(w,room).driver)return json({ok:false,error:"Park equipment and release the hose first."},400);
  const d=singleWorldData(active?w:archive.state,room),report=inspectProperty(d,now),result=settleSale(w,b.foundationId,d,report,b.expectedNet,now);if(result.error)return json({ok:false,error:result.error},409);
  const patch={economy:result.economy,business:result.business,foundations:archives.filter(f=>f.id!==b.foundationId)};
- if(active){Object.assign(patch,foundationSnapshot({}));patch.foundationId=crypto.randomUUID();patch.waterTickAt=now;patch.hose={side:0,owner:null,room:null,rev:(w.hose?.rev||0)+1};for(const k of FOUNDATION_REVS)patch[k]=(w[k]||0)+1;for(const k of ["lastDig","lastGravel","lastForm","lastPrep","lastConcrete","lastPipe","lastWall","lastElectric","lastCable","lastOutlet","lastPanel"])patch[k]=null;}
+ if(active){Object.assign(patch,foundationSnapshot({}));patch.foundationId=crypto.randomUUID();patch.waterTickAt=now;patch.hose={side:0,owner:null,driver:null,parking:cleanTruck(w.hose?.parking),room:null,rev:(w.hose?.rev||0)+1};for(const k of FOUNDATION_REVS)patch[k]=(w[k]||0)+1;for(const k of ["lastDig","lastGravel","lastForm","lastPrep","lastConcrete","lastPipe","lastWall","lastElectric","lastCable","lastOutlet","lastPanel"])patch[k]=null;}
  else patch.layoutRevision=(w.layoutRevision||0)+1;
  const revs=[...FOUNDATION_REVS,"waterTickAt","economy.revision","business.revision","machine.rev","plate.rev","hose.rev"],where=revs.map(k=>"COALESCE(json_extract(state,'$."+k+"'),0)=?").join(" AND "),get=k=>k.split(".").reduce((v,key)=>v?.[key],w)||0,keys=Object.keys(patch),set=keys.map(k=>"'$."+k+"',json(?)").join(",");
  const u=await db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,"+set+"),updated=? WHERE id=? AND "+where+" AND "+guard).bind(...keys.map(k=>JSON.stringify(patch[k])),now,auth.world,...revs.map(get),...guardArgs).run();
@@ -196,19 +196,21 @@ export async function onRequestPost(ctx){
  }
  if(b.action==="hose"){
  const w=await worldRow(),l=readLayout(w),d=readDig(w,l.layout),g=readGravel(w,l.layout,d.dug),c=readCompaction(w,l.layout,g.gravel),f=readForms(w,l.layout),s=readPrep(w,l.layout,c.compacted),v=readConcrete(w,l.layout,s.rebar),h=readHose(w,room),pose=sanitizePose(b.pose);
- if(!pose||b.revision!==l.revision||b.hoseRevision!==h.rev||!["pickup","release","move"].includes(b.operation))return json({ok:false,error:"Hose state changed. Try again."},409);
- let owner=h.owner,side=h.side;
+ if(!pose||b.revision!==l.revision||b.hoseRevision!==h.rev||!["pickup","release","move","enterTruck","driveTruck","exitTruck"].includes(b.operation))return json({ok:false,error:"Hose state changed. Try again."},409);
+ let owner=h.owner,side=h.side,parking=h.parking,driver=h.driver;const truck=truckParking(l.layout,h);
+ if(["enterTruck","driveTruck","exitTruck"].includes(b.operation)){if(b.operation==="enterTruck"){if(owner||readMachine(w,room).driver===b.id||readPlate(w,room).driver===b.id||truckCabDistance(truck,pose)>3.2)return json({ok:false,error:"Approach the truck cab on foot and release the hose."},400);if(driver&&driver!==b.id){const other=await db.prepare("SELECT id FROM build_players_v2 WHERE id=? AND room=? AND updated>?").bind(driver,room,cutoff).first();if(other)return json({ok:false,error:"Truck occupied."},409);}driver=b.id;parking=cleanTruck(truck);}else{if(driver!==b.id)return json({ok:false,error:"You are not driving the truck."},403);const next=cleanTruck(b.truck);if(!next||Math.hypot(next.x-truck.x,next.z-truck.z)>4.5)return json({ok:false,error:"Truck position changed. Try again."},409);parking=next;if(b.operation==="exitTruck")driver=null;}}
+ else
  if(b.operation==="release"){if(owner!==b.id)return json({ok:false,error:"Hose is not held by you."},409);owner=null;}
- else{if(readMachine(w,room).driver===b.id||readPlate(w,room).driver===b.id||!concreteReady(l.layout,new Set(f.forms),new Set(s.rebar))||v.poured.length===slabTotal(l.layout)||hoseDistance(l.layout,side,pose)>PICKUP_REACH)return json({ok:false,error:"Approach the mixer truck on foot."},400);
+ else{if(driver){const other=await db.prepare("SELECT id FROM build_players_v2 WHERE id=? AND room=? AND updated>?").bind(driver,room,cutoff).first();if(other)return json({ok:false,error:"Park the truck before using the hose."},409);driver=null;}if(readMachine(w,room).driver===b.id||readPlate(w,room).driver===b.id||!concreteReady(l.layout,new Set(f.forms),new Set(s.rebar))||v.poured.length===slabTotal(l.layout)||hoseDistance(l.layout,h,pose)>PICKUP_REACH)return json({ok:false,error:"Approach the mixer truck on foot."},400);
  if(owner&&owner!==b.id){const other=await db.prepare("SELECT id FROM build_players_v2 WHERE id=? AND room=? AND updated>?").bind(owner,room,cutoff).first();if(other)return json({ok:false,error:"Another builder has the hose."},409);owner=null;}
- if(b.operation==="pickup")owner=b.id;else{if(owner)return json({ok:false,error:"Put the hose away before moving the truck."},409);side=(side+1)%4;}}
- const next={side,owner,room,rev:h.rev+1};const u=await db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,'$.hose',json(?)),updated=? WHERE id=? AND COALESCE(json_extract(state,'$.hose.rev'),0)=? AND COALESCE(json_extract(state,'$.layoutRevision'),0)=? AND "+guard).bind(JSON.stringify(next),now,auth.world,h.rev,l.revision,...guardArgs).run();if(!u.meta?.changes)return json({ok:false,error:"Hose changed. Try again."},409);return json({ok:true,...worldData(await worldRow(),room)});
+ if(b.operation==="pickup")owner=b.id;else{if(owner)return json({ok:false,error:"Put the hose away before moving the truck."},409);side=(side+1)%4;parking=null;}}
+ const next={side,owner,parking,driver,room,rev:h.rev+1};const u=await db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,'$.hose',json(?)),updated=? WHERE id=? AND COALESCE(json_extract(state,'$.hose.rev'),0)=? AND COALESCE(json_extract(state,'$.layoutRevision'),0)=? AND "+guard).bind(JSON.stringify(next),now,auth.world,h.rev,l.revision,...guardArgs).run();if(!u.meta?.changes)return json({ok:false,error:"Hose changed. Try again."},409);return json({ok:true,...worldData(await worldRow(),room)});
  }
  if(b.action==="concrete"){
  const w=await worldRow(),l=readLayout(w),d=readDig(w,l.layout),g=readGravel(w,l.layout,d.dug),c=readCompaction(w,l.layout,g.gravel),f=readForms(w,l.layout),s=readPrep(w,l.layout,c.compacted),v=readConcrete(w,l.layout,s.rebar),pose=sanitizePose(b.pose);
  if(!pose||b.pose?.concreteMode!==b.kind||readMachine(w,room).driver===b.id||readPlate(w,room).driver===b.id||b.revision!==l.revision||b.concreteRevision!==v.concreteRevision)return json({ok:false,error:"Concrete state changed. Try again."},409);
  const h=readHose(w,room);if(b.kind==="pour"&&(h.owner!==b.id||b.hoseRevision!==h.rev))return json({ok:false,error:"Collect the hose from the mixer first."},409);
- const next=applyConcrete(l.layout,b.tile,b.kind,new Set(f.forms),new Set(s.rebar),new Set(v.poured),new Set(v.screeded),pose,now,h.side);if(!next)return json({ok:false,error:"Complete formwork and reinforcement, then pour before screeding."},400);
+ const next=applyConcrete(l.layout,b.tile,b.kind,new Set(f.forms),new Set(s.rebar),new Set(v.poured),new Set(v.screeded),pose,now,h);if(!next)return json({ok:false,error:"Complete formwork and reinforcement, then pour before screeding."},400);
  const last={actor:b.id,kind:b.kind,tile:b.tile};const supplyDebit=spendGoods(w,{concrete:Math.max(0,next.poured.length-v.poured.length)});if(supplyDebit.error)return json({ok:false,error:supplyDebit.error},400);const u=await db.prepare("UPDATE build_worlds_v2 SET state=json_set(json_set(state,'$.economy',json(?)),'$.poured',json(?),'$.screeded',json(?),'$.cureAt',?,'$.concreteRevision',?,'$.lastConcrete',json(?)),updated=? WHERE id=? AND COALESCE(json_extract(state,'$.concreteRevision'),0)=? AND COALESCE(json_extract(state,'$.layoutRevision'),0)=? AND COALESCE(json_extract(state,'$.prepRevision'),0)=? AND COALESCE(json_extract(state,'$.formRevision'),0)=? AND (?='screed' OR (json_extract(state,'$.hose.owner')=? AND json_extract(state,'$.hose.room')=? AND COALESCE(json_extract(state,'$.hose.rev'),0)=?)) AND "+guard+" AND COALESCE(json_extract(state,'$.economy.revision'),0)=?").bind(JSON.stringify(supplyDebit.economy),JSON.stringify(next.poured),JSON.stringify(next.screeded),next.cureAt,v.concreteRevision+1,JSON.stringify(last),now,auth.world,v.concreteRevision,l.revision,s.prepRevision,f.formRevision,b.kind,b.id,room,h.rev,...guardArgs,readEconomy(w).revision).run();
  if(!u.meta?.changes)return json({ok:false,error:"Concrete changed. Try again."},409);return json({ok:true,...worldData(await worldRow(),room)});
  }
@@ -306,7 +308,7 @@ export async function onRequestPost(ctx){
  const w=await worldRow(),l=readLayout(w),requested=sanitizeLayout(b.layout),revision=b.revision,archives=archivedFoundations(w),id=foundationId(w);
  if(revision!==l.revision)return json({ok:false,error:"Foundation selection changed. Try again."},409);
  if(!host)return json({ok:false,error:"Only the host can create or select foundations."},403);
- if(readHose(w,room).owner||readMachine(w,room).driver||readPlate(w,room).driver)return json({ok:false,error:"Park equipment and release the hose first."},400);
+ if(readHose(w,room).owner||readHose(w,room).driver||readMachine(w,room).driver||readPlate(w,room).driver)return json({ok:false,error:"Park equipment and release the hose first."},400);
  let patch={},nextArchives=archives,nextId=id;
  if(typeof b.select==="string"){
  const target=archives.find(f=>f.id===b.select);if(!target)return json({ok:false,error:"Foundation not found."},400);
@@ -327,7 +329,7 @@ export async function onRequestPost(ctx){
  }
  for(const k of FOUNDATION_REVS)patch[k]=(w[k]||0)+1;
  for(const k of ["lastDig","lastGravel","lastForm","lastPrep","lastConcrete","lastPipe","lastWall","lastElectric","lastCable","lastOutlet","lastPanel"])patch[k]=null;
- patch.waterTickAt=now;patch.foundations=nextArchives;patch.foundationId=nextId;patch.hose={side:0,owner:null,room:null,rev:(w.hose?.rev||0)+1};
+ patch.waterTickAt=now;patch.foundations=nextArchives;patch.foundationId=nextId;patch.hose={side:0,owner:null,driver:null,parking:cleanTruck(w.hose?.parking),room:null,rev:(w.hose?.rev||0)+1};
  const revs=[...FOUNDATION_REVS,"waterTickAt"],where=revs.map(k=>"COALESCE(json_extract(state,'$."+k+"'),0)=?").join(" AND "),keys=Object.keys(patch),set=keys.map(k=>"'$."+k+"',json(?)").join(",");
  const change=await db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,"+set+"),updated=? WHERE id=? AND "+where+" AND COALESCE(json_extract(state,'$.machine.rev'),0)=? AND COALESCE(json_extract(state,'$.plate.rev'),0)=? AND COALESCE(json_extract(state,'$.hose.rev'),0)=? AND "+guard).bind(...keys.map(k=>JSON.stringify(patch[k])),now,auth.world,...revs.map(k=>w[k]||0),w.machine?.rev||0,w.plate?.rev||0,w.hose?.rev||0,...guardArgs).run();
  if(!change.meta?.changes)return json({ok:false,error:"Foundation changed. Try again."},409);
@@ -340,7 +342,7 @@ export async function onRequestPost(ctx){
  const saveState=save?JSON.stringify(save):null;
  const saveSql="UPDATE build_worlds_v2 SET state=json_set(state,'$.hostPose',json(?)),updated=? WHERE id=? AND EXISTS(SELECT 1 FROM build_sessions_v2 WHERE code=? AND world=build_worlds_v2.id AND host=? AND closed=0 AND updated>?)";
  if(b.action==="leave"){
- const statements=[];
+ const statements=[];statements.push(db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,'$.hose.driver',NULL,'$.hose.rev',COALESCE(json_extract(state,'$.hose.rev'),0)+1) WHERE id=? AND json_extract(state,'$.hose.driver')=? AND json_extract(state,'$.hose.room')=? AND "+guard).bind(auth.world,b.id,room,...guardArgs));
  statements.push(db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,'$.hose.owner',NULL,'$.hose.rev',COALESCE(json_extract(state,'$.hose.rev'),0)+1) WHERE id=? AND json_extract(state,'$.hose.owner')=? AND json_extract(state,'$.hose.room')=? AND "+guard).bind(auth.world,b.id,room,...guardArgs));
  if(p&&b.pose?.plateOperating){const q=plateFromPlayer(p);statements.push(db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,'$.plate.x',?,'$.plate.z',?,'$.plate.yaw',?,'$.plate.driver',NULL,'$.plate.rev',COALESCE(json_extract(state,'$.plate.rev'),0)+1) WHERE id=? AND json_extract(state,'$.plate.driver')=? AND json_extract(state,'$.plate.room')=? AND "+guard).bind(q.x,q.z,q.yaw,auth.world,b.id,room,...guardArgs));}
  const v=cleanDrive(b.pose?.drive);if(v)statements.push(db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,'$.machine.x',?,'$.machine.z',?,'$.machine.yaw',?,'$.machine.driver',NULL,'$.machine.rev',COALESCE(json_extract(state,'$.machine.rev'),0)+1) WHERE id=? AND json_extract(state,'$.machine.driver')=? AND json_extract(state,'$.machine.room')=? AND "+guard).bind(v.x,v.z,v.yaw,auth.world,b.id,room,...guardArgs));
