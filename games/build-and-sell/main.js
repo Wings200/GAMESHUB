@@ -2,7 +2,7 @@ import {companyStats,BUSINESS_TIERS} from "./sale-math.mjs?v=69";
 import {FURNISHINGS,furnitureCandidate,checkFurniture,footprint,furnitureCollision,wallHitsFurniture} from "./furniture-math.mjs?v=68";
 import {makeFurnitureVisual} from "./furniture-visual.js?v=71";
 import {ROOF_STAGES,roofPlan,roofTile,roofTiles} from "./roof-math.mjs?v=81";
-import {makeRoofVisual} from "./roof-visual.js?v=81";
+import {makeRoofVisual} from "./roof-visual.js?v=84";
 import {FLOOR_TYPES} from "./floor-math.mjs?v=58";
 import {makeFloorVisual} from "./floor-visual.js?v=58";
 import {GOODS,nearStore,readEconomy} from "./economy.mjs?v=74";
@@ -56,7 +56,7 @@ let heaters=[],heaterRevision=-1,waterService=false,heaterMode=false,heaterSelec
 let wallPipes=[],wallPipeRevision=-1,wallPipeMode=false,wallPipeFirst=null,wallPipeVisual=null,ventMode=false;
 const wallKind=()=>pipeKind==="drain"&&ventMode?"vent":pipeKind;
 import {snapWall,addWall,rayWall,openingAt,changeOpening,wallLength,wallCollision,sheathingPick,insulationPick,insulationBays,drywallTargets,drywallRecord,drywallComplete,SHEATH_WIDTH,PAINT_COLORS,paintRects,installedOpening,sheathingSide,SIDING_TYPES,SIDING_COLORS} from "./wall-math.mjs?v=61";
-import {makeWallVisual} from "./wall-visual.js?v=81";
+import {makeWallVisual} from "./wall-visual.js?v=84";
 import {createDrywallBench} from "./drywall-bench.js?v=59";
 import {ELECTRIC_KINDS,specs,deviceMount,ceilingMount,deviceWorld,deviceNear,addDevice,rayDevice,aimFastener} from "./electrical-math.mjs?v=81";
 import {makeElectricalVisual,makeDriverTool,makeCloseDriver} from "./electrical-visual.js?v=81";
