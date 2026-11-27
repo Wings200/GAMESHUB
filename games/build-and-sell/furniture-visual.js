@@ -2,7 +2,7 @@
 import {THREE} from "../../engine/core.js";
 import {furnishSpec} from "./furniture-math.mjs";
 const mat=(color,roughness=.8,metalness=0)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
-const oak=mat(0xb28c62),dark=mat(0x343b40),cloth=mat(0x6e827d),cream=mat(0xe6dfcf),blue=mat(0x647b98),steel=mat(0xa8afb0,.34,.65),black=mat(0x171d22,.25),white=mat(0xe5e8e7),gold=mat(0xbb9968);
+const oak=mat(0xb28c62),dark=mat(0x343b40),cloth=mat(0x6e827d),cream=mat(0xe6dfcf),blue=mat(0x647b98),steel=mat(0xa8afb0,.34,.65),black=mat(0x171d22,.25),white=mat(0xe5e8e7),gold=mat(0xbb9968),screen=mat(0x23313c,.3);
 const yes=new THREE.MeshBasicMaterial({color:0x8fe7a9,transparent:true,opacity:.28,depthWrite:false}),no=new THREE.MeshBasicMaterial({color:0xe47f6e,transparent:true,opacity:.28,depthWrite:false});
 function box(g,w,h,d,x,y,z,m){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;g.add(o);return o;}
 function legs(g,w,d,h,m=oak){for(const x of [-w/2+.07,w/2-.07])for(const z of [-d/2+.07,d/2-.07])box(g,.065,h,.065,x,h/2,z,m);}
@@ -16,7 +16,7 @@ case "dresser":case "cabinet":B(w,h,d,0,h/2,0,oak);B(w+.02,.04,d+.02,0,h-.02,0,f
 case "fridge":B(w,h,d,0,h/2,0,steel);for(const [y,H] of [[.61,1.2],[1.51,.51]]){B(w-.025,H,.035,0,y,d/2,white);B(.035,H*.5,.05,-w*.34,y,d/2+.04,dark);}break;
 case "range":B(w,h,d,0,h/2,0,steel);B(w,.04,d,0,h-.02,0,black);for(const x of [-w*.25,w*.25])for(const z of [-d*.23,d*.23]){const o=new THREE.Mesh(new THREE.CylinderGeometry(.105,.105,.009,22),dark);o.position.set(x,h+.005,z);g.add(o);}B(w-.08,.38,.03,0,.43,d/2,black);B(w-.13,.035,.055,0,.67,d/2+.02,steel);break;
 case "washer":B(w,h,d,0,h/2,0,white);const o=new THREE.Mesh(new THREE.CylinderGeometry(.23,.23,.045,32),dark);o.rotation.x=Math.PI/2;o.position.set(0,.47,d/2+.025);g.add(o);const q=new THREE.Mesh(new THREE.CylinderGeometry(.17,.17,.05,32),black);q.rotation.x=Math.PI/2;q.position.set(0,.47,d/2+.035);g.add(q);B(w-.08,.095,.025,0,.83,d/2,steel);break;
-case "tv":B(w,.43,d,0,.24,0,oak);B(.11,.12,.18,0,.52,0,dark);B(w-.12,.58,.065,0,.85,0,black);B(w-.18,.52,.006,0,.85,.036,mat(0x23313c,.3));break;
+case "tv":B(w,.43,d,0,.24,0,oak);B(.11,.12,.18,0,.52,0,dark);B(w-.12,.58,.065,0,.85,0,black);B(w-.18,.52,.006,0,.85,.036,screen);break;
 case "bookshelf":B(.055,h,d,-w/2+.027,h/2,0,oak);B(.055,h,d,w/2-.027,h/2,0,oak);B(w,h,.035,0,h/2,-d/2,oak);for(let j=0;j<5;j++)B(w,.045,d,0,.035+j*(h-.07)/4,0,oak);for(let j=0;j<3;j++)for(let i=0;i<7;i++)B(.065,.20+(i%3)*.025,.19,-w/2+.09+i*.08,.15+j*(h-.07)/4,.025,[blue,cloth,cream,gold][(i+j)%4]);break;
 }}
 function clear(g){for(const o of [...g.children]){o.removeFromParent();o.traverse(a=>a.geometry?.dispose());}}

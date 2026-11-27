@@ -10,6 +10,7 @@ const assert=(ok,label)=>{if(!ok)throw new Error(label);};
 export function runRegression(){
  const now=1000,layout={x1:0,x2:10,z1:0,z2:10},points=[{x:1,z:1},{x:5,z:1},{x:5,z:5},{x:1,z:5}],walls=points.map((a,i)=>({id:"w"+i,a,b:points[(i+1)%4],height:2.5,openings:[],sheathing:[],wrap:[],insulation:[],drywall:[]}));
  const empty={layout:null,walls:[],supply:{cold:[],hot:[],conduit:[]},risers:{cold:[],hot:[],drain:[],conduit:[]},pipes:[],fixtures:[],heaters:[],utility:{},devices:[],cables:[],outlets:[],panels:[]};
+ const disconnected=inspectProperty({...empty,devices:[{id:"lamp",kind:"light"}],outlets:[{deviceId:"lamp",kind:"light",cableId:"missing"}]},now);assert(!disconnected.rows.find(v=>v.name==="Lighting available").passed,"Reject installed but nonfunctional light");
  const start=inspectProperty(empty,now);assert(!start.passed&&start.area===0&&Number.isFinite(start.score),"Empty world inspection");
  const plan=roofPlan(layout,walls),tiles=roofTiles(layout,plan);assert(plan&&tiles.length===16&&!roofPlan(layout,walls.slice(0,3)),"Roof enclosure");
  const slab=Array.from({length:slabTotal(layout)},(_,n)=>n%10+48*Math.floor(n/10));
