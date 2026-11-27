@@ -2,6 +2,7 @@
 export const STORE={x:17,z:-23.3},STORE_REACH=3.5,START_CASH=25000;
 export const GOODS=[
 ["gravel","Gravel","Foundation",100,45],["form","Form boards","Foundation",4,24],["barrier","Vapor barrier","Foundation",100,30],["rebar","Reinforcement","Foundation",100,85],["concrete","Concrete","Foundation",100,100],
+["ceilingjoist","Ceiling framing units","Roofing",10,95],["roofrafter","Roof framing units","Roofing",10,130],["roofdeck","Roof decking","Roofing",10,90],["roofshingle","Roof shingles","Roofing",10,110],["ceilingpanel","Ceiling panels","Roofing",10,80],
 ["floorwood","Hardwood flooring","Flooring",10,145],["floortile","Ceramic tile","Flooring",10,95],["floorcarpet","Carpet","Flooring",10,65],["floorvinyl","Vinyl flooring","Flooring",10,80],
 ["joineryframe","Door & window frames","Openings",2,65],["doorunit","Door units","Openings",1,140],["windowunit","Window units","Openings",1,165],["joinerytrim","Trim & hardware packs","Openings",2,42],
 ["lumber","Framing lumber","Structure",4,48],["opening","Opening framing supplies","Structure",1,22],["osb","OSB sheets","Structure",4,44],["wrap","House wrap","Structure",10,35],["insulation","Insulation","Structure",8,32],["drywall","Drywall sheets","Structure",4,36],["finish","Joint finishing supplies","Structure",12,24],["paint","Paint coverage units","Structure",24,38],
