@@ -3,6 +3,7 @@ import {FURNISHINGS} from "./furniture-math.mjs";
 export const STORE={x:17,z:-23.3},STORE_REACH=3.5,START_CASH=25000;
 export const GOODS=[
 ["gravel","Gravel","Foundation",100,45],["form","Form boards","Foundation",4,24],["barrier","Vapor barrier","Foundation",100,30],["rebar","Reinforcement","Foundation",100,85],["concrete","Concrete","Foundation",100,100],
+["uplight","Virtual lighting module","Electrical",1,42],["uppower","Virtual power module","Electrical",1,35],["upwater","Virtual water module","Plumbing",1,65],["updrain","Virtual drain module","Plumbing",1,55],["uplink","Virtual service link token","Services",4,48],
 ["upperdeck","Upper deck units","Structure",10,155],["stairkit","Staircase kit","Structure",1,360],
 ["ceilingjoist","Ceiling framing units","Roofing",10,95],["roofrafter","Roof framing units","Roofing",10,130],["roofdeck","Roof decking","Roofing",10,90],["roofshingle","Roof shingles","Roofing",10,110],["ceilingpanel","Ceiling panels","Roofing",10,80],["fascia","Fascia boards","Roofing",10,55],["soffit","Soffit panels","Roofing",10,65],["gutter","Gutter sections","Roofing",10,80],
 ["landgrass","Grass sod squares","Landscaping",10,25],["landdrive","Concrete driveway squares","Landscaping",10,85],["landpaver","Brick walkway squares","Landscaping",10,70],["landfence","Timber fence sections","Landscaping",5,65],["landshrub","Garden shrubs","Landscaping",1,22],

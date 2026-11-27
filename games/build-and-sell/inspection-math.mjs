@@ -1,5 +1,6 @@
 
 import {wallLength,SHEATH_WIDTH,sheathingRects,insulationBays,drywallComplete,drywallRecord,paintRects} from "./wall-math.mjs";
+import {serviceProgress} from "./upper-service-math.mjs";
 import {upperTiles} from "./upper-interior-math.mjs";
 import {roofTiles} from "./roof-math.mjs";
 import {slabTotal} from "./concrete-math.mjs";
@@ -12,11 +13,12 @@ export function inspectProperty(d,now=Date.now()){
  add("Foundation cured",d.cureAt>0&&d.cureAt<=now&&tiles>0&&d.screeded?.length===tiles?1:0,1,true,"Complete and cure the entire slab.");
  add("Enclosed wall perimeter",plan?1:0,1,true,"Complete the rectangular wall perimeter.");
  let outside=0,exteriorDone=0,insulation=0,insulated=0,interior=0,finished=0,painted=0,openings=0,installed=0,doors=0;
- for(const w of walls){
+ for(const w of [...walls,...(d.storyPlan?(d.upperWalls||[]):[])]){
+ const topWall=!walls.includes(w),plan=topWall?d.upperRoofPlan:d.roofPlan;
  const side=plan?(()=>{const mid={x:(w.a.x+w.b.x)/2,z:(w.a.z+w.b.z)/2};const x=mid.x-(plan.x1+plan.x2)/2,z=mid.z-(plan.z1+plan.z2)/2;const dx=w.b.x-w.a.x,dz=w.b.z-w.a.z;if(Math.abs(w.a.x-plan.x1)<.18&&Math.abs(w.b.x-plan.x1)<.18||Math.abs(w.a.x-plan.x2)<.18&&Math.abs(w.b.x-plan.x2)<.18||Math.abs(w.a.z-plan.z1)<.18&&Math.abs(w.b.z-plan.z1)<.18||Math.abs(w.a.z-plan.z2)<.18&&Math.abs(w.b.z-plan.z2)<.18)return -dz*x+dx*z>=0?"+":"-";return null;})():null;
  if(side){insulation+=insulationBays(w).length;insulated+=(w.insulation||[]).length;}
  for(let i=0;i<Math.ceil(wallLength(w)/SHEATH_WIDTH);i++){if(!sheathingRects(w,i).length)continue;for(const face of ["+","-"]){const key=face+i;if(face===side){outside++;if(w.siding?.some(v=>v.key===key))exteriorDone++;}else{interior++;const rec=drywallRecord(w,key);if(drywallComplete(w,rec)&&rec.finish===4){finished++;if(paintRects(w,key).every((_,i)=>!!rec.paint?.[i]))painted++;}}}}
- for(const o of w.openings||[]){openings++;if(o.assembly===3){installed++;if(side&&o.kind==="door")doors++;}}
+ for(const o of w.openings||[]){openings++;if(o.assembly===3){installed++;if(side&&!topWall&&o.kind==="door")doors++;}}
  }
  add("Exterior siding",exteriorDone,outside||1,true,"Cover exterior wall faces with siding.");add("Exterior insulation",insulated,insulation||1,true,"Fill exterior wall cavities.");
  add("Interior drywall finished",finished,interior||1,true,"Secure and finish interior wall faces.");add("Interior painting",painted,interior||1,false,"Paint all finished interior panels for a better score.");
@@ -24,7 +26,7 @@ export function inspectProperty(d,now=Date.now()){
  const rt=roofTiles(r,plan),top=d.storyPlan?d.upperRoofPlan:plan,roofRows=d.storyPlan?(d.upperRoof||[]):(d.roof||[]),topTiles=roofTiles(r,top),roof=new Map(roofRows.map(v=>[v.tile,v.stage]));
  if(d.storyPlan)add("Upper wall perimeter",top?1:0,1,true,"Complete the upper enclosure.");
  add("Roof and ceiling",topTiles.filter(id=>roof.get(id)===5).length,topTiles.length||1,true,"Finish all five overhead stages.");add("Roof insulation",topTiles.filter(id=>roofRows.some(v=>v.tile===id&&v.insulated)).length,topTiles.length||1,true,"Insulate the overhead sections.");
- if(d.storyPlan){const ids=upperTiles(d.storyPlan),covered=new Set((d.upperFlooring||[]).map(v=>v.tile));add("Upper flooring",ids.filter(id=>covered.has(id)).length,ids.length||1,true,"Finish the upper deck outside the stairwell.");add("Upper-floor services",0,1,true,"Upper-floor services are not yet implemented; this property cannot pass inspection.");}
+ if(d.storyPlan){const ids=upperTiles(d.storyPlan),covered=new Set((d.upperFlooring||[]).map(v=>v.tile));add("Upper flooring",ids.filter(id=>covered.has(id)).length,ids.length||1,true,"Finish the upper deck outside the stairwell.");const services=serviceProgress(d.upperServices||[]);add("Upper power modules",services.power,2,true,"Test a virtual lighting module and power module.");add("Upper water modules",services.water,2,true,"Test a virtual water and drain module.");add("Upper module tests",services.complete,services.total||1,true,"Test every installed upper service module.");}
  const floor=new Set((d.flooring||[]).map(v=>v.tile));add("Interior flooring",rt.filter(id=>floor.has(id)).length,rt.length||1,true,"Cover the interior footprint.");
  const devices=d.devices||[],cables=d.cables||[],outlets=d.outlets||[],panels=d.panels||[],power=calculatePower(devices,cables,outlets,panels);
  add("Electrical service",panels.some(serviceLive)?1:0,1,true,"Connect the simulated service and activate the panel.");
@@ -42,7 +44,7 @@ export function inspectProperty(d,now=Date.now()){
  add("Working bathroom fixtures",fixtures.filter(ready).length,fixtures.length||1,true,"All installed fixtures need their simulated supply and drain paths.");
  add("Bathroom essentials",["sink","toilet","shower"].filter(k=>fixtures.some(f=>f.kind===k&&ready(f))).length,3,true,"A working sink, toilet and shower.");
  add("Water heater",heaters.some(h=>water.heaters[h.id]?.ready)?1:0,1,true,"A connected, ready water heater.");
- const furnished=new Set((d.furniture||[]).map(f=>f.kind));add("Furnishing variety",Math.min(6,furnished.size),6,false,"Optional furnishing bonus.");
+ const furnished=new Set([...(d.furniture||[]),...(d.upperFurniture||[])].map(f=>f.kind));add("Furnishing variety",Math.min(6,furnished.size),6,false,"Optional furnishing bonus.");
  const score=Math.round(100*rows.reduce((n,v)=>n+v.done/v.total*(v.required?2:1),0)/rows.reduce((n,v)=>n+(v.required?2:1),0));
  return {score,passed:rows.filter(v=>v.required).every(v=>v.passed),rows,area:Math.round(area*100)/100,foundationArea:Math.round(foundationArea*100)/100,requiredRemaining:rows.filter(v=>v.required&&!v.passed).length};
 }

@@ -22,6 +22,7 @@ export const TASKS=[
 ["paint","Interior painting kit","Structure","T color · LMB close-up paint · hold LMB coverage · E exit"],
 ["joinery","Door & window installation kit","Structure","LMB close-up install · RMB uninstall · E interact when stowed"],
 ["siding","Exterior siding kit","Structure","T style · R/F color · LMB fit · RMB remove"],
+["upperpower","Upper power modules","Electrical","T module · LMB install/link/test · RMB remove"],["upperwater","Upper water modules","Plumbing","T module · LMB install/link/test · RMB remove"],
 ["upperwall","Upper wall & finish kit","Structure","T job · R/F size or color · G face / trim type · Shift+G siding type · LMB work · RMB remove"],
 ["story","Upper deck & stairs","Structure","R/F rotate staircase · LMB build · RMB remove"],
 ["roof","Ceiling & roof construction kit","Structure","T stage · R/F shape before building · use on top floor · hold LMB install · RMB remove"],
@@ -41,8 +42,8 @@ export const TOOLS=[
  {id:"foundationKit",name:"Foundation kit",category:"Construction",modes:["gravel","form","barrier","rebar","pour","screed"]},
  {id:"structureKit",name:"Structure kit",category:"Construction",modes:["wall","joinery","roof","siding","story","upperwall"]},
  {id:"finishKit",name:"Interior finish kit",category:"Construction",modes:["drywall","finish","paint","floor","trim"]},
- {id:"electricalKit",name:"Electrical kit",category:"Services",modes:["electric","conduit","cable","outlet","panel"]},
- {id:"plumbingKit",name:"Plumbing kit",category:"Services",modes:["drain","cold","hot","utility","heater","fixture"]},
+ {id:"electricalKit",name:"Electrical kit",category:"Services",modes:["electric","conduit","cable","outlet","panel","upperpower"]},
+ {id:"plumbingKit",name:"Plumbing kit",category:"Services",modes:["drain","cold","hot","utility","heater","fixture","upperwater"]},
  {id:"furnitureKit",name:"Furnishing kit",category:"Interiors",modes:["furniture","landscape"]}
 ].map(k=>({...k,controls:k.modes.map(id=>TASKS.find(t=>t.id===id).name).join(" · ")}));
 export const kitFor=id=>TOOLS.find(k=>k.id===id||k.modes.includes(id))||null;

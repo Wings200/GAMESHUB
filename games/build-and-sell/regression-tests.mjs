@@ -3,6 +3,7 @@ import {changeTrim,trimRects,drywallTargets,readWalls,changeDrywall} from "./wal
 import {landCandidate,changeLandscape,readLandscape} from "./landscape-math.mjs";
 import {cleanWork,workMatches,workPulse} from "./work-activity.mjs";
 import {keyboardLook,defaults,bindAction,actionFor,controlText} from "./keybinds.mjs";
+import {changeUpperService,readUpperServices,serviceProgress} from "./upper-service-math.mjs";
 import {upperTiles,upperFloorTarget,changeUpperInterior,readUpperInterior} from "./upper-interior-math.mjs";
 import {upperRoofPlan,readUpperRoof,changeUpperRoof} from "./upper-roof-math.mjs";
 import {changeUpperWall,readUpperWalls,stairClear} from "./upper-wall-math.mjs";
@@ -49,6 +50,8 @@ export function runRegression(){
  const upWall={operation:"add",a:{x:1.2,z:1.2},b:{x:7.8,z:1.2},height:2.5};
  const framed=changeUpperWall(sp,[],upWall,upPose,"upper-test");assert(!framed.error&&framed.upperWalls.length===1,"Upper framing");
  assert(readUpperWalls(framed,sp).length===1,"Upper wall persistence");
+ let serviceWorld={};for(let stage=1;stage<=3;stage++){const q=changeUpperService(serviceWorld,sp,framed.upperWalls,{operation:"advance",wallId:"upper-test",t:1,kind:"light"},upPose);assert(!q.error&&q.upperServices[0].stage===stage,"Upper module stage");serviceWorld=q;}
+ assert(serviceProgress(readUpperServices(serviceWorld,sp,framed.upperWalls).upperServices).power===1,"Upper service test persists");
  const upperSheet=changeUpperWall(sp,framed.upperWalls,{operation:"sheetAdd",wallId:"upper-test",key:"-0",opposite:true},upPose);
  assert(!upperSheet.error&&upperSheet.cost.osb===1,"Upper exterior sheathing");
  const upperWrap=changeUpperWall(sp,upperSheet.upperWalls,{operation:"wrapAdd",wallId:"upper-test",key:"-0",opposite:true},upPose);
