@@ -16,6 +16,7 @@ export const TOOLS=[
 ["pour","Concrete hose kit","Foundation","Collect at mixer · R move truck · hold LMB pour"],
 ["screed","Screed","Foundation","Hold LMB level"],
 ["wall","Framing hammer","Structure","LMB endpoints · T wall/door/window/sheathing/wrap/insulation · RMB remove"],
+["drywall","Drywall installation kit","Structure","LMB measure/mark/cut/position · hold LMB highlighted targets · RMB remove"],
 ["electric","Box mounting kit","Electrical","T type · R/F height · LMB mount"],
 ["cable","Cable spool & drill","Electrical","T cable type · R/F height · hold LMB route"],
 ["outlet","Device wiring kit","Electrical","Outlets, switches & lights · hold to work · T mode/seat"],
