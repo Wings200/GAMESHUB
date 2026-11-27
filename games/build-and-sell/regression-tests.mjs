@@ -1,5 +1,6 @@
 
 import {changeTrim,trimRects,drywallTargets,readWalls,changeDrywall} from "./wall-math.mjs";
+import {landCandidate,changeLandscape,readLandscape} from "./landscape-math.mjs";
 import {roofPlan,roofTiles,changeRoof,readRoof,roofTile,roofEdges} from "./roof-math.mjs";
 import {slabTotal} from "./concrete-math.mjs";
 import {changeFloor} from "./floor-math.mjs";
@@ -10,6 +11,11 @@ import {propertyOffer,settleSale,companyStats} from "./sale-math.mjs";
 const assert=(ok,label)=>{if(!ok)throw new Error(label);};
 export function runRegression(){
  const now=1000,layout={x1:0,x2:10,z1:0,z2:10},points=[{x:1,z:1},{x:5,z:1},{x:5,z:5},{x:1,z:5}],walls=points.map((a,i)=>({id:"w"+i,a,b:points[(i+1)%4],height:2.5,openings:[],sheathing:[],wrap:[],insulation:[],drywall:[]}));
+ const yard=landCandidate("paver",{x:11.2,z:1.2},0),yp={x:11,z:2};
+ const placedYard=changeLandscape({},[layout],{operation:"add",...yard},yp);assert(!placedYard.error&&readLandscape(placedYard).landscape.length===1,"Save outdoor paving");
+ assert(changeLandscape(placedYard,[layout],{operation:"add",...yard},yp).error,"Reject duplicate paving");
+ assert(changeLandscape(placedYard,[layout],{operation:"remove",...yard},yp).returned==="landpaver","Return paving to stock");
+ assert(changeLandscape({},[layout],{operation:"add",...landCandidate("grass",{x:2,z:2},0)},{x:2,z:3}).error,"Protect foundation");
  const tw={...walls[0],openings:[{kind:"door",start:.5,width:.8}],drywall:[]},key="+0",side={x:2,z:2};
  const dry={key,stage:4,screws:drywallTargets(tw,key).map((_,i)=>i),finish:4,paint:[]};
  assert(changeTrim([tw],tw.id,key,"base","white",side).error,"Reject unfinished drywall");

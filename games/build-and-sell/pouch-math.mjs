@@ -23,6 +23,7 @@ export const TASKS=[
 ["joinery","Door & window installation kit","Structure","LMB close-up install · RMB uninstall · E interact when stowed"],
 ["siding","Exterior siding kit","Structure","T style · R/F color · LMB fit · RMB remove"],
 ["roof","Ceiling & roof construction kit","Structure","T stage · aim overhead · hold LMB install · RMB remove"],
+["landscape","Landscaping kit","Interiors","T type · R/F rotate fence · LMB install · RMB remove"],
 ["furniture","Furnishing placement kit","Structure","T item · R/F rotate · LMB place · RMB return to stock"],
 ["floor","Flooring installation kit","Structure","T material · hold LMB install · RMB remove"],
 ["electric","Box mounting kit","Electrical","T type · R/F height · LMB mount"],
@@ -40,7 +41,7 @@ export const TOOLS=[
  {id:"finishKit",name:"Interior finish kit",category:"Construction",modes:["drywall","finish","paint","floor","trim"]},
  {id:"electricalKit",name:"Electrical kit",category:"Services",modes:["electric","conduit","cable","outlet","panel"]},
  {id:"plumbingKit",name:"Plumbing kit",category:"Services",modes:["drain","cold","hot","utility","heater","fixture"]},
- {id:"furnitureKit",name:"Furnishing kit",category:"Interiors",modes:["furniture"]}
+ {id:"furnitureKit",name:"Furnishing kit",category:"Interiors",modes:["furniture","landscape"]}
 ].map(k=>({...k,controls:k.modes.map(id=>TASKS.find(t=>t.id===id).name).join(" · ")}));
 export const kitFor=id=>TOOLS.find(k=>k.id===id||k.modes.includes(id))||null;
 export function readKitModes(input,prior={}){const result={};for(const k of TOOLS){const saved=prior?.[k.id];const legacy=(Array.isArray(input)?input:[]).find(id=>k.modes.includes(id));result[k.id]=k.modes.includes(saved)?saved:legacy||k.modes[0];}return result;}
