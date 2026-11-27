@@ -1,6 +1,7 @@
 
 import {changeTrim,trimRects,drywallTargets,readWalls,changeDrywall} from "./wall-math.mjs";
 import {landCandidate,changeLandscape,readLandscape} from "./landscape-math.mjs";
+import {cleanWork,workMatches,workPulse} from "./work-activity.mjs";
 import {roofPlan,roofTiles,changeRoof,readRoof,roofTile,roofEdges} from "./roof-math.mjs";
 import {slabTotal} from "./concrete-math.mjs";
 import {changeFloor} from "./floor-math.mjs";
@@ -11,6 +12,7 @@ import {propertyOffer,settleSale,companyStats} from "./sale-math.mjs";
 const assert=(ok,label)=>{if(!ok)throw new Error(label);};
 export function runRegression(){
  const now=1000,layout={x1:0,x2:10,z1:0,z2:10},points=[{x:1,z:1},{x:5,z:1},{x:5,z:5},{x:1,z:5}],walls=points.map((a,i)=>({id:"w"+i,a,b:points[(i+1)%4],height:2.5,openings:[],sheathing:[],wrap:[],insulation:[],drywall:[]}));
+ const activity=cleanWork({tool:"paint",state:"working",seq:1});assert(activity&&workMatches(activity,{wallMode:"paint"}),"Shared activity validation");assert(!workMatches(activity,{wallMode:"trim"})&&!workMatches(activity,{wallMode:"paint",driving:true}),"Reject mismatched work");assert(!cleanWork({tool:"unknown",state:"working",seq:1}),"Reject unknown work");assert(workPulse({state:"placing"},425)>.99,"Placement animation pulse");
  const yard=landCandidate("paver",{x:11.2,z:1.2},0),yp={x:11,z:2};
  const placedYard=changeLandscape({},[layout],{operation:"add",...yard},yp);assert(!placedYard.error&&readLandscape(placedYard).landscape.length===1,"Save outdoor paving");
  assert(changeLandscape(placedYard,[layout],{operation:"add",...yard},yp).error,"Reject duplicate paving");
