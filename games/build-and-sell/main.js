@@ -106,11 +106,11 @@ function updateSurveyHud(){const active=survey.mode!=="none";$("surveyPanel").cl
 let foundationId=null,otherFoundations=[],archiveKey="",archiveRoot=null;
 function overlaps(a,b){return !!a&&!!b&&Math.min(a.x2,b.x2)-Math.max(a.x1,b.x1)>.001&&Math.min(a.z2,b.z2)-Math.max(a.z1,b.z1)>.001;}
 function renderArchivedFoundations(list){
- const key=JSON.stringify(list);if(key===archiveKey)return;archiveKey=key;otherFoundations=list;
+ const key=JSON.stringify([list,list.map(f=>f.cureAt>0&&Date.now()+clockOffset>=f.cureAt)]);if(key===archiveKey)return;archiveKey=key;otherFoundations=list;
  setArchivedFoundations(list);if(archiveRoot){archiveRoot.removeFromParent();archiveRoot.traverse(o=>{o.geometry?.dispose();if(o.userData?.label){o.material?.map?.dispose();o.material?.dispose();}});}archiveRoot=new THREE.Group();engine.scene.add(archiveRoot);
  for(const f of list){const g=new THREE.Group();archiveRoot.add(g);const r=f.layout,now=performance.now(),forms=new Set(f.forms),poured=new Set(f.poured),screeded=new Set(f.screeded),cured=f.cureAt>0&&Date.now()+clockOffset>=f.cureAt;
  makeLayoutVisual(g).update(r,null,false,null,null,false,forms,poured.size>0&&poured.size===slabTotal(r));
- makeGravelVisual(g).rebuild(r,new Set(f.gravel),new Set(f.compacted));makeFormVisual(g).update(r,forms,null,true,false,now);
+ const gravelLayer=makeGravelVisual(g);gravelLayer.rebuild(r,new Set(f.gravel),new Set(f.compacted));gravelLayer.update(r,null,now);makeFormVisual(g).update(r,forms,null,true,false,now);
  makePipeVisual(g).update(r,f.pipes,null,null,true,false,null);for(const kind of ["cold","hot","conduit"])makeSupplyVisual(g,kind).update(r,f.supply[kind],null,null,true,false,null);
  makeRiserVisual(g).update(r,{drain:f.pipes,...f.supply},f.risers,"cold",null,.6,false);makeElevatedVisual(g).update(f.elevated,"cold",null,null,.6,false,true);
  const holes=Object.values(f.risers).flatMap(a=>a.map(v=>v.point));makePrepVisual(g).update(r,new Set(f.barrier),new Set(f.rebar),holes,null,false,false,now);

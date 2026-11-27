@@ -45,7 +45,7 @@ const foundationId=w=>typeof w.foundationId==="string"?w.foundationId:"foundatio
 const foundationSnapshot=w=>Object.fromEntries(FOUNDATION_FIELDS.map(k=>[k,w[k]??null]));
 const archivedFoundations=w=>(Array.isArray(w.foundations)?w.foundations:[]).filter(f=>typeof f?.id==="string"&&sanitizeLayout(f.state?.layout)).slice(0,MAX_FOUNDATIONS-1);
 function overlaps(a,b){return !!a&&!!b&&Math.min(a.x2,b.x2)-Math.max(a.x1,b.x1)>.001&&Math.min(a.z2,b.z2)-Math.max(a.z1,b.z1)>.001;}
-const worldData=(w,room)=>({...singleWorldData(w,room),foundationId:foundationId(w),foundations:archivedFoundations(w).map(f=>({id:f.id,...singleWorldData(f.state,room)}))});
+const worldData=(w,room)=>({...singleWorldData(w,room),foundationId:foundationId(w),foundations:archivedFoundations(w).map(f=>{const {serverNow,machine,plate,hose,...data}=singleWorldData(f.state,room);return {id:f.id,...data};})});
 const active="EXISTS (SELECT 1 FROM build_sessions_v2 s WHERE s.code=build_players_v2.room AND s.closed=0 AND s.updated>?)";
 async function openWorld(db,user,action,username,now){
  let w=await db.prepare("SELECT id,state,updated FROM build_worlds_v2 WHERE owner=?").bind(user.id).first();
