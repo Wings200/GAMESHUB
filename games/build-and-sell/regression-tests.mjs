@@ -2,6 +2,7 @@
 import {changeTrim,trimRects,drywallTargets,readWalls,changeDrywall} from "./wall-math.mjs";
 import {landCandidate,changeLandscape,readLandscape} from "./landscape-math.mjs";
 import {cleanWork,workMatches,workPulse} from "./work-activity.mjs";
+import {storyPlan,storySurface,changeStory,readStory} from "./story-math.mjs";
 import {roofPlan,roofTiles,changeRoof,readRoof,roofTile,roofEdges,roofY,changeRoofStyle} from "./roof-math.mjs";
 import {slabTotal} from "./concrete-math.mjs";
 import {changeFloor} from "./floor-math.mjs";
@@ -32,6 +33,11 @@ export function runRegression(){
  const disconnected=inspectProperty({...empty,devices:[{id:"lamp",kind:"light"}],outlets:[{deviceId:"lamp",kind:"light",cableId:"missing"}]},now);assert(!disconnected.rows.find(v=>v.name==="Lighting available").passed,"Reject installed but nonfunctional light");
  const start=inspectProperty(empty,now);assert(!start.passed&&start.area===0&&Number.isFinite(start.score),"Empty world inspection");
  const plan=roofPlan(layout,walls),tiles=roofTiles(layout,plan);assert(plan&&tiles.length===16&&!roofPlan(layout,walls.slice(0,3)),"Roof enclosure");
+ const bigPts=[{x:1,z:1},{x:8,z:1},{x:8,z:7},{x:1,z:7}],bigWalls=bigPts.map((a,i)=>({a,b:bigPts[(i+1)%4],height:2.5,openings:[]}));
+ const upper=changeStory({cureAt:1},layout,bigWalls,0,false,{x:2,z:2},now);assert(!upper.error&&upper.cost.stairkit===1,"Build upper deck");
+ const sp=readStory(upper,layout,bigWalls).storyPlan;assert(sp&&sp.height>2.5,"Read upper deck");
+ const walker={x:sp.start+.1,z:sp.c,levelY:0};walker.levelY=storySurface(walker,{x:sp.start-.1,z:sp.c},[sp]);assert(walker.levelY>0,"Enter stairs");const before={x:walker.x,z:walker.z};walker.x+=.2;assert(storySurface(walker,before,[sp])>walker.levelY,"Climb stairs");
+ assert(changeStory({cureAt:1,roof:[{tile:1,stage:1}]},layout,bigWalls,0,false,{x:2,z:2},now).error,"Protect existing roof");
  const flat=roofPlan(layout,walls,"flat"),shed=roofPlan(layout,walls,"shed");
  assert(roofY(flat,1,1)===roofY(flat,5,5),"Flat roof surface");
  assert(roofY(shed,3,5)>roofY(shed,3,1),"Single-slope rise");
