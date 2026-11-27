@@ -1,4 +1,4 @@
-import {EXPANSION_PAGES} from "./handbook-expansion.mjs?v=66";
+import {EXPANSION_PAGES} from "./handbook-expansion.mjs?v=67";
 import {expansionArt} from "./handbook-expansion-art.mjs?v=66";
 
 import {PAGES as BASE_PAGES} from "./handbook-pages.mjs?v=66";

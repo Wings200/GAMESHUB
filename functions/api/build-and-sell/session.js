@@ -85,7 +85,7 @@ export async function onRequestPost(ctx){
  let b;try{b=JSON.parse(raw)}catch{return json({ok:false,error:"Invalid request."},400)}
  if(!b||typeof b!=="object")return json({ok:false,error:"Invalid request."},400);
  const now=Date.now(),room=String(b.code||"").toUpperCase(),cutoff=now-TTL;
- if(["list","new","load","join"].includes(b.action)){
+ if(["list","new","load","join","deleteSave"].includes(b.action)){
  await schema(db);
  // Retain session codes as tombstones so a previous invite can never be recycled.
  await db.batch([
@@ -95,17 +95,29 @@ export async function onRequestPost(ctx){
  if(b.action!=="join"){
  const user=await identity(ctx);
  if(!user)return json({ok:false,error:"Sign into GAMESHUB (or use a guest account) to create and load saves."},401);
- if(b.action==="list"){const w=await db.prepare("SELECT id,updated FROM build_worlds_v2 WHERE owner=?").bind(user.id).first();return json({ok:true,save:w?{updated:w.updated}:null,username:user.username||"Builder"});}
+ if(b.action==="list"){const w=await db.prepare("SELECT id,updated FROM build_worlds_v2 WHERE owner=?").bind(user.id).first();return json({ok:true,save:w?{id:w.id,updated:w.updated}:null,username:user.username||"Builder"});}
+ if(b.action==="deleteSave"){
+ if(b.confirm!=="DELETE"||typeof b.saveId!=="string")return json({ok:false,error:"Confirm deletion of your saved world."},400);
+ const w=await db.prepare("SELECT id FROM build_worlds_v2 WHERE owner=? AND id=?").bind(user.id,b.saveId).first();
+ if(!w)return json({ok:false,error:"Save no longer exists or is not yours. Refresh the menu."},409);
+ const results=await db.batch([
+ db.prepare("UPDATE build_sessions_v2 SET closed=1 WHERE world=? AND EXISTS(SELECT 1 FROM build_worlds_v2 WHERE id=? AND owner=?)").bind(w.id,w.id,user.id),
+ db.prepare("DELETE FROM build_players_v2 WHERE room IN (SELECT code FROM build_sessions_v2 WHERE world=?) AND EXISTS(SELECT 1 FROM build_worlds_v2 WHERE id=? AND owner=?)").bind(w.id,w.id,user.id),
+ db.prepare("DELETE FROM build_worlds_v2 WHERE id=? AND owner=?").bind(w.id,user.id)
+ ]);
+ if(!results[2]?.meta?.changes)return json({ok:false,error:"Save already changed. Refresh the menu."},409);
+ return json({ok:true,save:null});
+ }
  return openWorld(db,user,b.action,name(user.username||b.name),now);
  }
  if(!/^[A-Z0-9]{6}$/.test(room))return json({ok:false,error:"Enter a six-character session code."},400);
  const id=crypto.randomUUID(),secret=token();
- const j=await db.prepare("INSERT INTO build_players_v2(id,room,token,name,pose,updated) SELECT ?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM build_sessions_v2 WHERE code=? AND closed=0 AND updated>?) AND (SELECT COUNT(*) FROM build_players_v2 WHERE room=? AND updated>?)<8").bind(id,room,secret,name(b.name),JSON.stringify(spawn),now,room,cutoff,room,cutoff).run();
+ const j=await db.prepare("INSERT INTO build_players_v2(id,room,token,name,pose,updated) SELECT ?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM build_sessions_v2 WHERE code=? AND closed=0 AND updated>? AND EXISTS(SELECT 1 FROM build_worlds_v2 WHERE id=build_sessions_v2.world)) AND (SELECT COUNT(*) FROM build_players_v2 WHERE room=? AND updated>?)<8").bind(id,room,secret,name(b.name),JSON.stringify(spawn),now,room,cutoff,room,cutoff).run();
  return j.meta?.changes?json({ok:true,code:room,id,token:secret,host:false}):json({ok:false,error:"Session is closed, expired, or full."},409);
  }
  if(!/^[A-Z0-9]{6}$/.test(room)||typeof b.id!=="string"||typeof b.token!=="string")return json({ok:false,error:"Invalid session credentials."},400);
  if(!["sync","save","leave","layout","vehicle","dig","gravel","plate","compact","form","pipe","prep","concrete","hose","wall","electrical","cable","outlet","panel","wallPipe","heater","fixture","utility","buyMaterials","floor","roof","furniture","inspect","sellProperty"].includes(b.action))return json({ok:false,error:"Unknown operation."},400);
- const auth=await db.prepare("SELECT s.world,s.host,s.closed,s.updated FROM build_players_v2 p JOIN build_sessions_v2 s ON s.code=p.room WHERE p.id=? AND p.room=? AND p.token=? AND p.updated>? AND s.closed=0 AND s.updated>?").bind(b.id,room,b.token,cutoff,cutoff).first();
+ const auth=await db.prepare("SELECT s.world,s.host,s.closed,s.updated FROM build_players_v2 p JOIN build_sessions_v2 s ON s.code=p.room JOIN build_worlds_v2 w ON w.id=s.world WHERE p.id=? AND p.room=? AND p.token=? AND p.updated>? AND s.closed=0 AND s.updated>?").bind(b.id,room,b.token,cutoff,cutoff).first();
  if(!auth)return json({ok:false,error:"Session closed or expired. Load the world or get a new code."},410);
  const host=auth.host===b.id;
  const guard="EXISTS(SELECT 1 FROM build_sessions_v2 s JOIN build_players_v2 p ON p.room=s.code WHERE s.code=? AND s.world=build_worlds_v2.id AND s.closed=0 AND s.updated>? AND p.id=? AND p.token=? AND p.updated>?)";

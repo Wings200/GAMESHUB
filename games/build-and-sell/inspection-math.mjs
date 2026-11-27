@@ -1,12 +1,13 @@
 
 import {wallLength,SHEATH_WIDTH,sheathingRects,insulationBays,drywallComplete,drywallRecord,paintRects} from "./wall-math.mjs";
 import {roofTiles} from "./roof-math.mjs";
+import {slabTotal} from "./concrete-math.mjs";
 import {calculatePower,serviceLive} from "./power-math.mjs";
 import {waterState} from "./water-math.mjs";
 import {SPECS} from "./fixture-math.mjs";
 export function inspectProperty(d,now=Date.now()){
  const rows=[],add=(name,done,total,required,detail)=>{done=Math.max(0,Math.min(total,done));rows.push({name,done,total,required,passed:total>0&&done===total,detail});};
- const r=d.layout,walls=d.walls||[],plan=d.roofPlan,area=r?(r.x2-r.x1)*(r.z2-r.z1):0,tiles=r?Math.ceil(r.x2-r.x1)*Math.ceil(r.z2-r.z1):0;
+ const r=d.layout,walls=d.walls||[],plan=d.roofPlan,area=r?(r.x2-r.x1)*(r.z2-r.z1):0,tiles=slabTotal(r);
  add("Foundation cured",d.cureAt>0&&d.cureAt<=now&&tiles>0&&d.screeded?.length===tiles?1:0,1,true,"Complete and cure the entire slab.");
  add("Enclosed wall perimeter",plan?1:0,1,true,"Complete the rectangular wall perimeter.");
  let outside=0,exteriorDone=0,insulation=0,insulated=0,interior=0,finished=0,painted=0,openings=0,installed=0,doors=0;
