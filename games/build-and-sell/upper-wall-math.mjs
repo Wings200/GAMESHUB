@@ -1,6 +1,6 @@
 
-import {readWalls,addWall,removeWall,changeOpening,wallLength} from "./wall-math.mjs";
-export const UPPER_MODES=["wall","door","window"];
+import {readWalls,addWall,removeWall,changeOpening,wallLength,projectWall,sheathingSide,changeSheathing,changeWrap,changeInsulation,changeDrywall,finishDrywall,paintDrywall,changeAssembly,changeSiding,changeTrim,SIDING_TYPES,TRIM_TYPES} from "./wall-math.mjs";
+export const UPPER_MODES=["wall","door","window","joinery","sheathing","wrap","insulation","drywall","finish","paint","siding","trim"];
 export function upperReady(plan,p){
  return !!plan&&!!p&&Number.isFinite(p.levelY)&&Math.abs(p.levelY-plan.height)<.08&&p.x>=plan.x1&&p.x<=plan.x2&&p.z>=plan.z1&&p.z<=plan.z2;
 }
@@ -32,5 +32,25 @@ export function changeUpperWall(plan,rows,b,p,id="preview"){
   const result=changeOpening(rows,b.wallId,b.opening,p,b.operation==="removeOpening");
   return result.error?result:{upperWalls:result.walls,cost:b.operation==="opening"?{opening:1}:{}};
  }
- return {error:"Invalid upper wall operation"};
+ const w=rows.find(v=>v.id===b.wallId);
+ if(!w||projectWall(w,p).d>3.6)return {error:"Approach an upper wall"};
+ // Game-only access to the exterior face from the upper deck, without a scaffold.
+ let actor=p;
+ if(b.opposite===true&&["sheetAdd","sheetRemove","wrapAdd","wrapRemove","sidingAdd","sidingRemove"].includes(b.operation)){
+  const q=projectWall(w,p).point,L=wallLength(w),side=sheathingSide(w,p)==="+"?-1:1;
+  actor={...p,x:q.x-(w.b.z-w.a.z)/L*side*.24,z:q.z+(w.b.x-w.a.x)/L*side*.24};
+ }
+ const op=b.operation,key=b.key,remove=op.endsWith("Remove"),id0=w.id;
+ let result,cost={};
+ if(["sheetAdd","sheetRemove"].includes(op)){result=changeSheathing(rows,id0,key,actor,remove);if(!remove)cost={osb:1};}
+ else if(["wrapAdd","wrapRemove"].includes(op)){result=changeWrap(rows,id0,key,actor,remove);if(!remove)cost={wrap:1};}
+ else if(["insulate","uninsulate"].includes(op)){result=changeInsulation(rows,id0,key,p,op==="uninsulate");if(op==="insulate")cost={insulation:1};}
+ else if(["dryMeasure","dryMark","dryCut","dryPosition","dryFasten","dryRemove"].includes(op)){result=changeDrywall(rows,id0,key,op,p,b.screw);if(op==="dryPosition")cost={drywall:1};}
+ else if(["finishTape","finishCoat","finishSmooth","finishFinal"].includes(op)){result=finishDrywall(rows,id0,key,op,p);if(op!=="finishSmooth")cost={finish:1};}
+ else if(op==="paintPatch"){result=paintDrywall(rows,id0,key,p,b.screw,b.color);cost={paint:1};}
+ else if(["openingFrame","openingFit","openingFinish","openingUninstall","openingToggle"].includes(op)){result=changeAssembly(rows,id0,b.start,op,p);cost=op==="openingFrame"?{joineryframe:1}:op==="openingFit"?{[result.kind==="door"?"doorunit":"windowunit"]:1}:op==="openingFinish"?{joinerytrim:1}:{};}
+ else if(["sidingAdd","sidingRemove"].includes(op)){result=changeSiding(rows,id0,key,b.kind,b.color,actor,remove);if(!remove)cost={[SIDING_TYPES.find(t=>t.id===b.kind)?.stock||"invalid"]:1};}
+ else if(["trimAdd","trimRemove"].includes(op)){result=changeTrim(rows,id0,key,b.kind,b.color,p,remove);if(!remove)cost={[TRIM_TYPES.find(t=>t.id===b.kind)?.stock||"invalid"]:1};}
+ else return {error:"Invalid upper wall operation"};
+ return result.error?result:{upperWalls:result.walls,cost};
 }

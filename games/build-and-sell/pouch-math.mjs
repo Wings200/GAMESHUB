@@ -22,7 +22,7 @@ export const TASKS=[
 ["paint","Interior painting kit","Structure","T color · LMB close-up paint · hold LMB coverage · E exit"],
 ["joinery","Door & window installation kit","Structure","LMB close-up install · RMB uninstall · E interact when stowed"],
 ["siding","Exterior siding kit","Structure","T style · R/F color · LMB fit · RMB remove"],
-["upperwall","Upper wall framing kit","Structure","T framing / openings · R/F height or width · LMB build · RMB remove"],
+["upperwall","Upper wall & finish kit","Structure","T job · R/F size or color · G face / trim type · Shift+G siding type · LMB work · RMB remove"],
 ["story","Upper deck & stairs","Structure","R/F rotate staircase · LMB build · RMB remove"],
 ["roof","Ceiling & roof construction kit","Structure","T stage · R/F shape before building · use on top floor · hold LMB install · RMB remove"],
 ["landscape","Landscaping kit","Interiors","T type · R/F rotate fence · LMB install · RMB remove"],

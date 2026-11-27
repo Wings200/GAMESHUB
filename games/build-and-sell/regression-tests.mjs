@@ -42,6 +42,10 @@ export function runRegression(){
  const upWall={operation:"add",a:{x:1.2,z:1.2},b:{x:7.8,z:1.2},height:2.5};
  const framed=changeUpperWall(sp,[],upWall,upPose,"upper-test");assert(!framed.error&&framed.upperWalls.length===1,"Upper framing");
  assert(readUpperWalls(framed,sp).length===1,"Upper wall persistence");
+ const upperSheet=changeUpperWall(sp,framed.upperWalls,{operation:"sheetAdd",wallId:"upper-test",key:"-0",opposite:true},upPose);
+ assert(!upperSheet.error&&upperSheet.cost.osb===1,"Upper exterior sheathing");
+ const upperWrap=changeUpperWall(sp,upperSheet.upperWalls,{operation:"wrapAdd",wallId:"upper-test",key:"-0",opposite:true},upPose);
+ assert(!upperWrap.error,"Upper exterior wrap");
  assert(changeUpperWall(sp,[],upWall,{...upPose,levelY:0}).error,"Require upstairs");
  assert(changeUpperWall(sp,[],{operation:"add",a:{x:sp.start+.5,z:sp.c-1},b:{x:sp.start+.5,z:sp.c+1},height:2.5},upPose).error,"Protect stair opening");
  const opening=changeUpperWall(sp,framed.upperWalls,{operation:"opening",wallId:"upper-test",opening:{kind:"door",start:1,width:.9}},upPose);assert(!opening.error,"Upper door opening");
