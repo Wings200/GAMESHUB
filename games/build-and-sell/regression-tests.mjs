@@ -2,6 +2,7 @@
 import {changeTrim,trimRects,drywallTargets,readWalls,changeDrywall} from "./wall-math.mjs";
 import {landCandidate,changeLandscape,readLandscape} from "./landscape-math.mjs";
 import {cleanWork,workMatches,workPulse} from "./work-activity.mjs";
+import {keyboardLook,actionButton,controlText} from "./keyboard-controls.mjs";
 import {upperTiles,upperFloorTarget,changeUpperInterior,readUpperInterior} from "./upper-interior-math.mjs";
 import {upperRoofPlan,readUpperRoof,changeUpperRoof} from "./upper-roof-math.mjs";
 import {changeUpperWall,readUpperWalls,stairClear} from "./upper-wall-math.mjs";
@@ -15,6 +16,7 @@ import {inspectProperty} from "./inspection-math.mjs";
 import {propertyOffer,settleSale,companyStats} from "./sale-math.mjs";
 const assert=(ok,label)=>{if(!ok)throw new Error(label);};
 export function runRegression(){
+ const kp={yaw:0,pitch:0};keyboardLook(kp,new Set(["ArrowLeft","ArrowUp"]),.05);assert(kp.yaw>0&&kp.pitch>0,"Keyboard look");assert(actionButton("KeyZ")===0&&actionButton("KeyX")===2&&actionButton("Space")===null,"Keyboard actions");assert(controlText("Hold LMB · RMB remove",true)==="Hold Z · X remove","Keyboard hints");
  const now=1000,layout={x1:0,x2:10,z1:0,z2:10},points=[{x:1,z:1},{x:5,z:1},{x:5,z:5},{x:1,z:5}],walls=points.map((a,i)=>({id:"w"+i,a,b:points[(i+1)%4],height:2.5,openings:[],sheathing:[],wrap:[],insulation:[],drywall:[]}));
  const activity=cleanWork({tool:"paint",state:"working",seq:1});assert(activity&&workMatches(activity,{wallMode:"paint"}),"Shared activity validation");assert(!workMatches(activity,{wallMode:"trim"})&&!workMatches(activity,{wallMode:"paint",driving:true}),"Reject mismatched work");assert(!cleanWork({tool:"unknown",state:"working",seq:1}),"Reject unknown work");assert(workPulse({state:"placing"},425)>.99,"Placement animation pulse");
  const yard=landCandidate("paver",{x:11.2,z:1.2},0),yp={x:11,z:2};
