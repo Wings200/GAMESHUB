@@ -18,6 +18,7 @@ export const TASKS=[
 ["wall","Framing hammer","Structure","LMB endpoints · T wall/door/window/sheathing/wrap/insulation · RMB remove"],
 ["drywall","Drywall installation kit","Structure","LMB close-up install · E exit · RMB remove"],
 ["finish","Drywall finishing kit","Structure","LMB close-up finish · hold LMB targets · E exit"],
+["trim","Interior trim kit","Structure","T type · R/F finish · LMB install · RMB remove"],
 ["paint","Interior painting kit","Structure","T color · LMB close-up paint · hold LMB coverage · E exit"],
 ["joinery","Door & window installation kit","Structure","LMB close-up install · RMB uninstall · E interact when stowed"],
 ["siding","Exterior siding kit","Structure","T style · R/F color · LMB fit · RMB remove"],
@@ -36,7 +37,7 @@ export const TOOLS=[
  {id:"surveyKit",name:"Survey kit",category:"Planning",modes:["layout","tape","laser","rod"]},
  {id:"foundationKit",name:"Foundation kit",category:"Construction",modes:["gravel","form","barrier","rebar","pour","screed"]},
  {id:"structureKit",name:"Structure kit",category:"Construction",modes:["wall","joinery","roof","siding"]},
- {id:"finishKit",name:"Interior finish kit",category:"Construction",modes:["drywall","finish","paint","floor"]},
+ {id:"finishKit",name:"Interior finish kit",category:"Construction",modes:["drywall","finish","paint","floor","trim"]},
  {id:"electricalKit",name:"Electrical kit",category:"Services",modes:["electric","conduit","cable","outlet","panel"]},
  {id:"plumbingKit",name:"Plumbing kit",category:"Services",modes:["drain","cold","hot","utility","heater","fixture"]},
  {id:"furnitureKit",name:"Furnishing kit",category:"Interiors",modes:["furniture"]}

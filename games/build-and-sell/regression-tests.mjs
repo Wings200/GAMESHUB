@@ -1,4 +1,5 @@
 
+import {changeTrim,trimRects,drywallTargets,readWalls,changeDrywall} from "./wall-math.mjs";
 import {roofPlan,roofTiles,changeRoof} from "./roof-math.mjs";
 import {slabTotal} from "./concrete-math.mjs";
 import {changeFloor} from "./floor-math.mjs";
@@ -9,6 +10,16 @@ import {propertyOffer,settleSale,companyStats} from "./sale-math.mjs";
 const assert=(ok,label)=>{if(!ok)throw new Error(label);};
 export function runRegression(){
  const now=1000,layout={x1:0,x2:10,z1:0,z2:10},points=[{x:1,z:1},{x:5,z:1},{x:5,z:5},{x:1,z:5}],walls=points.map((a,i)=>({id:"w"+i,a,b:points[(i+1)%4],height:2.5,openings:[],sheathing:[],wrap:[],insulation:[],drywall:[]}));
+ const tw={...walls[0],openings:[{kind:"door",start:.5,width:.8}],drywall:[]},key="+0",side={x:2,z:2};
+ const dry={key,stage:4,screws:drywallTargets(tw,key).map((_,i)=>i),finish:4,paint:[]};
+ assert(changeTrim([tw],tw.id,key,"base","white",side).error,"Reject unfinished drywall");
+ tw.drywall=[dry];
+ const trimmed=changeTrim([tw],tw.id,key,"base","white",side);assert(!trimmed.error&&trimmed.walls[0].trim.length===1,"Install baseboard");
+ assert(trimRects(tw,key,"base").every(([a,b])=>b<=.5||a>=1.3),"Baseboard skips doorway");
+ assert(readWalls({walls:trimmed.walls},layout).walls[0].trim.length===1,"Persist trim");
+ assert(changeDrywall(trimmed.walls,tw.id,key,"dryRemove",side).error,"Remove trim before drywall");
+ assert(changeTrim(trimmed.walls,tw.id,key,"base","white",side).error,"Reject duplicate trim");
+ assert(!changeTrim(trimmed.walls,tw.id,key,"base","white",side,true).error,"Remove trim");
  const empty={layout:null,walls:[],supply:{cold:[],hot:[],conduit:[]},risers:{cold:[],hot:[],drain:[],conduit:[]},pipes:[],fixtures:[],heaters:[],utility:{},devices:[],cables:[],outlets:[],panels:[]};
  const disconnected=inspectProperty({...empty,devices:[{id:"lamp",kind:"light"}],outlets:[{deviceId:"lamp",kind:"light",cableId:"missing"}]},now);assert(!disconnected.rows.find(v=>v.name==="Lighting available").passed,"Reject installed but nonfunctional light");
  const start=inspectProperty(empty,now);assert(!start.passed&&start.area===0&&Number.isFinite(start.score),"Empty world inspection");
