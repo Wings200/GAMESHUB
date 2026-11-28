@@ -15,3 +15,6 @@ Browser autoplay is unlocked on input. External sources should be vendored local
 
 ## v101 additional recorded effects
 - Joseph Sardin / BigSoundBank (CC0): [Stapler on wood](https://bigsoundbank.com/stapler-on-wood-s1580.html) for fastening feedback; [Hammer fall on concrete](https://bigsoundbank.com/hammer-fall-on-concrete-s1108.html) as a metal-contact proxy; [Thermostat #2](https://bigsoundbank.com/thermostat-2-s2192.html) as a mechanical click proxy. Source descriptions and CC0 license confirmed; streaming URLs follow the existing BigSoundBank ID convention. These are recorded foley proxies, not recordings of every specific construction tool. Media availability and in-game listening remain unverified. No substitute car engine sounds.
+
+## Surface footsteps
+- Kenney Impact Sounds (CC0), [source pack](https://kenney.nl/assets/impact-sounds), [sample mirror](https://cc0-sounds.exi.software/collection/kenney_impactsounds/): five variants each of wood, grass, carpet and snow. Concrete uses existing local files. Dirt uses grass as a temporary proxy; gravel uses snow crunch as a temporary proxy, tile uses concrete and vinyl uses wood. External samples fall back to local concrete on failure. Actual browser playback has not been verified.
