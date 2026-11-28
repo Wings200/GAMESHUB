@@ -39,6 +39,11 @@ export function runRegression(){
  assert(!changeTrim(trimmed.walls,tw.id,key,"base","white",side,true).error,"Remove trim");
  const empty={layout:null,walls:[],supply:{cold:[],hot:[],conduit:[]},risers:{cold:[],hot:[],drain:[],conduit:[]},pipes:[],fixtures:[],heaters:[],utility:{},devices:[],cables:[],outlets:[],panels:[]};
  const disconnected=inspectProperty({...empty,devices:[{id:"lamp",kind:"light"}],outlets:[{deviceId:"lamp",kind:"light",cableId:"missing"}]},now);assert(!disconnected.rows.find(v=>v.name==="Lighting available").passed,"Reject installed but nonfunctional light");
+ const switched={...empty,devices:[{id:"p",kind:"panel"},{id:"s",kind:"switch"},{id:"r",kind:"outlet"}],cables:[{id:"a",a:"p",b:"s",type:"14/2"},{id:"b",a:"s",b:"r",type:"14/2"}],outlets:[{deviceId:"s",kind:"switch",variant:"single-pole",cableIds:["a","b"],on:false},{deviceId:"r",kind:"outlet",cableIds:["b"]}],panels:[{id:"p",meter:true,service:true,main:true,breakers:[{slot:0,cableId:"a",amps:15,on:true}]}]};
+ const outletCheck=d=>inspectProperty(d,now).rows.find(v=>v.name==="Powered outlets").passed;
+ assert(outletCheck(switched)&&switched.outlets[0].on===false,"Switched outlet counts without changing switch");
+ assert(!outletCheck({...switched,cables:switched.cables.slice(0,1)}),"Reject disconnected switched outlet");
+ assert(!outletCheck({...switched,panels:switched.panels.map(p=>({...p,main:false}))}),"Reject unpowered switched outlet");
  const start=inspectProperty(empty,now);assert(!start.passed&&start.area===0&&Number.isFinite(start.score),"Empty world inspection");
  const plan=roofPlan(layout,walls),tiles=roofTiles(layout,plan);assert(plan&&tiles.length===16&&!roofPlan(layout,walls.slice(0,3)),"Roof enclosure");
  const bigPts=[{x:1,z:1},{x:8,z:1},{x:8,z:7},{x:1,z:7}],bigWalls=bigPts.map((a,i)=>({a,b:bigPts[(i+1)%4],height:2.5,openings:[]}));
