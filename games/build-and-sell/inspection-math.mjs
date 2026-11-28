@@ -32,8 +32,8 @@ export function inspectProperty(d,now=Date.now()){
  add("Electrical service",panels.some(serviceLive)?1:0,1,true,"Connect the simulated service and activate the panel.");
  const receptacles=devices.filter(v=>v.kind==="outlet"),lights=devices.filter(v=>v.kind==="light"),installedIds=new Set(outlets.map(v=>v.deviceId)),powered=new Set(power.powered);
  add("Electrical devices installed",devices.filter(v=>v.kind!=="panel"&&installedIds.has(v.id)).length,devices.filter(v=>v.kind!=="panel").length||1,true,"Finish all installed device boxes.");
- add("Powered outlets",receptacles.filter(v=>powered.has(v.id)).length,receptacles.length||1,true,"At least one outlet, with every outlet powered.");
- const testPower=calculatePower(devices,cables,outlets.map(o=>o.kind==="switch"?{...o,on:true}:o),panels),testPowered=new Set(testPower.powered);
+ const testPower=calculatePower(devices,cables,outlets.map(o=>o.kind==="switch"?{...o,on:true}:o),panels),testPowered=new Set([...powered,...testPower.powered]);
+ add("Powered outlets",receptacles.filter(v=>installedIds.has(v.id)&&testPowered.has(v.id)).length,receptacles.length||1,true,"Working outlets count even when their controlling game switch is off during inspection.");
  add("Lighting available",lights.filter(v=>installedIds.has(v.id)&&testPowered.has(v.id)).length,lights.length||1,true,"Complete the game lighting network. The report checks a virtual all-on state without changing saved switches.");
  add("Electrical fault check",Object.keys(power.faults).length===0&&Object.keys(testPower.faults).length===0&&panels.every(p=>p.breakers.every(b=>!b.trip))?1:0,1,true,"Resolve simulated circuit faults and tripped breakers.");
  const u=d.utility||{},fixtures=d.fixtures||[],heaters=d.heaters||[];
