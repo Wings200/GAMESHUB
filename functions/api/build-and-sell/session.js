@@ -69,7 +69,7 @@ async function openWorld(db,user,action,username,now){
   w=await db.prepare("SELECT id,state,updated FROM build_worlds_v2 WHERE owner=?").bind(user.id).first();
  }
  if(!w)return json({ok:false,error:"Save changed while opening. Refresh and try again."},409);
- const worldState=JSON.parse(w.state),pose=savedPose(worldState.hostPose)||spawn;
+ let worldState;try{worldState=JSON.parse(w.state);if(!worldState||typeof worldState!=="object"||Array.isArray(worldState))throw Error("Invalid world object");worldData(worldState,"");}catch(e){console.error("Build & Sell saved world validation",e);return json({ok:false,error:"Saved world could not be read. Your save has been retained. Do not delete it.",stage:"save-read"},503);}const pose=savedPose(worldState.hostPose)||spawn;
  for(let i=0;i<12;i++){
  const c=code(),id=crypto.randomUUID(),secret=token();
  try{
@@ -120,7 +120,7 @@ export async function onRequestPost(ctx){
  if(!results[2]?.meta?.changes)return json({ok:false,error:"Save already changed. Refresh the menu."},409);
  return json({ok:true,save:null});
  }
- return openWorld(db,user,b.action,name(user.username||b.name),now);
+ return await openWorld(db,user,b.action,name(user.username||b.name),now);
  }
  if(!/^[A-Z0-9]{6}$/.test(room))return json({ok:false,error:"Enter a six-character session code."},400);
  const id=crypto.randomUUID(),secret=token();
