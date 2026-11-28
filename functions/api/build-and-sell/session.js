@@ -54,6 +54,16 @@ async function schema(db){await db.batch([
 ]);}
 const singleWorldData=(w,room)=>{const l=readLayout(w),d=readDig(w,l.layout),g=readGravel(w,l.layout,d.dug),comp=readCompaction(w,l.layout,g.gravel),prep=readPrep(w,l.layout,comp.compacted),pl=readPipes(w,l.layout),su=readSupply(w,l.layout),risers=readRisers(w,l.layout,{drain:pl.pipes,...su.supply}),s=readWalls(w,l.layout),wp=readWallPipes(w,s.walls,risers),e=readElectrical(w,s.walls),c=readCables(w,s.walls,e.devices),o=readOutlets(w,e.devices,c.cables),a=readPanels(w,e.devices,c.cables);return {...l,...readFloor(w,l.layout),...readFurnish(w,l.layout),...readRoof(w,l.layout,s.walls),...readStory(w,l.layout,s.walls),...readUpperInterior(w,readStory(w,l.layout,s.walls).storyPlan),...readUpperServices(w,readStory(w,l.layout,s.walls).storyPlan,readUpperWalls(w,readStory(w,l.layout,s.walls).storyPlan)),upperWalls:readUpperWalls(w,readStory(w,l.layout,s.walls).storyPlan),...readUpperRoof(w,l.layout,readStory(w,l.layout,s.walls).storyPlan,readUpperWalls(w,readStory(w,l.layout,s.walls).storyPlan)),machine:readMachine(w,room),...d,...g,plate:readPlate(w,room),...comp,...readForms(w,l.layout),...pl,...su,risers,elevated:readElevated(w,l.layout),...prep,...readConcrete(w,l.layout,prep.rebar),...s,...wp,...e,...c,...o,...a,...readHeaters(w,l.layout,s.walls,e.devices,wp.wallPipes),...readFixtures(w,{layout:l.layout,walls:s.walls,lines:wp.wallPipes,risers}),...readUtility(w,l.layout,pl.pipes,su.supply),waterTickAt:Number.isFinite(w.waterTickAt)?w.waterTickAt:0,hose:readHose(w,room),serverNow:Date.now()};};
 const FOUNDATION_FIELDS=["story","upperServices","upperFlooring","upperFurniture","upperWalls","upperRoof","upperRoofStyle","furniture","roof","roofStyle","flooring","layout","dug","gravel","compacted","forms","barrier","rebar","poured","screeded","cureAt","pipes","supply","risers","elevated","walls","wallPipes","devices","cables","outlets","panels","heaters","fixtures","utility","waterTickAt","waterService"],FOUNDATION_REVS=["storyRevision","furnitureRevision","roofRevision","floorRevision","layoutRevision","digRevision","gravelRevision","compactRevision","formRevision","prepRevision","concreteRevision","pipeRevision","wallRevision","wallPipeRevision","electricRevision","cableRevision","outletRevision","panelRevision","heaterRevision","fixtureRevision","utilityRevision"],MAX_FOUNDATIONS=8;
+// Bind the entire patch once. Keep individual JSON function calls under D1/SQLite limits.
+// Each top-level field is replaced (including null, boolean, array and object values).
+function worldPatchSql(patch){
+ const keys=Object.keys(patch);let expr="state";
+ for(let i=0;i<keys.length;i+=24){
+  const part=keys.slice(i,i+24).map(k=>{if(!/^[A-Za-z][A-Za-z0-9]*$/.test(k))throw Error("Invalid world patch key");return "'$."+k+"',json(?1 -> '$."+k+"')";}).join(",");
+  expr="json_set("+expr+","+part+")";
+ }
+ return expr;
+}
 const foundationId=w=>typeof w.foundationId==="string"?w.foundationId:"foundation-1";
 const foundationSnapshot=w=>Object.fromEntries(FOUNDATION_FIELDS.map(k=>[k,w[k]??null]));
 const archivedFoundations=w=>(Array.isArray(w.foundations)?w.foundations:[]).filter(f=>typeof f?.id==="string"&&sanitizeLayout(f.state?.layout)).slice(0,MAX_FOUNDATIONS-1);
@@ -147,8 +157,8 @@ export async function onRequestPost(ctx){
  const patch={economy:result.economy,business:result.business,foundations:archives.filter(f=>f.id!==b.foundationId)};
  if(active){Object.assign(patch,foundationSnapshot({}));patch.foundationId=crypto.randomUUID();patch.waterTickAt=now;patch.hose={side:0,owner:null,driver:null,parking:cleanTruck(w.hose?.parking),room:null,rev:(w.hose?.rev||0)+1};for(const k of FOUNDATION_REVS)patch[k]=(w[k]||0)+1;for(const k of ["lastDig","lastGravel","lastForm","lastPrep","lastConcrete","lastPipe","lastWall","lastElectric","lastCable","lastOutlet","lastPanel"])patch[k]=null;}
  else patch.layoutRevision=(w.layoutRevision||0)+1;
- const revs=[...FOUNDATION_REVS,"waterTickAt","economy.revision","business.revision","machine.rev","plate.rev","hose.rev"],where=revs.map(k=>"COALESCE(json_extract(state,'$."+k+"'),0)=?").join(" AND "),get=k=>k.split(".").reduce((v,key)=>v?.[key],w)||0,keys=Object.keys(patch),set=keys.map(k=>"'$."+k+"',json(?)").join(",");
- const u=await db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,"+set+"),updated=? WHERE id=? AND "+where+" AND "+guard).bind(...keys.map(k=>JSON.stringify(patch[k])),now,auth.world,...revs.map(get),...guardArgs).run();
+ const revs=[...FOUNDATION_REVS,"waterTickAt","economy.revision","business.revision","machine.rev","plate.rev","hose.rev"],where=revs.map(k=>"COALESCE(json_extract(state,'$."+k+"'),0)=?").join(" AND "),get=k=>k.split(".").reduce((v,key)=>v?.[key],w)||0,set=worldPatchSql(patch);
+ const u=await db.prepare("UPDATE build_worlds_v2 SET state="+set+",updated=? WHERE id=? AND "+where+" AND "+guard).bind(JSON.stringify(patch),now,auth.world,...revs.map(get),...guardArgs).run();
  if(!u.meta?.changes)return json({ok:false,error:"Property or funds changed. Refresh and try again."},409);
  return json({ok:true,...worldData(await worldRow(),room),sale:result.sale});
  }
@@ -407,8 +417,8 @@ export async function onRequestPost(ctx){
  for(const k of FOUNDATION_REVS)patch[k]=(w[k]||0)+1;
  for(const k of ["lastDig","lastGravel","lastForm","lastPrep","lastConcrete","lastPipe","lastWall","lastElectric","lastCable","lastOutlet","lastPanel"])patch[k]=null;
  patch.waterTickAt=now;patch.foundations=nextArchives;patch.foundationId=nextId;patch.hose={side:0,owner:null,driver:null,parking:cleanTruck(w.hose?.parking),room:null,rev:(w.hose?.rev||0)+1};
- const revs=[...FOUNDATION_REVS,"waterTickAt","landscapeRevision"],where=revs.map(k=>"COALESCE(json_extract(state,'$."+k+"'),0)=?").join(" AND "),keys=Object.keys(patch),set=keys.map(k=>"'$."+k+"',json(?)").join(",");
- const change=await db.prepare("UPDATE build_worlds_v2 SET state=json_set(state,"+set+"),updated=? WHERE id=? AND "+where+" AND COALESCE(json_extract(state,'$.machine.rev'),0)=? AND COALESCE(json_extract(state,'$.plate.rev'),0)=? AND COALESCE(json_extract(state,'$.hose.rev'),0)=? AND "+guard).bind(...keys.map(k=>JSON.stringify(patch[k])),now,auth.world,...revs.map(k=>w[k]||0),w.machine?.rev||0,w.plate?.rev||0,w.hose?.rev||0,...guardArgs).run();
+ const revs=[...FOUNDATION_REVS,"waterTickAt","landscapeRevision"],where=revs.map(k=>"COALESCE(json_extract(state,'$."+k+"'),0)=?").join(" AND "),set=worldPatchSql(patch);
+ stage="foundation database update";const change=await db.prepare("UPDATE build_worlds_v2 SET state="+set+",updated=? WHERE id=? AND "+where+" AND COALESCE(json_extract(state,'$.machine.rev'),0)=? AND COALESCE(json_extract(state,'$.plate.rev'),0)=? AND COALESCE(json_extract(state,'$.hose.rev'),0)=? AND "+guard).bind(JSON.stringify(patch),now,auth.world,...revs.map(k=>w[k]||0),w.machine?.rev||0,w.plate?.rev||0,w.hose?.rev||0,...guardArgs).run();
  if(!change.meta?.changes)return json({ok:false,error:"Foundation changed. Try again."},409);
  return json({ok:true,...worldData(await worldRow(),room)});
  }
