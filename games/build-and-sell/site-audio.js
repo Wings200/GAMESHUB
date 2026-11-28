@@ -27,7 +27,7 @@ export function createSiteAudio(){
   try{const C=window.AudioContext||window.webkitAudioContext;if(C){context=new C();context.resume().catch(()=>{});}}catch{}
   // Prime playback inside the user's click; browsers otherwise block sound.
   for(const a of [wind,engine,tracks,plateMotor,pump,...steps]){a.volume=0;safePlay(a);}
-  loop(wind,active?.20:0);loop(engine,0);loop(tracks,0);loop(plateMotor,0);loop(pump,0);
+  loop(wind,active?.20:0);loop(engine,0);loop(tracks,0);loop(plateMotor,0);loop(pump,0);for(const a of steps)a.pause();
  }
  function start(){plateLevel=0;active=true;stepDistance=0;wasGround=true;lastMachine=null;lastAnim=null;}
  function stop(){plateLevel=0;active=false;loop(wind,0);loop(engine,0);loop(tracks,0);loop(plateMotor,0);loop(pump,0);if(windGain)windGain.gain.value=0;for(const bank of oneShots.values())for(const a of bank)a.pause();for(const a of steps)a.pause();lastPeerSteps.clear();}
@@ -41,7 +41,7 @@ export function createSiteAudio(){
   if(digAnim&&digAnim.start!==lastAnim&&performance.now()-digAnim.start<800){lastAnim=digAnim.start;one("dig",driving?.62:.65/(1+dist*.16),0,.85+Math.random()*.15);}
   const live=new Set();for(const [id,a] of peers){live.add(id);const s=a.shown;if(!s||a.driving||s.speed<.3||s.y>.15){lastPeerSteps.delete(id);continue;}const d=Math.hypot(listener.x-s.x,listener.z-s.z);if(d>15){lastPeerSteps.delete(id);continue;}let n=(lastPeerSteps.get(id)||0)+s.speed*dt;if(n>.85){n%=.85;one("step",.32/(1+d*.25),Math.floor(Math.random()*5),.94+Math.random()*.1);}lastPeerSteps.set(id,n);}for(const id of lastPeerSteps.keys())if(!live.has(id))lastPeerSteps.delete(id);
  }
- function setVolume(v){if(!Number.isFinite(v))return;volume=clamp(v,0,1);for(const bank of oneShots.values())for(const a of bank){a.volume=clamp(Number(a.dataset.level||0)*volume,0,1);if(volume===0)a.pause();}if(volume===0){for(const a of [wind,engine,tracks,plateMotor,pump])loop(a,0);if(windGain)windGain.gain.value=0;}try{localStorage.setItem("build-sfx-volume",String(volume));}catch{}}
- document.addEventListener("visibilitychange",()=>{if(!document.hidden)return;for(const a of [wind,engine,tracks,plateMotor,pump])loop(a,0);for(const bank of oneShots.values())for(const a of bank)a.pause();if(windGain)windGain.gain.value=0;stepDistance=0;lastPeerSteps.clear();});
+ function setVolume(v){if(!Number.isFinite(v))return;volume=clamp(v,0,1);for(const bank of oneShots.values())for(const a of bank){a.volume=clamp(Number(a.dataset.level||0)*volume,0,1);if(volume===0)a.pause();}if(volume===0){for(const a of steps)a.pause();for(const a of [wind,engine,tracks,plateMotor,pump])loop(a,0);if(windGain)windGain.gain.value=0;}try{localStorage.setItem("build-sfx-volume",String(volume));}catch{}}
+ document.addEventListener("visibilitychange",()=>{if(!document.hidden)return;for(const a of steps)a.pause();for(const a of [wind,engine,tracks,plateMotor,pump])loop(a,0);for(const bank of oneShots.values())for(const a of bank)a.pause();if(windGain)windGain.gain.value=0;stepDistance=0;lastPeerSteps.clear();});
  return {unlock,start,stop,update,one,setVolume,get volume(){return volume;}};
 }
