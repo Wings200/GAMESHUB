@@ -104,8 +104,8 @@ export function runRegression(){
  world.economy=spendGoods(world,{furn_bed:1}).economy;
  const d={...empty,...world,layout,walls,roofPlan:plan,roof:tiles.map(tile=>({tile,stage:5})),furniture:placed.furniture};
  const report=inspectProperty(d,now);assert(!report.passed&&report.area===16&&report.foundationArea===100,"Enclosed area, not slab area");assert(report.rows.find(v=>v.name==="Roof and ceiling").passed,"Completed roof inspection");
- const blocked=propertyOffer(d,report);assert(blocked.base===9600&&!blocked.eligible,"Incomplete building valuation");const doubled=propertyOffer({...d,upperFurniture:d.furniture},{...report,area:32});assert(doubled.base===19200&&doubled.furnishings===blocked.furnishings*2,"Upper area and furnishing value");
- assert(settleSale(world,"first",d,report,blocked.net,now).error,"Inspection blocks sale");
+ const blocked=propertyOffer(d,report);assert(blocked.base===9600&&blocked.eligible&&blocked.discount>0,"Incomplete building valuation");const doubled=propertyOffer({...d,upperFurniture:d.furniture},{...report,area:32});assert(doubled.base===19200&&doubled.furnishings===blocked.furnishings*2,"Upper area and furnishing value");
+ const asIs=settleSale(world,"first",d,report,blocked.net,now);assert(!asIs.error&&asIs.sale.discount>0&&asIs.economy.cash===24650+blocked.net,"Discounted as-is sale");assert(!propertyOffer({layout:d.layout,walls:[]},{area:0,foundationArea:100,score:0,passed:false}).eligible,"Empty marked land cannot be sold");
  // Isolate transaction logic; this synthetic report is not a claim of a completed simulated house.
  const pass={...report,passed:true,score:100},offer=propertyOffer(d,pass);
  assert(settleSale(world,"first",d,pass,offer.net+1,now).error,"Stale offer rejected");
